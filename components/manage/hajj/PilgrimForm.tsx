@@ -9,20 +9,27 @@ import { Field, inputClass } from '@/components/manage/ui';
 import { Button } from '@/components/ui/Button';
 import { BRANCHES } from '@/lib/management/branches';
 import type { HajjPilgrim, MgmtPackage } from '@/lib/management/types';
+import type { AffiliateOption } from '@/lib/management/affiliates';
+import { normalizeDocStatus, type DocStatusKey } from '@/lib/management/doc-status';
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { getDict } from '@/lib/dictionaries/areas/adminhajj';
+import { getDict as getCareDict } from '@/lib/dictionaries/areas/careof';
+import { CareOfSelect } from '@/components/manage/CareOfSelect';
+import { DocStatusSelect } from '@/components/manage/DocStatusSelect';
 import { useLockedBranch } from '@/components/providers/BranchScope';
 
 type PkgOption = Pick<MgmtPackage, 'id' | 'name' | 'price' | 'year'>;
 
 export function PilgrimForm({
   packages,
+  affiliates = [],
   defaultYear,
   mode = 'create',
   pilgrimId,
   initial,
 }: {
   packages: PkgOption[];
+  affiliates?: AffiliateOption[];
   defaultYear: number;
   mode?: 'create' | 'edit';
   pilgrimId?: string;
@@ -30,7 +37,9 @@ export function PilgrimForm({
 }) {
   const router = useRouter();
   const lockedBranch = useLockedBranch();
-  const t = getDict(useLocale());
+  const locale = useLocale();
+  const t = getDict(locale);
+  const ct = getCareDict(locale);
   const isEdit = mode === 'edit';
   const fileRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
@@ -39,6 +48,9 @@ export function PilgrimForm({
   const [regType, setRegType] = useState<'pre-registration' | 'registered'>(
     initial?.reg_type ?? 'pre-registration',
   );
+  const [affiliateId, setAffiliateId] = useState<string | null>(initial?.affiliate_id ?? null);
+  const [docStatus, setDocStatus] = useState<DocStatusKey[]>(normalizeDocStatus(initial?.doc_status));
+  const [branch, setBranch] = useState<string>(initial?.branch ?? 'inter-gulf-travels');
 
   async function handlePhoto(file: File | undefined) {
     if (!file) return;
@@ -89,6 +101,8 @@ export function PilgrimForm({
       token_money: Number(fd.get('token_money') ?? 0),
       photo_url: photoUrl ?? '',
       note: String(fd.get('note') ?? ''),
+      affiliate_id: affiliateId,
+      doc_status: docStatus,
     };
 
     if (!payload.name) {
@@ -191,7 +205,7 @@ export function PilgrimForm({
             <input type="hidden" name="branch" value={lockedBranch} />
           ) : (
             <Field label={t.branchConcern} required>
-              <select name="branch" className={inputClass} defaultValue={initial?.branch ?? 'inter-gulf-travels'}>
+              <select name="branch" className={inputClass} value={branch} onChange={(e) => setBranch(e.target.value)}>
                 {BRANCHES.map((b) => (
                   <option key={b.value} value={b.value}>
                     {b.label}
@@ -233,6 +247,17 @@ export function PilgrimForm({
               <input name="token_money" type="number" min={0} step="any" defaultValue={0} className={inputClass} />
             </Field>
           )}
+          <Field label={ct.careOf} hint={ct.careOfHint} className="sm:col-span-2 lg:col-span-3">
+            <CareOfSelect
+              affiliates={affiliates}
+              value={affiliateId}
+              onChange={setAffiliateId}
+              branch={lockedBranch ?? branch}
+            />
+          </Field>
+          <Field label={ct.docStatus} hint={ct.docStatusHint} className="sm:col-span-2 lg:col-span-3">
+            <DocStatusSelect value={docStatus} onChange={setDocStatus} />
+          </Field>
           <Field label={t.note} className="sm:col-span-2 lg:col-span-3">
             <textarea name="note" rows={2} defaultValue={initial?.note ?? ''} className={inputClass} placeholder={t.optionalRemarks} />
           </Field>

@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { PageHeader } from '@/components/manage/ui';
 import { PilgrimForm } from '@/components/manage/hajj/PilgrimForm';
 import { loadHajjPackages } from '@/lib/management/hajj';
+import { loadActiveAffiliates, toAffiliateOptions } from '@/lib/management/affiliates';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminhajj';
@@ -17,7 +18,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 export default async function NewPilgrimPage() {
   const locale = getLocale();
   const t = getDict(locale);
-  const packages = await loadHajjPackages();
+  const [packages, affiliates] = await Promise.all([loadHajjPackages(), loadActiveAffiliates()]);
   const options = packages
     .filter((p) => p.active)
     .map((p) => ({ id: p.id, name: p.name, price: p.price, year: p.year }));
@@ -34,7 +35,7 @@ export default async function NewPilgrimPage() {
         title={t.newTitle}
         subtitle={t.newSubtitle}
       />
-      <PilgrimForm packages={options} defaultYear={CURRENT_YEAR + 1} />
+      <PilgrimForm packages={options} affiliates={toAffiliateOptions(affiliates)} defaultYear={CURRENT_YEAR + 1} />
     </>
   );
 }

@@ -4,7 +4,9 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireStaff } from '@/lib/management/guard';
 import { chargeParty, recordPayment, logActivity } from '@/lib/management/server';
 import { enforceBranch } from '@/lib/management/scope';
+import { resolveReferenceableAffiliate } from '@/lib/management/affiliates';
 import { BRANCHES } from '@/lib/management/branches';
+import { DOC_STATUS_KEYS } from '@/lib/management/doc-status';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,6 +29,8 @@ const passengerSchema = z.object({
   token_money: z.coerce.number().min(0).default(0),
   photo_url: z.preprocess(emptyToNull, z.string().trim().url().nullable().optional()),
   note: z.preprocess(emptyToNull, z.string().trim().max(1000).nullable().optional()),
+  affiliate_id: z.preprocess(emptyToNull, z.string().uuid().nullable().optional()),
+  doc_status: z.array(z.enum(DOC_STATUS_KEYS)).optional().default([]),
 });
 
 export async function POST(request: Request) {
@@ -86,6 +90,19 @@ export async function POST(request: Request) {
         { ok: false, error: 'Could not save the passenger. The management tables may not be set up yet.' },
         { status: 500 },
       );
+    }
+
+    // Care-of + document status are optional add-ons written best-effort, so a
+    // pre-migration schema (columns not yet added) never blocks passenger entry.
+    if (d.affiliate_id || (d.doc_status && d.doc_status.length)) {
+      const { error: metaErr } = await supabase
+        .from('umrah_passengers')
+        .update({
+          affiliate_id: await resolveReferenceableAffiliate(d.affiliate_id),
+          doc_status: d.doc_status ?? [],
+        })
+        .eq('id', passenger.id);
+      if (metaErr) console.error('[admin/umrah] care-of/doc_status skipped:', metaErr.message);
     }
 
     const headId = passenger.account_head_id as string | null;

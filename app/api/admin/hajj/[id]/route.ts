@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { mgmtDb, chargeParty, getSystemHead, INCOME_HEAD, logActivity } from '@/lib/management/server';
 import { requireStaff } from '@/lib/management/guard';
+import { resolveReferenceableAffiliate } from '@/lib/management/affiliates';
+import { DOC_STATUS_KEYS } from '@/lib/management/doc-status';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,6 +14,9 @@ const schema = z.object({
   package_id: z.string().uuid().optional().nullable(),
   // status
   status: z.enum(['active', 'cancelled', 'completed']).optional(),
+  // care-of + document status
+  affiliate_id: z.string().uuid().optional().nullable(),
+  doc_status: z.array(z.enum(DOC_STATUS_KEYS)).optional(),
   // edit (a curated, safe subset)
   name: z.string().trim().min(1).optional(),
   name_bn: z.string().trim().optional().nullable(),
@@ -179,14 +184,29 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     for (const f of fields) {
       if (f in (payload as object)) update[f] = f === 'name' ? d.name : clean((d as Record<string, unknown>)[f]);
     }
-    if (Object.keys(update).length === 0) {
+    const hasCareOf = 'affiliate_id' in (payload as object);
+    const hasDocs = 'doc_status' in (payload as object);
+
+    if (Object.keys(update).length === 0 && !hasCareOf && !hasDocs) {
       return NextResponse.json({ ok: false, error: 'Nothing to update.' }, { status: 400 });
     }
 
-    const { error: upErr } = await db.from('hajj_pilgrims').update(update).eq('id', pilgrim.id);
-    if (upErr) {
-      console.error('[admin/hajj/:id] edit update failed:', upErr.message);
-      return NextResponse.json({ ok: false, error: 'Could not save changes.' }, { status: 500 });
+    if (Object.keys(update).length > 0) {
+      const { error: upErr } = await db.from('hajj_pilgrims').update(update).eq('id', pilgrim.id);
+      if (upErr) {
+        console.error('[admin/hajj/:id] edit update failed:', upErr.message);
+        return NextResponse.json({ ok: false, error: 'Could not save changes.' }, { status: 500 });
+      }
+    }
+
+    // Care-of + document status written best-effort in a separate update so a
+    // pre-migration schema never blocks the core profile edit.
+    if (hasCareOf || hasDocs) {
+      const meta: Record<string, unknown> = {};
+      if (hasCareOf) meta.affiliate_id = await resolveReferenceableAffiliate(d.affiliate_id);
+      if (hasDocs) meta.doc_status = Array.isArray(d.doc_status) ? d.doc_status : [];
+      const { error: metaErr } = await db.from('hajj_pilgrims').update(meta).eq('id', pilgrim.id);
+      if (metaErr) console.error('[admin/hajj/:id] care-of/doc_status skipped:', metaErr.message);
     }
     await logActivity({
       user_id: guard.user.id,

@@ -6,12 +6,16 @@ import { inputClass } from '@/components/manage/ui';
 import { BRANCHES } from '@/lib/management/branches';
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { getDict } from '@/lib/dictionaries/areas/adminumrah';
+import { getDict as getCareDict } from '@/lib/dictionaries/areas/careof';
 import { useLockedBranch } from '@/components/providers/BranchScope';
 
 type PackageOpt = { id: string; name: string };
+type CareOfOpt = { id: string; name: string; code: string | null };
 
-export function PassengerFilters({ packages }: { packages: PackageOpt[] }) {
-  const t = getDict(useLocale());
+export function PassengerFilters({ packages, careOfs = [] }: { packages: PackageOpt[]; careOfs?: CareOfOpt[] }) {
+  const locale = useLocale();
+  const t = getDict(locale);
+  const ct = getCareDict(locale);
   const lockedBranch = useLockedBranch();
   const router = useRouter();
   const pathname = usePathname();
@@ -24,7 +28,7 @@ export function PassengerFilters({ packages }: { packages: PackageOpt[] }) {
     router.replace(`${pathname}?${next.toString()}`);
   }
 
-  const hasFilters = ['q', 'package', 'branch', 'status', 'expiring'].some((k) => params.get(k));
+  const hasFilters = ['q', 'package', 'branch', 'status', 'expiring', 'docs', 'care_of'].some((k) => params.get(k));
 
   return (
     <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
@@ -60,6 +64,23 @@ export function PassengerFilters({ packages }: { packages: PackageOpt[] }) {
         <option value="active">{t.optActive}</option>
         <option value="completed">{t.optCompleted}</option>
         <option value="cancelled">{t.optCancelled}</option>
+      </select>
+
+      <select className={inputClass} value={params.get('care_of') ?? ''} onChange={(e) => update('care_of', e.target.value)}>
+        <option value="">{ct.filterAllCare}</option>
+        <option value="none">{ct.filterNoCare}</option>
+        {careOfs.map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.name}
+            {a.code ? ` · ${a.code}` : ''}
+          </option>
+        ))}
+      </select>
+
+      <select className={inputClass} value={params.get('docs') ?? ''} onChange={(e) => update('docs', e.target.value)}>
+        <option value="">{ct.filterAllDocs}</option>
+        <option value="complete">{ct.filterDocsComplete}</option>
+        <option value="incomplete">{ct.filterDocsIncomplete}</option>
       </select>
 
       <div className="flex items-center gap-2">

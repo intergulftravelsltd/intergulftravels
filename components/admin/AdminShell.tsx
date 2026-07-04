@@ -35,6 +35,7 @@ import {
   Video,
   Handshake,
   KeyRound,
+  Contact,
   type LucideIcon,
 } from 'lucide-react';
 import { LogoMark } from '@/components/brand/Logo';
@@ -82,6 +83,10 @@ const NAV: NavGroup[] = [
       { labelKey: 'umrahPassengers', href: '/admin/umrah', icon: Moon },
       { labelKey: 'umrahPackages', href: '/admin/umrah/packages', icon: Package },
     ],
+  },
+  {
+    groupKey: 'careOf',
+    items: [{ labelKey: 'careOfList', href: '/admin/care-of', icon: Contact }],
   },
   {
     groupKey: 'reports',

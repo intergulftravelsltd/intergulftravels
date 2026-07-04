@@ -8,34 +8,44 @@ import { Card, Field, inputClass } from '@/components/manage/ui';
 import { Button } from '@/components/ui/Button';
 import { BRANCHES } from '@/lib/management/branches';
 import type { MgmtPackage, UmrahPassenger } from '@/lib/management/types';
+import type { AffiliateOption } from '@/lib/management/affiliates';
+import { normalizeDocStatus, type DocStatusKey } from '@/lib/management/doc-status';
 import { money } from '@/lib/management/format';
 import { cn } from '@/lib/utils';
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { useLockedBranch } from '@/components/providers/BranchScope';
 import { getDict } from '@/lib/dictionaries/areas/adminumrah';
+import { getDict as getCareDict } from '@/lib/dictionaries/areas/careof';
+import { CareOfSelect } from '@/components/manage/CareOfSelect';
+import { DocStatusSelect } from '@/components/manage/DocStatusSelect';
 import { localizedPath } from '@/lib/i18n';
 
 type PackageOption = Pick<MgmtPackage, 'id' | 'name' | 'price' | 'year'>;
 
 export function PassengerForm({
   packages,
+  affiliates = [],
   mode = 'create',
   passengerId,
   initial,
 }: {
   packages: PackageOption[];
+  affiliates?: AffiliateOption[];
   mode?: 'create' | 'edit';
   passengerId?: string;
   initial?: Partial<UmrahPassenger>;
 }) {
   const locale = useLocale();
   const t = getDict(locale);
+  const ct = getCareDict(locale);
   const lockedBranch = useLockedBranch();
   const router = useRouter();
   const isEdit = mode === 'edit';
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(initial?.photo_url ?? null);
+  const [affiliateId, setAffiliateId] = useState<string | null>(initial?.affiliate_id ?? null);
+  const [docStatus, setDocStatus] = useState<DocStatusKey[]>(normalizeDocStatus(initial?.doc_status));
   const [form, setForm] = useState({
     name: initial?.name ?? '',
     name_bn: initial?.name_bn ?? '',
@@ -100,6 +110,8 @@ export function PassengerForm({
         address: form.address,
         note: form.note,
         photo_url: photoUrl,
+        affiliate_id: affiliateId,
+        doc_status: docStatus,
       };
 
       const res = await fetch(isEdit ? `/api/admin/umrah/${passengerId}` : '/api/admin/umrah', {
@@ -112,6 +124,8 @@ export function PassengerForm({
                 ...form,
                 token_money: form.token_money ? Number(form.token_money) : 0,
                 photo_url: photoUrl,
+                affiliate_id: affiliateId,
+                doc_status: docStatus,
               },
         ),
       });
@@ -208,6 +222,17 @@ export function PassengerForm({
                 />
               </Field>
             )}
+            <Field label={ct.careOf} hint={ct.careOfHint} className="sm:col-span-2">
+              <CareOfSelect
+                affiliates={affiliates}
+                value={affiliateId}
+                onChange={setAffiliateId}
+                branch={lockedBranch ?? form.branch}
+              />
+            </Field>
+            <Field label={ct.docStatus} hint={ct.docStatusHint} className="sm:col-span-2">
+              <DocStatusSelect value={docStatus} onChange={setDocStatus} />
+            </Field>
             <Field label={t.note} className="sm:col-span-2">
               <textarea className={inputClass} rows={2} value={form.note} onChange={set('note')} placeholder={t.notePlaceholder} />
             </Field>

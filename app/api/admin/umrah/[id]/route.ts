@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireStaff } from '@/lib/management/guard';
 import { chargeParty, logActivity } from '@/lib/management/server';
+import { resolveReferenceableAffiliate } from '@/lib/management/affiliates';
+import { DOC_STATUS_KEYS } from '@/lib/management/doc-status';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,6 +23,10 @@ const patchSchema = z.object({
   address: z.preprocess(emptyToNull, z.string().trim().max(400).nullable().optional()),
   photo_url: z.preprocess(emptyToNull, z.string().trim().url().nullable().optional()),
   note: z.preprocess(emptyToNull, z.string().trim().max(1000).nullable().optional()),
+  // Care-of + document status. doc_status is left un-defaulted so a status-only
+  // PATCH never wipes it.
+  affiliate_id: z.preprocess(emptyToNull, z.string().uuid().nullable().optional()),
+  doc_status: z.array(z.enum(DOC_STATUS_KEYS)).optional(),
   // Status change.
   status: z.enum(['active', 'cancelled', 'completed']).optional(),
   // Package assignment.
@@ -88,6 +94,16 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         console.error('[admin/umrah/:id] update failed:', upErr.message);
         return NextResponse.json({ ok: false, error: 'Could not update the passenger.' }, { status: 500 });
       }
+    }
+
+    // Care-of + document status written best-effort in a separate update so a
+    // pre-migration schema never blocks the core profile edit.
+    if (d.affiliate_id !== undefined || d.doc_status !== undefined) {
+      const meta: Record<string, unknown> = {};
+      if (d.affiliate_id !== undefined) meta.affiliate_id = await resolveReferenceableAffiliate(d.affiliate_id);
+      if (d.doc_status !== undefined) meta.doc_status = d.doc_status;
+      const { error: metaErr } = await supabase.from('umrah_passengers').update(meta).eq('id', params.id);
+      if (metaErr) console.error('[admin/umrah/:id] care-of/doc_status skipped:', metaErr.message);
     }
 
     // Charge the package price exactly once. Guard against a double charge by

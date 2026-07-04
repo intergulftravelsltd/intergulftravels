@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/manage/ui';
 import { PassengerForm } from '@/components/manage/umrah/PassengerForm';
 import { mgmtDb } from '@/lib/management/server';
 import { loadUmrahPackages } from '@/lib/management/umrah';
+import { loadActiveAffiliates, toAffiliateOptions } from '@/lib/management/affiliates';
 import type { UmrahPassenger } from '@/lib/management/types';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
@@ -25,7 +26,7 @@ export default async function EditPassengerPage({ params }: { params: { id: stri
 
   if (!passenger) notFound();
 
-  const packages = await loadUmrahPackages();
+  const [packages, affiliates] = await Promise.all([loadUmrahPackages(), loadActiveAffiliates()]);
 
   return (
     <>
@@ -41,6 +42,7 @@ export default async function EditPassengerPage({ params }: { params: { id: stri
         passengerId={params.id}
         initial={passenger as UmrahPassenger}
         packages={packages.map((p) => ({ id: p.id, name: p.name, price: p.price, year: p.year }))}
+        affiliates={toAffiliateOptions(affiliates)}
       />
     </>
   );

@@ -55,6 +55,19 @@ export type MgmtPackage = {
   created_at: string;
 };
 
+/** A "care of" — a marketer / introducer who brings pilgrims. */
+export type Affiliate = {
+  id: string;
+  code: string | null;
+  name: string;
+  phone: string | null;
+  address: string | null;
+  note: string | null;
+  branch: string;
+  active: boolean;
+  created_at: string;
+};
+
 export type HajjPilgrim = {
   id: string;
   tracking_no: string | null;
@@ -75,6 +88,8 @@ export type HajjPilgrim = {
   govt_serial: string | null;
   package_id: string | null;
   account_head_id: string | null;
+  affiliate_id: string | null;
+  doc_status: string[] | null;
   branch: string;
   status: 'active' | 'cancelled' | 'completed';
   token_money: number | null;
@@ -95,6 +110,8 @@ export type UmrahPassenger = {
   address: string | null;
   package_id: string | null;
   account_head_id: string | null;
+  affiliate_id: string | null;
+  doc_status: string[] | null;
   branch: string;
   status: 'active' | 'cancelled' | 'completed';
   token_money: number | null;

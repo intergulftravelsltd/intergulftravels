@@ -15,11 +15,14 @@ import { RecordRowActions } from '@/components/manage/RecordRowActions';
 import { Button } from '@/components/ui/Button';
 import { PassengerFilters } from '@/components/manage/umrah/PassengerFilters';
 import { loadPassengers, loadUmrahPackages, isExpiringSoon, monthsUntil, type PassengerRow } from '@/lib/management/umrah';
+import { loadActiveAffiliates } from '@/lib/management/affiliates';
+import { docStatusDone, DOC_STATUS_TOTAL } from '@/lib/management/doc-status';
 import { money } from '@/lib/management/format';
 import { branchShort } from '@/lib/management/branches';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminumrah';
+import { getDict as getCareDict } from '@/lib/dictionaries/areas/careof';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Umrah Passengers' };
@@ -43,6 +46,10 @@ function applyFilters(rows: PassengerRow[], sp: Record<string, string | undefine
   if (sp.branch) out = out.filter((r) => r.branch === sp.branch);
   if (sp.status) out = out.filter((r) => r.status === sp.status);
   if (sp.expiring === '1') out = out.filter((r) => isExpiringSoon(r.passport_expiry));
+  if (sp.docs === 'complete') out = out.filter((r) => docStatusDone(r.doc_status) === DOC_STATUS_TOTAL);
+  else if (sp.docs === 'incomplete') out = out.filter((r) => docStatusDone(r.doc_status) < DOC_STATUS_TOTAL);
+  if (sp.care_of === 'none') out = out.filter((r) => !r.affiliate_id);
+  else if (sp.care_of) out = out.filter((r) => r.affiliate_id === sp.care_of);
   return out;
 }
 
@@ -53,7 +60,13 @@ export default async function UmrahPassengersPage({
 }) {
   const locale = getLocale();
   const t = getDict(locale);
-  const [all, packages] = await Promise.all([loadPassengers(), loadUmrahPackages()]);
+  const ct = getCareDict(locale);
+  const [all, packages, affiliates] = await Promise.all([
+    loadPassengers(),
+    loadUmrahPackages(),
+    loadActiveAffiliates(),
+  ]);
+  const affMap = new Map(affiliates.map((a) => [a.id, a]));
   const rows = applyFilters(all, searchParams);
 
   const statusLabel = (s: string) =>
@@ -117,7 +130,10 @@ export default async function UmrahPassengersPage({
         />
       </div>
 
-      <PassengerFilters packages={packages.map((p) => ({ id: p.id, name: p.name }))} />
+      <PassengerFilters
+        packages={packages.map((p) => ({ id: p.id, name: p.name }))}
+        careOfs={affiliates.map((a) => ({ id: a.id, name: a.name, code: a.code }))}
+      />
 
       {rows.length === 0 ? (
         <EmptyState
@@ -142,6 +158,7 @@ export default async function UmrahPassengersPage({
               <th className={thClass}>{t.thPackage}</th>
               <th className={`${thClass} text-right`}>{t.thPaid}</th>
               <th className={`${thClass} text-right`}>{t.thDue}</th>
+              <th className={thClass}>{ct.thDocs}</th>
               <th className={thClass}>{t.thBranch}</th>
               <th className={`${thClass} text-right`}>{t.thManage}</th>
             </tr>
@@ -151,6 +168,8 @@ export default async function UmrahPassengersPage({
               const months = monthsUntil(r.passport_expiry);
               const expiring = isExpiringSoon(r.passport_expiry);
               const expired = months !== null && months < 0;
+              const done = docStatusDone(r.doc_status);
+              const careOf = r.affiliate_id ? affMap.get(r.affiliate_id) : undefined;
               return (
                 <tr key={r.id} className="transition hover:bg-muted/40">
                   <td className={tdClass}>
@@ -160,6 +179,9 @@ export default async function UmrahPassengersPage({
                     {r.name_bn && <p className="text-xs text-ink-muted">{r.name_bn}</p>}
                     {(r.phone || r.address) && (
                       <p className="text-xs text-ink-muted">{[r.phone, r.address].filter(Boolean).join(' · ')}</p>
+                    )}
+                    {careOf && (
+                      <p className="text-xs font-medium text-brand-700">{ct.careOf}: {careOf.name}</p>
                     )}
                     {r.status !== 'active' && (
                       <span className="mt-1 inline-block">
@@ -194,6 +216,11 @@ export default async function UmrahPassengersPage({
                   </td>
                   <td className={`${tdClass} text-right`}>
                     {r.due > 0 ? <Money value={r.due} className="font-semibold text-red-600" /> : <Money value={0} />}
+                  </td>
+                  <td className={tdClass}>
+                    <Badge tone={done === DOC_STATUS_TOTAL ? 'emerald' : done === 0 ? 'slate' : 'gold'}>
+                      {done}/{DOC_STATUS_TOTAL}
+                    </Badge>
                   </td>
                   <td className={tdClass}>
                     <Badge>{branchShort(r.branch)}</Badge>

@@ -16,12 +16,15 @@ import { Button } from '@/components/ui/Button';
 import { mgmtDb } from '@/lib/management/server';
 import { getStaffScope } from '@/lib/management/scope';
 import { loadHeadMap, dueForHead, loadHajjPackages } from '@/lib/management/hajj';
+import { loadActiveAffiliates } from '@/lib/management/affiliates';
+import { docStatusDone, DOC_STATUS_TOTAL } from '@/lib/management/doc-status';
 import { branchShort } from '@/lib/management/branches';
 import { money } from '@/lib/management/format';
 import type { HajjPilgrim, MgmtPackage } from '@/lib/management/types';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminhajj';
+import { getDict as getCareDict } from '@/lib/dictionaries/areas/careof';
 
 export const dynamic = 'force-dynamic';
 export function generateMetadata() {
@@ -37,6 +40,8 @@ type Search = {
   branch?: string;
   status?: string;
   q?: string;
+  docs?: string;
+  care_of?: string;
 };
 
 async function loadPilgrims(): Promise<HajjPilgrim[]> {
@@ -59,13 +64,16 @@ async function loadPilgrims(): Promise<HajjPilgrim[]> {
 export default async function HajjPilgrimsPage({ searchParams }: { searchParams: Search }) {
   const locale = getLocale();
   const t = getDict(locale);
-  const [allPilgrims, packages, heads] = await Promise.all([
+  const ct = getCareDict(locale);
+  const [allPilgrims, packages, heads, affiliates] = await Promise.all([
     loadPilgrims(),
     loadHajjPackages(),
     loadHeadMap(),
+    loadActiveAffiliates(),
   ]);
 
   const pkgById = new Map<string, MgmtPackage>(packages.map((p) => [p.id, p]));
+  const affMap = new Map(affiliates.map((a) => [a.id, a]));
 
   // Year tabs: every year present plus the current + next year.
   const yearSet = new Set<number>([CURRENT_YEAR, CURRENT_YEAR + 1]);
@@ -77,6 +85,8 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
   const pkgFilter = searchParams.package ?? '';
   const branchFilter = searchParams.branch ?? '';
   const statusFilter = searchParams.status ?? '';
+  const docsFilter = searchParams.docs ?? '';
+  const careOfFilter = searchParams.care_of ?? '';
   const q = (searchParams.q ?? '').trim().toLowerCase();
 
   // Year-scoped set drives the stat cards.
@@ -87,6 +97,10 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
     if (pkgFilter && p.package_id !== pkgFilter) return false;
     if (branchFilter && p.branch !== branchFilter) return false;
     if (statusFilter && p.status !== statusFilter) return false;
+    if (docsFilter === 'complete' && docStatusDone(p.doc_status) !== DOC_STATUS_TOTAL) return false;
+    if (docsFilter === 'incomplete' && docStatusDone(p.doc_status) === DOC_STATUS_TOTAL) return false;
+    if (careOfFilter === 'none' && p.affiliate_id) return false;
+    if (careOfFilter && careOfFilter !== 'none' && p.affiliate_id !== careOfFilter) return false;
     if (q) {
       const hay = `${p.name} ${p.tracking_no ?? ''} ${p.phone ?? ''} ${p.passport_no ?? ''} ${p.nid ?? ''}`.toLowerCase();
       if (!hay.includes(q)) return false;
@@ -131,7 +145,7 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
 
   const qs = (patch: Partial<Search>) => {
     const sp = new URLSearchParams();
-    const merged = { year: String(selectedYear), reg_type: regType, package: pkgFilter, branch: branchFilter, status: statusFilter, q: searchParams.q ?? '', ...patch };
+    const merged = { year: String(selectedYear), reg_type: regType, package: pkgFilter, branch: branchFilter, status: statusFilter, docs: docsFilter, care_of: careOfFilter, q: searchParams.q ?? '', ...patch };
     for (const [k, v] of Object.entries(merged)) if (v) sp.set(k, String(v));
     const s = sp.toString();
     return localizedPath(locale, s ? `/admin/hajj?${s}` : '/admin/hajj');
@@ -188,7 +202,7 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
       </div>
 
       {/* Filters */}
-      <form method="get" className="mb-5 grid gap-3 rounded-2xl border border-border bg-card p-4 shadow-soft sm:grid-cols-2 lg:grid-cols-5">
+      <form method="get" className="mb-5 grid gap-3 rounded-2xl border border-border bg-card p-4 shadow-soft sm:grid-cols-2 lg:grid-cols-6">
         <input type="hidden" name="year" value={selectedYear} />
         <input
           name="q"
@@ -215,7 +229,22 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
           <option value="completed">{t.optCompleted}</option>
           <option value="cancelled">{t.optCancelled}</option>
         </select>
-        <div className="flex gap-2 sm:col-span-2 lg:col-span-5">
+        <select name="care_of" defaultValue={careOfFilter} className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-ink">
+          <option value="">{ct.filterAllCare}</option>
+          <option value="none">{ct.filterNoCare}</option>
+          {affiliates.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+              {a.code ? ` · ${a.code}` : ''}
+            </option>
+          ))}
+        </select>
+        <select name="docs" defaultValue={docsFilter} className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-ink">
+          <option value="">{ct.filterAllDocs}</option>
+          <option value="complete">{ct.filterDocsComplete}</option>
+          <option value="incomplete">{ct.filterDocsIncomplete}</option>
+        </select>
+        <div className="flex gap-2 sm:col-span-2 lg:col-span-6">
           <Button type="submit" size="sm" variant="outline">
             {t.applyFilters}
           </Button>
@@ -253,12 +282,16 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
               <th className={thClass}>{t.thPackage}</th>
               <th className={`${thClass} text-right`}>{t.thPaid}</th>
               <th className={`${thClass} text-right`}>{t.thDue}</th>
+              <th className={thClass}>{ct.thDocs}</th>
               <th className={thClass}>{t.thStatus}</th>
               <th className={`${thClass} text-right`}>{t.thManage}</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ p, pkgName, paid, due }) => (
+            {rows.map(({ p, pkgName, paid, due }) => {
+              const done = docStatusDone(p.doc_status);
+              const careOf = p.affiliate_id ? affMap.get(p.affiliate_id) : undefined;
+              return (
               <tr key={p.id} className="transition hover:bg-muted/40">
                 <td className={tdClass}>
                   <Link href={localizedPath(locale, `/admin/hajj/${p.id}`)} className="font-medium text-brand-700 hover:underline">
@@ -272,6 +305,9 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                   {p.name_bn && <span className="block text-xs text-ink-muted">{p.name_bn}</span>}
                   {(p.phone || p.district) && (
                     <span className="block text-xs text-ink-muted">{[p.phone, p.district].filter(Boolean).join(' · ')}</span>
+                  )}
+                  {careOf && (
+                    <span className="block text-xs font-medium text-brand-700">{ct.careOf}: {careOf.name}</span>
                   )}
                 </td>
                 <td className={tdClass}>{p.phone ?? '—'}</td>
@@ -288,6 +324,11 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                 </td>
                 <td className={`${tdClass} text-right`}>
                   <Money value={Math.max(0, due)} className={due > 0 ? 'font-semibold text-red-600' : ''} />
+                </td>
+                <td className={tdClass}>
+                  <Badge tone={done === DOC_STATUS_TOTAL ? 'emerald' : done === 0 ? 'slate' : 'gold'}>
+                    {done}/{DOC_STATUS_TOTAL}
+                  </Badge>
                 </td>
                 <td className={tdClass}>
                   {p.status === 'active' && <Badge tone="blue">{t.badgeActive}</Badge>}
@@ -315,7 +356,8 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </TableWrap>
       )}

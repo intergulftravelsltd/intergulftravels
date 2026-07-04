@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { mgmtDb, nextCounter, chargeParty, recordPayment, logActivity } from '@/lib/management/server';
 import { requireStaff } from '@/lib/management/guard';
 import { enforceBranch } from '@/lib/management/scope';
+import { resolveReferenceableAffiliate } from '@/lib/management/affiliates';
+import { DOC_STATUS_KEYS } from '@/lib/management/doc-status';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,6 +30,8 @@ const schema = z.object({
   token_money: z.coerce.number().min(0).default(0),
   photo_url: z.string().trim().url().optional().nullable().or(z.literal('')),
   note: z.string().trim().optional().nullable(),
+  affiliate_id: z.string().uuid().optional().nullable(),
+  doc_status: z.array(z.enum(DOC_STATUS_KEYS)).optional().default([]),
 });
 
 const clean = (v: unknown) => {
@@ -103,6 +107,19 @@ export async function POST(request: Request) {
     if (error || !pilgrim) {
       console.error('[admin/hajj] insert failed:', error?.message);
       return NextResponse.json({ ok: false, error: 'Could not save the pilgrim.' }, { status: 500 });
+    }
+
+    // Care-of + document status are optional add-ons written best-effort, so a
+    // pre-migration schema (columns not yet added) never blocks pilgrim entry.
+    if (d.affiliate_id || (d.doc_status && d.doc_status.length)) {
+      const { error: metaErr } = await db
+        .from('hajj_pilgrims')
+        .update({
+          affiliate_id: await resolveReferenceableAffiliate(d.affiliate_id),
+          doc_status: d.doc_status ?? [],
+        })
+        .eq('id', pilgrim.id);
+      if (metaErr) console.error('[admin/hajj] care-of/doc_status skipped:', metaErr.message);
     }
 
     // The DB trigger creates + links the customer account head on insert.

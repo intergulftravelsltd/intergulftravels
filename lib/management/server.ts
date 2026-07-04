@@ -18,6 +18,12 @@ export async function nextVoucherNo(prefix = 'V'): Promise<string> {
   return `${prefix}-${String(n).padStart(5, '0')}`;
 }
 
+/** Auto ID for a new affiliate / care-of, e.g. CO-0001. Editable afterwards. */
+export async function nextAffiliateCode(): Promise<string> {
+  const n = await nextCounter('affiliate');
+  return `CO-${String(n).padStart(4, '0')}`;
+}
+
 /**
  * Resolve a system head for a given branch. Each branch keeps its OWN copy of
  * the core heads (Cash in Hand, package income, expense heads, loan control…)

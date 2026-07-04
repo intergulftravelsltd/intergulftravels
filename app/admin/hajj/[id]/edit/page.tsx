@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/manage/ui';
 import { PilgrimForm } from '@/components/manage/hajj/PilgrimForm';
 import { mgmtDb } from '@/lib/management/server';
 import { loadHajjPackages } from '@/lib/management/hajj';
+import { loadActiveAffiliates, toAffiliateOptions } from '@/lib/management/affiliates';
 import type { HajjPilgrim } from '@/lib/management/types';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
@@ -29,7 +30,7 @@ export default async function EditPilgrimPage({ params }: { params: { id: string
 
   if (!pilgrim) notFound();
 
-  const packages = await loadHajjPackages();
+  const [packages, affiliates] = await Promise.all([loadHajjPackages(), loadActiveAffiliates()]);
   const options = packages.map((p) => ({ id: p.id, name: p.name, price: p.price, year: p.year }));
 
   return (
@@ -46,6 +47,7 @@ export default async function EditPilgrimPage({ params }: { params: { id: string
         pilgrimId={params.id}
         initial={pilgrim as HajjPilgrim}
         packages={options}
+        affiliates={toAffiliateOptions(affiliates)}
         defaultYear={CURRENT_YEAR + 1}
       />
     </>
