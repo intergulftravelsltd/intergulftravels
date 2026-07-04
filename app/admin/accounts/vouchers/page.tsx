@@ -1,3 +1,4 @@
+import { Printer } from 'lucide-react';
 import { PageHeader, Card, Badge, EmptyState, TableWrap, thClass, tdClass } from '@/components/manage/ui';
 import { ExportBar } from '@/components/manage/ExportBar';
 import { DateRangeFilter } from '@/components/manage/DateRangeFilter';
@@ -187,20 +188,31 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
                     {t.narration || '—'}
                   </td>
                   <td className={`${tdClass} whitespace-nowrap text-right`}>
-                    <VoucherRowActions
-                      voucher={{
-                        id: t.id,
-                        voucher_no: t.voucher_no,
-                        date: t.date,
-                        type: t.type,
-                        debit_account_id: t.debit_account_id,
-                        credit_account_id: t.credit_account_id,
-                        amount: Number(t.amount),
-                        narration: t.narration,
-                        linked: !!t.ref_table,
-                      }}
-                      heads={headOptions}
-                    />
+                    <div className="inline-flex items-center gap-1.5">
+                      <a
+                        href={localizedPath(locale, `/admin/receipt/voucher/${t.id}`)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={locale === 'bn' ? 'রসিদ প্রিন্ট' : 'Print receipt'}
+                        className="inline-flex items-center rounded-lg border border-border px-2 py-1 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700"
+                      >
+                        <Printer className="h-3.5 w-3.5" />
+                      </a>
+                      <VoucherRowActions
+                        voucher={{
+                          id: t.id,
+                          voucher_no: t.voucher_no,
+                          date: t.date,
+                          type: t.type,
+                          debit_account_id: t.debit_account_id,
+                          credit_account_id: t.credit_account_id,
+                          amount: Number(t.amount),
+                          narration: t.narration,
+                          linked: !!t.ref_table,
+                        }}
+                        heads={headOptions}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

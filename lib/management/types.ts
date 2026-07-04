@@ -147,15 +147,13 @@ export type ActivityLog = {
   created_at: string;
 };
 
-/** Control accounts the app posts to *by name* (cash receipts, package income,
- *  loans). These must never be renamed or removed or those flows break, so they
- *  stay locked even though they are system heads. Every other system head can be
- *  edited or deactivated freely. */
+/** Structural control accounts kept fully locked. Cash in Hand and Loan
+ *  Receivable are usable/editable by admins like any other head; the app posts
+ *  to system heads by name, so the edit form keeps the *name* read-only (and
+ *  getSystemHead lazily recreates a head if it is ever removed). */
 export const CORE_HEAD_NAMES = [
-  'Cash in Hand',
   'Hajj Package Income',
   'Umrah Package Income',
-  'Loan Receivable',
   'Loan Payable',
 ] as const;
 

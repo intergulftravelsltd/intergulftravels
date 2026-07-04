@@ -21,9 +21,10 @@ export default async function CashBankPage() {
   const cashTotal = accounts
     .filter((h) => h.subtype === 'cash')
     .reduce((s, h) => s + naturalBalance(h), 0);
-  const bankTotal = accounts
-    .filter((h) => h.subtype === 'bank')
-    .reduce((s, h) => s + naturalBalance(h), 0);
+  // Overdrawn banks are a liability — keep them out of the real bank cash total.
+  const bankBalances = accounts.filter((h) => h.subtype === 'bank').map((h) => naturalBalance(h));
+  const bankTotal = bankBalances.reduce((s, b) => s + (b >= 0 ? b : 0), 0);
+  const overdraftTotal = bankBalances.reduce((s, b) => s + (b < 0 ? -b : 0), 0);
 
   return (
     <>
@@ -33,9 +34,17 @@ export default async function CashBankPage() {
         actions={<HeadForm bankOnly />}
       />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className={`mb-6 grid gap-4 sm:grid-cols-2 ${overdraftTotal > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
         <StatCard label={t.cashBank.cashInHand} value={<Money value={cashTotal} />} icon={Wallet} accent="emerald" />
         <StatCard label={t.cashBank.totalInBanks} value={<Money value={bankTotal} />} icon={Banknote} accent="gold" />
+        {overdraftTotal > 0 && (
+          <StatCard
+            label={locale === 'bn' ? 'ব্যাংক ওভারড্রাফট' : 'Bank Overdraft'}
+            value={<Money value={overdraftTotal} />}
+            icon={Banknote}
+            accent="red"
+          />
+        )}
         <StatCard label={t.cashBank.liquidTotal} value={<Money value={cashTotal + bankTotal} />} accent="slate" />
       </div>
 

@@ -32,6 +32,7 @@ export const metadata = { title: 'Dashboard' };
 type DashData = {
   cash: number;
   bank: number;
+  bankOverdraft: number;
   receivable: number;
   periodIncome: number;
   periodExpense: number;
@@ -48,6 +49,7 @@ async function loadDashboard(range: { from: string; to: string }): Promise<DashD
   const d: DashData = {
     cash: 0,
     bank: 0,
+    bankOverdraft: 0,
     receivable: 0,
     periodIncome: 0,
     periodExpense: 0,
@@ -75,8 +77,13 @@ async function loadDashboard(range: { from: string; to: string }): Promise<DashD
       d.hasManagement = true;
       for (const h of heads) {
         if (h.subtype === 'cash') d.cash += netDebit(h);
-        else if (h.subtype === 'bank') d.bank += netDebit(h);
-        else if (h.subtype === 'customer') {
+        else if (h.subtype === 'bank') {
+          // A negative bank balance is an overdraft (a liability) — don't net it
+          // against real cash in the banks, so deposits are clearly reflected.
+          const bal = netDebit(h);
+          if (bal >= 0) d.bank += bal;
+          else d.bankOverdraft += -bal;
+        } else if (h.subtype === 'customer') {
           const due = naturalBalance(h);
           if (due > 0) d.receivable += due;
         }
@@ -233,7 +240,13 @@ export default async function ManagementDashboard({
       {/* Money stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard label={t.dash.cashInHand} value={<Money value={d.cash} />} icon={Wallet} accent="emerald" />
-        <StatCard label={t.dash.bankBalance} value={<Money value={d.bank} />} icon={Banknote} accent="emerald" />
+        <StatCard
+          label={t.dash.bankBalance}
+          value={<Money value={d.bank} />}
+          icon={Banknote}
+          accent="emerald"
+          hint={d.bankOverdraft > 0 ? `${locale === 'bn' ? 'ওভারড্রাফট' : 'Overdraft'} ${money(d.bankOverdraft)}` : undefined}
+        />
         <StatCard
           label={t.dash.totalReceivable}
           value={<Money value={d.receivable} />}

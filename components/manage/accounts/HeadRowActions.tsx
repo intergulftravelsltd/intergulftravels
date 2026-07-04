@@ -158,7 +158,13 @@ export function HeadRowActions({ head }: { head: AccountHead }) {
 
             <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2">
               <Field label={tt.headRowActions.accountName} required className="sm:col-span-2">
-                <input name="name" defaultValue={head.name} className={inputClass} placeholder={tt.headRowActions.accountNamePlaceholder} />
+                <input
+                  name="name"
+                  defaultValue={head.name}
+                  readOnly={head.is_system}
+                  className={`${inputClass}${head.is_system ? ' bg-muted/50 text-ink-muted' : ''}`}
+                  placeholder={tt.headRowActions.accountNamePlaceholder}
+                />
               </Field>
               <Field label={tt.headRowActions.code}>
                 <input name="code" defaultValue={head.code ?? ''} className={inputClass} placeholder={tt.headRowActions.codePlaceholder} />

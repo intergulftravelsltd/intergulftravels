@@ -23,6 +23,8 @@ export type ReceiptData = {
   isRefund: boolean;
   /** When present, the receipt is a full statement listing every payment. */
   payments?: { date: string; type: string; method: string; amount: string }[];
+  /** When present, the receipt is a voucher receipt showing the double entry. */
+  voucher?: { debit: string; credit: string };
 };
 
 const L = {
@@ -57,6 +59,8 @@ const L = {
     paymentsHeading: 'Payments received',
     noPayments: 'No payments recorded yet.',
     grandTotal: 'Total received',
+    debit: 'Debit (Dr)',
+    credit: 'Credit (Cr)',
   },
   bn: {
     receipt: 'অর্থ রসিদ',
@@ -89,6 +93,8 @@ const L = {
     paymentsHeading: 'গৃহীত পেমেন্ট',
     noPayments: 'এখনও কোনো পেমেন্ট নেই।',
     grandTotal: 'মোট গৃহীত',
+    debit: 'ডেবিট (নামে)',
+    credit: 'ক্রেডিট (জমা)',
   },
 };
 
@@ -171,6 +177,34 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
           </span>
         </div>
 
+        {data.voucher && (
+          <>
+            <div className="my-4 rounded-xl bg-gray-50 p-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t.debit}</p>
+                  <p className="text-base font-bold text-gray-900">{data.voucher.debit}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t.credit}</p>
+                  <p className="text-base font-bold text-gray-900">{data.voucher.credit}</p>
+                </div>
+              </div>
+              {data.narration && (
+                <div className="mt-3 border-t border-gray-200 pt-2">
+                  <Row label={t.note} value={data.narration} />
+                </div>
+              )}
+            </div>
+            <div className="my-5 flex items-center justify-between rounded-xl border-2 border-emerald-700 bg-emerald-50 px-5 py-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{t.amount}</p>
+              <p className="text-3xl font-extrabold text-emerald-800">৳ {data.amount}</p>
+            </div>
+          </>
+        )}
+
+        {!data.voucher && (
+          <>
         {/* Party */}
         <div className="rounded-xl bg-gray-50 p-4">
           <p className="text-sm text-gray-500">{data.isRefund ? t.refundTo : t.receivedFrom}</p>
@@ -248,6 +282,9 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
               <Row label={t.balanceDue} value={`৳ ${data.due}`} />
             </div>
             {data.narration && <Row label={t.note} value={data.narration} />}
+          </>
+        )}
+
           </>
         )}
 

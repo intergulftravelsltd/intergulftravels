@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Wallet, Banknote, HandCoins, ArrowDownToLine, ArrowUpFromLine, NotebookPen, Receipt, Landmark } from 'lucide-react';
+import { Wallet, Banknote, HandCoins, ArrowDownToLine, ArrowUpFromLine, NotebookPen, Receipt, Landmark, Printer } from 'lucide-react';
 import { PageHeader, StatCard, Card, Money, Badge, EmptyState, TableWrap, thClass, tdClass } from '@/components/manage/ui';
 import { Button } from '@/components/ui/Button';
 import { VoucherRowActions } from '@/components/manage/accounts/VoucherRowActions';
@@ -139,20 +139,31 @@ export default async function AccountsHomePage() {
                   <td className={`${tdClass} text-right font-semibold tabular-nums`}>{money(t.amount)}</td>
                   <td className={tdClass}>{branchShort(t.branch)}</td>
                   <td className={`${tdClass} whitespace-nowrap text-right`}>
-                    <VoucherRowActions
-                      voucher={{
-                        id: t.id,
-                        voucher_no: t.voucher_no,
-                        date: t.date,
-                        type: t.type,
-                        debit_account_id: t.debit_account_id,
-                        credit_account_id: t.credit_account_id,
-                        amount: Number(t.amount),
-                        narration: t.narration,
-                        linked: !!t.ref_table,
-                      }}
-                      heads={headOptions}
-                    />
+                    <div className="inline-flex items-center gap-1.5">
+                      <a
+                        href={localizedPath(locale, `/admin/receipt/voucher/${t.id}`)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={locale === 'bn' ? 'রসিদ প্রিন্ট' : 'Print receipt'}
+                        className="inline-flex items-center rounded-lg border border-border px-2 py-1 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700"
+                      >
+                        <Printer className="h-3.5 w-3.5" />
+                      </a>
+                      <VoucherRowActions
+                        voucher={{
+                          id: t.id,
+                          voucher_no: t.voucher_no,
+                          date: t.date,
+                          type: t.type,
+                          debit_account_id: t.debit_account_id,
+                          credit_account_id: t.credit_account_id,
+                          amount: Number(t.amount),
+                          narration: t.narration,
+                          linked: !!t.ref_table,
+                        }}
+                        heads={headOptions}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

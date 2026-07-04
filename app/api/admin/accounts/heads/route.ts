@@ -185,6 +185,8 @@ export async function PATCH(request: Request) {
       );
     }
     if (head?.is_system) {
+      // The app posts to system heads by name, so never let those change.
+      delete patch.name;
       delete patch.type;
       delete patch.subtype;
     }
