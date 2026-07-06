@@ -24,55 +24,90 @@ export async function nextAffiliateCode(): Promise<string> {
   return `CO-${String(n).padStart(4, '0')}`;
 }
 
-/**
- * Resolve a system head for a given branch. Each branch keeps its OWN copy of
- * the core heads (Cash in Hand, package income, expense heads, loan control…)
- * so their balances never mix. The first time a branch needs one, it is copied
- * from the 'general' template on demand.
- */
-export async function getSystemHead(name: string, branch = 'general') {
+/** Canonical display name per built-in head key — used only as a fallback to
+ *  locate a head before the system_key migration (0007) is applied. */
+const SYSTEM_HEAD_NAME: Record<string, string> = {
+  cash_in_hand: 'Cash in Hand',
+  hajj_package_income: 'Hajj Package Income',
+  umrah_package_income: 'Umrah Package Income',
+  loan_receivable: 'Loan Receivable',
+  loan_payable: 'Loan Payable',
+};
+
+/** Find a branch's copy of a built-in head. Prefers the immutable system_key
+ *  (so admins can freely rename the head) and falls back to the canonical name
+ *  so postings keep working before 0007 is applied. A head that was "removed"
+ *  (deactivated) is self-healed back to active, since the engine needs it. */
+async function findSystemHead(branch: string, key: string) {
   const db = mgmtDb();
-  const { data } = await db
+  let { data } = await db
     .from('account_heads')
     .select('*')
-    .eq('name', name)
+    .eq('system_key', key)
     .eq('is_system', true)
     .eq('branch', branch)
     .maybeSingle();
-  if (data) return data;
-
-  if (branch !== 'general') {
-    const { data: tmpl } = await db
+  if (!data && SYSTEM_HEAD_NAME[key]) {
+    ({ data } = await db
       .from('account_heads')
-      .select('code, name, type, subtype')
-      .eq('name', name)
+      .select('*')
+      .eq('name', SYSTEM_HEAD_NAME[key])
       .eq('is_system', true)
-      .eq('branch', 'general')
-      .maybeSingle();
-    if (tmpl) {
-      const { data: created } = await db
-        .from('account_heads')
-        .insert({
-          code: tmpl.code,
-          name: tmpl.name,
-          type: tmpl.type,
-          subtype: tmpl.subtype,
-          is_system: true,
-          branch,
-        })
-        .select('*')
-        .single();
-      if (created) return created;
-    }
+      .eq('branch', branch)
+      .maybeSingle());
+  }
+  if (data && data.active === false) {
+    await db.from('account_heads').update({ active: true }).eq('id', data.id);
+    return { ...data, active: true };
   }
   return data ?? null;
 }
 
-export const getCashHead = (branch = 'general') => getSystemHead('Cash in Hand', branch);
+/**
+ * Resolve a built-in system head for a branch by its stable key (e.g.
+ * 'cash_in_hand', 'hajj_package_income'). Each branch keeps its OWN copy so
+ * balances never mix; the first time a branch needs one it is copied from the
+ * 'general' template on demand. Resolving by key (not name) means the head can
+ * be renamed/re-coded freely without breaking postings.
+ */
+export async function getSystemHead(key: string, branch = 'general') {
+  const found = await findSystemHead(branch, key);
+  if (found) return found;
+
+  if (branch !== 'general') {
+    const tmpl = await findSystemHead('general', key);
+    if (tmpl) {
+      const db = mgmtDb();
+      const base = {
+        code: tmpl.code,
+        name: tmpl.name,
+        type: tmpl.type,
+        subtype: tmpl.subtype,
+        is_system: true,
+        branch,
+      };
+      // Provision this branch's copy. Include system_key when the column exists;
+      // if it doesn't yet (0007 not applied), retry without it so postings never
+      // break — the name fallback still resolves it and 0007 backfills the key.
+      let { data: created } = await db
+        .from('account_heads')
+        .insert({ ...base, system_key: tmpl.system_key ?? key })
+        .select('*')
+        .single();
+      if (!created) {
+        ({ data: created } = await db.from('account_heads').insert(base).select('*').single());
+      }
+      if (created) return created;
+    }
+  }
+  return null;
+}
+
+export const getCashHead = (branch = 'general') => getSystemHead('cash_in_hand', branch);
 
 export const INCOME_HEAD = {
-  hajj: 'Hajj Package Income',
-  umrah: 'Umrah Package Income',
+  hajj: 'hajj_package_income',
+  umrah: 'umrah_package_income',
 } as const;
 
 type PostTx = {

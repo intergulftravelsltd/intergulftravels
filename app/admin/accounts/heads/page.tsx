@@ -1,10 +1,9 @@
 import Link from 'next/link';
-import { Lock } from 'lucide-react';
 import { PageHeader, Card, Money, Badge, EmptyState, TableWrap, thClass, tdClass } from '@/components/manage/ui';
 import { HeadForm } from '@/components/manage/accounts/HeadForm';
 import { HeadRowActions } from '@/components/manage/accounts/HeadRowActions';
 import { loadActiveHeads } from '@/lib/management/accounts-data';
-import { naturalBalance, isCoreHead, type AccountHead, type AccountType } from '@/lib/management/types';
+import { naturalBalance, type AccountHead, type AccountType } from '@/lib/management/types';
 import { branchShort } from '@/lib/management/branches';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath, type Locale } from '@/lib/i18n';
@@ -100,13 +99,7 @@ function HeadRow({ head, locale, t }: { head: AccountHead; locale: Locale; t: Re
         <Money value={balance} />
       </td>
       <td className={`${tdClass} text-right`}>
-        {isCoreHead(head) ? (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-ink-muted" title={t.heads.lockedTitle}>
-            <Lock className="h-3.5 w-3.5" /> {t.heads.locked}
-          </span>
-        ) : (
-          <HeadRowActions head={head} />
-        )}
+        <HeadRowActions head={head} />
       </td>
     </tr>
   );

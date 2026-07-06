@@ -59,6 +59,7 @@ export function AffiliateRowActions({ affiliate }: { affiliate: Affiliate }) {
       code: String(fd.get('code') ?? '').trim(),
       phone: String(fd.get('phone') ?? '').trim(),
       address: String(fd.get('address') ?? '').trim(),
+      type: String(fd.get('type') ?? affiliate.type),
       branch: String(fd.get('branch') ?? affiliate.branch),
     };
     if (!payload.name) {
@@ -130,6 +131,12 @@ export function AffiliateRowActions({ affiliate }: { affiliate: Affiliate }) {
               </Field>
               <Field label={t.phone}>
                 <input name="phone" defaultValue={affiliate.phone ?? ''} className={inputClass} placeholder={t.phonePlaceholder} inputMode="tel" />
+              </Field>
+              <Field label={t.type}>
+                <select name="type" defaultValue={affiliate.type} className={inputClass}>
+                  <option value="agent">{t.typeAgent}</option>
+                  <option value="family">{t.typeFamily}</option>
+                </select>
               </Field>
               <Field label={t.address} className="sm:col-span-2">
                 <textarea name="address" defaultValue={affiliate.address ?? ''} rows={2} className={inputClass} placeholder={t.addressPlaceholder} />

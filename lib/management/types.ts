@@ -12,6 +12,9 @@ export type AccountHead = {
   subtype: AccountSubtype;
   branch: string;
   is_system: boolean;
+  /** Immutable id for built-in heads so the engine resolves them independent of
+   *  the (editable) name. Null for user-created heads. */
+  system_key: string | null;
   opening_balance: number;
   opening_is_debit: boolean;
   debit_total: number;
@@ -63,6 +66,7 @@ export type Affiliate = {
   phone: string | null;
   address: string | null;
   note: string | null;
+  type: 'agent' | 'family';
   branch: string;
   active: boolean;
   created_at: string;
@@ -163,20 +167,6 @@ export type ActivityLog = {
   branch: string | null;
   created_at: string;
 };
-
-/** Structural control accounts kept fully locked. Cash in Hand and Loan
- *  Receivable are usable/editable by admins like any other head; the app posts
- *  to system heads by name, so the edit form keeps the *name* read-only (and
- *  getSystemHead lazily recreates a head if it is ever removed). */
-export const CORE_HEAD_NAMES = [
-  'Hajj Package Income',
-  'Umrah Package Income',
-  'Loan Payable',
-] as const;
-
-export function isCoreHead(h: { name: string; is_system: boolean }): boolean {
-  return h.is_system && (CORE_HEAD_NAMES as readonly string[]).includes(h.name);
-}
 
 /* ---------------------------- balance maths ----------------------------- */
 

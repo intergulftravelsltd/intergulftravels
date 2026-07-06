@@ -62,11 +62,11 @@ export async function POST(request: Request) {
       if (!cashBankId) return badReq('The Cash in Hand account was not found. Run the database setup first.');
     }
 
-    // Resolve the loan control head.
-    const loanHeadName = d.type === 'given' ? 'Loan Receivable' : 'Loan Payable';
-    const loanHead = await getSystemHead(loanHeadName, branch);
+    // Resolve the loan control head by its stable key.
+    const loanKey = d.type === 'given' ? 'loan_receivable' : 'loan_payable';
+    const loanHead = await getSystemHead(loanKey, branch);
     if (!loanHead) {
-      return badReq(`The "${loanHeadName}" account was not found. Run the database setup first.`);
+      return badReq('The loan control account was not found. Run the database setup first.');
     }
 
     // given  → Dr Loan Receivable, Cr Cash/Bank (money goes out)

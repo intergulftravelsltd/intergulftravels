@@ -196,7 +196,6 @@ export default async function ManagementDashboard({
   const rangeKey = (searchParams.range || (from || to ? 'custom' : 'this-month')) as RangeKey;
   const range = rangeKey === 'custom' ? { from, to } : presetRange(rangeKey);
   const d = await loadDashboard(range);
-  const year = new Date().getFullYear();
   const locale = getLocale();
   const t = getDict(locale);
   // Branch admins see their branch name as a welcome; the super admin keeps the
@@ -239,47 +238,61 @@ export default async function ManagementDashboard({
 
       {/* Money stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard label={t.dash.cashInHand} value={<Money value={d.cash} />} icon={Wallet} accent="emerald" />
-        <StatCard
-          label={t.dash.bankBalance}
-          value={<Money value={d.bank} />}
-          icon={Banknote}
-          accent="emerald"
-          hint={d.bankOverdraft > 0 ? `${locale === 'bn' ? 'ওভারড্রাফট' : 'Overdraft'} ${money(d.bankOverdraft)}` : undefined}
-        />
-        <StatCard
-          label={t.dash.totalReceivable}
-          value={<Money value={d.receivable} />}
-          icon={HandCoins}
-          accent="gold"
-          hint={t.dash.totalReceivableHint}
-        />
-        <StatCard
-          label={t.dash.periodIncome}
-          value={<Money value={d.periodIncome} />}
-          icon={TrendingUp}
-          accent="emerald"
-          hint={periodHint}
-        />
-        <StatCard
-          label={t.dash.periodExpense}
-          value={<Money value={d.periodExpense} />}
-          icon={TrendingDown}
-          accent="red"
-          hint={periodHint}
-        />
-        <StatCard
-          label={t.dash.hajjPilgrimsYear(year)}
-          value={d.hajjThisYear}
-          icon={Users}
-          accent="emerald"
-          hint={t.dash.registeredThisYear}
-        />
+        <Link href={localizedPath(locale, '/admin/accounts/cash-bank')} className="block">
+          <StatCard label={t.dash.cashInHand} value={<Money value={d.cash} />} icon={Wallet} accent="emerald" />
+        </Link>
+        <Link href={localizedPath(locale, '/admin/accounts/cash-bank')} className="block">
+          <StatCard
+            label={t.dash.bankBalance}
+            value={<Money value={d.bank} />}
+            icon={Banknote}
+            accent="emerald"
+            hint={d.bankOverdraft > 0 ? `${locale === 'bn' ? 'ওভারড্রাফট' : 'Overdraft'} ${money(d.bankOverdraft)}` : undefined}
+          />
+        </Link>
+        <Link href={localizedPath(locale, '/admin/accounts/due')} className="block">
+          <StatCard
+            label={t.dash.totalReceivable}
+            value={<Money value={d.receivable} />}
+            icon={HandCoins}
+            accent="gold"
+            hint={t.dash.totalReceivableHint}
+          />
+        </Link>
+        <Link href={localizedPath(locale, '/admin/reports')} className="block">
+          <StatCard
+            label={t.dash.periodIncome}
+            value={<Money value={d.periodIncome} />}
+            icon={TrendingUp}
+            accent="emerald"
+            hint={periodHint}
+          />
+        </Link>
+        <Link href={localizedPath(locale, '/admin/accounts/expenses')} className="block">
+          <StatCard
+            label={t.dash.periodExpense}
+            value={<Money value={d.periodExpense} />}
+            icon={TrendingDown}
+            accent="red"
+            hint={periodHint}
+          />
+        </Link>
+        <Link href={localizedPath(locale, '/admin/hajj')} className="block">
+          <StatCard
+            label={t.dash.hajjPilgrims}
+            value={d.hajjThisYear}
+            icon={Users}
+            accent="emerald"
+            hint={t.dash.registeredThisYear}
+          />
+        </Link>
       </div>
 
       {/* Operational stats */}
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard label={t.dash.umrahPassengers} value={d.umrahThisYear} icon={Moon} accent="emerald" hint={t.dash.totalOnRecord} />
+        <Link href={localizedPath(locale, '/admin/umrah')} className="block">
+          <StatCard label={t.dash.umrahPassengers} value={d.umrahThisYear} icon={Moon} accent="emerald" hint={t.dash.totalOnRecord} />
+        </Link>
         <Link href={localizedPath(locale, '/admin/contacts')} className="block">
           <StatCard
             label={t.dash.unhandledContacts}

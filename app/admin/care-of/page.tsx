@@ -28,6 +28,7 @@ export default async function CareOfPage() {
               <tr>
                 <th className={thClass}>{t.thCode}</th>
                 <th className={thClass}>{t.thName}</th>
+                <th className={thClass}>{t.thType}</th>
                 <th className={thClass}>{t.thPhone}</th>
                 <th className={thClass}>{t.thAddress}</th>
                 <th className={thClass}>{t.thBranch}</th>
@@ -39,6 +40,11 @@ export default async function CareOfPage() {
                 <tr key={a.id} className="transition hover:bg-muted/40">
                   <td className={`${tdClass} whitespace-nowrap font-mono text-xs text-ink-muted`}>{a.code ?? '—'}</td>
                   <td className={`${tdClass} font-semibold text-ink`}>{a.name}</td>
+                  <td className={tdClass}>
+                    <Badge tone={a.type === 'family' ? 'gold' : 'emerald'}>
+                      {a.type === 'family' ? t.typeFamily : t.typeAgent}
+                    </Badge>
+                  </td>
                   <td className={`${tdClass} tabular-nums`}>{a.phone ?? '—'}</td>
                   <td className={`${tdClass} max-w-[18rem] truncate text-ink-muted`} title={a.address ?? ''}>
                     {a.address || '—'}

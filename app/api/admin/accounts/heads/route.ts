@@ -4,7 +4,6 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireStaff } from '@/lib/management/guard';
 import { logActivity } from '@/lib/management/server';
 import { enforceBranch } from '@/lib/management/scope';
-import { isCoreHead } from '@/lib/management/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -171,26 +170,9 @@ export async function PATCH(request: Request) {
 
   try {
     const db = createAdminClient();
-    // Core control accounts are locked; other system heads may be renamed but
-    // keep their type / subtype.
-    const { data: head } = await db
-      .from('account_heads')
-      .select('is_system, name')
-      .eq('id', id)
-      .maybeSingle();
-    if (head && isCoreHead(head)) {
-      return NextResponse.json(
-        { ok: false, error: 'This is a core control account used by the system and cannot be edited.' },
-        { status: 400 },
-      );
-    }
-    if (head?.is_system) {
-      // The app posts to system heads by name, so never let those change.
-      delete patch.name;
-      delete patch.type;
-      delete patch.subtype;
-    }
-
+    // Every head (including built-in "system" heads) is now fully editable — the
+    // engine resolves system heads by their immutable system_key, so renaming /
+    // re-typing them no longer breaks postings.
     const { error } = await db.from('account_heads').update(patch).eq('id', id);
     if (error) {
       console.error('[accounts/heads] update failed:', error.message);
@@ -229,18 +211,13 @@ export async function DELETE(request: Request) {
     const db = createAdminClient();
     const { data: head } = await db
       .from('account_heads')
-      .select('is_system, name')
+      .select('name')
       .eq('id', id)
       .maybeSingle();
 
-    if (head && isCoreHead(head)) {
-      return NextResponse.json(
-        { ok: false, error: 'This is a core control account used by the system and cannot be removed.' },
-        { status: 400 },
-      );
-    }
-
-    // Heads are deactivated (never hard-deleted) to preserve ledger history.
+    // Heads are deactivated (never hard-deleted) to preserve ledger history. A
+    // built-in head that is later needed for a posting is self-healed back to
+    // active by getSystemHead, so removal here is always safe.
     const { error } = await db.from('account_heads').update({ active: false }).eq('id', id);
     if (error) {
       console.error('[accounts/heads] deactivate failed:', error.message);

@@ -22,6 +22,7 @@ export function AffiliateForm() {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [code, setCode] = useState('');
+  const [type, setType] = useState<'agent' | 'family'>('agent');
   const [branch, setBranch] = useState<string>(BRANCHES[0].value);
 
   function reset() {
@@ -29,6 +30,7 @@ export function AffiliateForm() {
     setPhone('');
     setAddress('');
     setCode('');
+    setType('agent');
     setBranch(BRANCHES[0].value);
   }
 
@@ -47,6 +49,7 @@ export function AffiliateForm() {
           phone: phone.trim(),
           address: address.trim(),
           code: code.trim(),
+          type,
           branch: lockedBranch ?? branch,
         }),
       });
@@ -94,6 +97,12 @@ export function AffiliateForm() {
         </Field>
         <Field label={t.phone}>
           <input className={inputClass} value={phone} placeholder={t.phonePlaceholder} onChange={(e) => setPhone(e.target.value)} inputMode="tel" />
+        </Field>
+        <Field label={t.type}>
+          <select className={inputClass} value={type} onChange={(e) => setType(e.target.value as 'agent' | 'family')}>
+            <option value="agent">{t.typeAgent}</option>
+            <option value="family">{t.typeFamily}</option>
+          </select>
         </Field>
         <Field label={t.code} hint={t.codeHint}>
           <input className={inputClass} value={code} placeholder="CO-0001" onChange={(e) => setCode(e.target.value)} />

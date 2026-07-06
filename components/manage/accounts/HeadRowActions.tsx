@@ -150,19 +150,12 @@ export function HeadRowActions({ head }: { head: AccountHead }) {
               </button>
             </div>
 
-            {head.is_system && (
-              <p className="mb-4 rounded-xl bg-muted/60 px-3 py-2 text-xs text-ink-muted">
-                {tt.headRowActions.systemNote}
-              </p>
-            )}
-
             <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2">
               <Field label={tt.headRowActions.accountName} required className="sm:col-span-2">
                 <input
                   name="name"
                   defaultValue={head.name}
-                  readOnly={head.is_system}
-                  className={`${inputClass}${head.is_system ? ' bg-muted/50 text-ink-muted' : ''}`}
+                  className={inputClass}
                   placeholder={tt.headRowActions.accountNamePlaceholder}
                 />
               </Field>
@@ -170,7 +163,7 @@ export function HeadRowActions({ head }: { head: AccountHead }) {
                 <input name="code" defaultValue={head.code ?? ''} className={inputClass} placeholder={tt.headRowActions.codePlaceholder} />
               </Field>
               <Field label={tt.headRowActions.type} required>
-                <select name="type" defaultValue={head.type} className={inputClass} disabled={head.is_system}>
+                <select name="type" defaultValue={head.type} className={inputClass}>
                   {TYPES.map((tv) => (
                     <option key={tv} value={tv} className="capitalize">{tt.headForm[TYPE_LABEL_KEY[tv]] as string}</option>
                   ))}
@@ -182,7 +175,6 @@ export function HeadRowActions({ head }: { head: AccountHead }) {
                   value={subtype}
                   onChange={(e) => setSubtype(e.target.value as AccountSubtype)}
                   className={inputClass}
-                  disabled={head.is_system}
                 >
                   {SUBTYPES.map((s) => (
                     <option key={s} value={s} className="capitalize">{tt.headForm[SUBTYPE_LABEL_KEY[s]] as string}</option>

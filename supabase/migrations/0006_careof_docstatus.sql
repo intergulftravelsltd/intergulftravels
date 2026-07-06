@@ -23,6 +23,7 @@ create table if not exists public.affiliates (
   phone      text,
   address    text,
   note       text,
+  type       text not null default 'agent',
   branch     text not null default 'general',
   active     boolean not null default true,
   created_by uuid,

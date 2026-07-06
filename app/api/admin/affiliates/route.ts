@@ -16,6 +16,7 @@ const createSchema = z.object({
   address: z.preprocess(emptyToNull, z.string().trim().max(400).nullable().optional()),
   code: z.preprocess(emptyToNull, z.string().trim().max(40).nullable().optional()),
   note: z.preprocess(emptyToNull, z.string().trim().max(1000).nullable().optional()),
+  type: z.enum(['agent', 'family']).optional().default('agent'),
   branch: z.string().trim().max(60).optional().default('general'),
 });
 
@@ -84,6 +85,13 @@ export async function POST(request: Request) {
       );
     }
 
+    // type is written best-effort so care-of creation still works before the
+    // 0007 migration (which adds the column) is applied.
+    if (d.type !== 'agent') {
+      const { error: typeErr } = await db.from('affiliates').update({ type: d.type }).eq('id', data.id);
+      if (typeErr) console.error('[affiliates] type skipped:', typeErr.message);
+    }
+
     await logActivity({
       user_id: guard.user.id,
       user_email: guard.user.email,
@@ -145,15 +153,24 @@ export async function PATCH(request: Request) {
     // never move a record out of (or into) another branch.
     if (rest.branch !== undefined) patch.branch = await enforceBranch(rest.branch);
 
-    if (Object.keys(patch).length === 0) {
+    if (Object.keys(patch).length === 0 && rest.type === undefined) {
       return NextResponse.json({ ok: false, error: 'Nothing to update.' }, { status: 400 });
     }
 
-    const { error } = await db.from('affiliates').update(patch).eq('id', id);
-    if (error) {
-      console.error('[affiliates] update failed:', error.message);
-      return NextResponse.json({ ok: false, error: 'Could not update the care-of.' }, { status: 500 });
+    if (Object.keys(patch).length > 0) {
+      const { error } = await db.from('affiliates').update(patch).eq('id', id);
+      if (error) {
+        console.error('[affiliates] update failed:', error.message);
+        return NextResponse.json({ ok: false, error: 'Could not update the care-of.' }, { status: 500 });
+      }
     }
+
+    // type is written best-effort so edits still work before 0007 is applied.
+    if (rest.type !== undefined) {
+      const { error: typeErr } = await db.from('affiliates').update({ type: rest.type }).eq('id', id);
+      if (typeErr) console.error('[affiliates] type patch skipped:', typeErr.message);
+    }
+
     await logActivity({
       user_id: guard.user.id,
       user_email: guard.user.email,
