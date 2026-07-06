@@ -339,7 +339,6 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                   <div className="inline-flex items-center gap-2">
                     <Link
                       href={localizedPath(locale, `/admin/receipt/passenger/hajj/${p.id}`)}
-                      target="_blank"
                       title={locale === 'bn' ? 'রসিদ প্রিন্ট' : 'Print receipt'}
                       className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700"
                     >

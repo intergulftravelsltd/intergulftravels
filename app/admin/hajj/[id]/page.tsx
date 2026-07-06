@@ -261,7 +261,6 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
                       <td className={`${tdClass} whitespace-nowrap text-right`}>
                         <Link
                           href={localizedPath(locale, `/admin/receipt/${p.id}`)}
-                          target="_blank"
                           className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700"
                         >
                           <Printer className="h-3.5 w-3.5" /> {locale === 'bn' ? 'রসিদ' : 'Receipt'}

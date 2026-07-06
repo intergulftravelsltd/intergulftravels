@@ -191,8 +191,6 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
                     <div className="inline-flex items-center gap-1.5">
                       <a
                         href={localizedPath(locale, `/admin/receipt/voucher/${t.id}`)}
-                        target="_blank"
-                        rel="noopener noreferrer"
                         title={locale === 'bn' ? 'রসিদ প্রিন্ট' : 'Print receipt'}
                         className="inline-flex items-center rounded-lg border border-border px-2 py-1 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700"
                       >

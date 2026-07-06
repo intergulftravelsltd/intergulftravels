@@ -21,8 +21,10 @@ export type ReceiptData = {
   paid: string;
   due: string;
   isRefund: boolean;
-  /** When present, the receipt is a full statement listing every payment. */
-  payments?: { date: string; type: string; method: string; amount: string }[];
+  /** When present, the receipt is an in-depth account statement: every ledger
+   *  entry (package charges + all payments) with a running balance. */
+  ledger?: { date: string; particulars: string; voucher: string; charge: string; paid: string; balance: string }[];
+  totalCharge?: string;
   /** When present, the receipt is a voucher receipt showing the double entry. */
   voucher?: { debit: string; credit: string };
 };
@@ -57,10 +59,16 @@ const L = {
     colMethod: 'Method',
     colAmount: 'Amount',
     paymentsHeading: 'Payments received',
-    noPayments: 'No payments recorded yet.',
-    grandTotal: 'Total received',
+    noPayments: 'No transactions recorded yet.',
+    grandTotal: 'Total',
     debit: 'Debit (Dr)',
     credit: 'Credit (Cr)',
+    statementHeading: 'Account statement',
+    colParticulars: 'Particulars',
+    colCharge: 'Charge',
+    colPaidLedger: 'Paid',
+    colBalance: 'Balance',
+    totalPackage: 'Total package',
   },
   bn: {
     receipt: 'অর্থ রসিদ',
@@ -91,10 +99,16 @@ const L = {
     colMethod: 'মাধ্যম',
     colAmount: 'পরিমাণ',
     paymentsHeading: 'গৃহীত পেমেন্ট',
-    noPayments: 'এখনও কোনো পেমেন্ট নেই।',
-    grandTotal: 'মোট গৃহীত',
+    noPayments: 'এখনও কোনো লেনদেন নেই।',
+    grandTotal: 'মোট',
     debit: 'ডেবিট (নামে)',
     credit: 'ক্রেডিট (জমা)',
+    statementHeading: 'হিসাব বিবরণী',
+    colParticulars: 'বিবরণ',
+    colCharge: 'চার্জ',
+    colPaidLedger: 'পরিশোধ',
+    colBalance: 'ব্যালেন্স',
+    totalPackage: 'মোট প্যাকেজ',
   },
 };
 
@@ -215,43 +229,53 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
           {data.packageName && <Row label={t.package} value={data.packageName} />}
         </div>
 
-        {data.payments ? (
-          /* Statement mode — every payment for this person + totals. */
+        {data.ledger ? (
+          /* In-depth statement — every ledger entry + running balance + totals. */
           <div className="my-5">
-            <p className="mb-2 text-sm font-semibold text-gray-700">{t.paymentsHeading}</p>
-            {data.payments.length === 0 ? (
+            <p className="mb-2 text-sm font-semibold text-gray-700">{t.statementHeading}</p>
+            {data.ledger.length === 0 ? (
               <p className="rounded-xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">{t.noPayments}</p>
             ) : (
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b-2 border-gray-300 text-left text-gray-500">
                     <th className="py-2">{t.colDate}</th>
-                    <th className="py-2">{t.colType}</th>
-                    <th className="py-2">{t.colMethod}</th>
-                    <th className="py-2 text-right">{t.colAmount}</th>
+                    <th className="py-2">{t.colParticulars}</th>
+                    <th className="py-2 text-right">{t.colCharge}</th>
+                    <th className="py-2 text-right">{t.colPaidLedger}</th>
+                    <th className="py-2 text-right">{t.colBalance}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.payments.map((p, i) => (
-                    <tr key={i} className="border-b border-gray-200">
-                      <td className="py-2 text-gray-800">{p.date}</td>
-                      <td className="py-2 text-gray-800">{p.type}</td>
-                      <td className="py-2 text-gray-800">{p.method}</td>
-                      <td className="py-2 text-right font-medium text-gray-900">৳ {p.amount}</td>
+                  {data.ledger.map((r, i) => (
+                    <tr key={i} className="border-b border-gray-200 align-top">
+                      <td className="whitespace-nowrap py-2 text-gray-800">{r.date}</td>
+                      <td className="py-2 text-gray-800">
+                        {r.particulars}
+                        {r.voucher && <span className="block text-xs text-gray-400">{r.voucher}</span>}
+                      </td>
+                      <td className="py-2 text-right text-gray-800">{r.charge ? `৳ ${r.charge}` : ''}</td>
+                      <td className="py-2 text-right text-gray-800">{r.paid ? `৳ ${r.paid}` : ''}</td>
+                      <td className="py-2 text-right font-medium text-gray-900">৳ {r.balance}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-emerald-700 font-bold text-emerald-800">
-                    <td className="py-2" colSpan={3}>
+                    <td className="py-2" colSpan={2}>
                       {t.grandTotal}
                     </td>
+                    <td className="py-2 text-right">৳ {data.totalCharge}</td>
                     <td className="py-2 text-right">৳ {data.paid}</td>
+                    <td className="py-2 text-right">৳ {data.due}</td>
                   </tr>
                 </tfoot>
               </table>
             )}
             <div className="mt-3 flex flex-wrap justify-end gap-6 text-sm">
+              <span className="text-gray-600">
+                {t.totalPackage}: <span className="font-semibold text-gray-900">৳ {data.totalCharge}</span>
+              </span>
               <span className="text-gray-600">
                 {t.totalPaid}: <span className="font-semibold text-gray-900">৳ {data.paid}</span>
               </span>
