@@ -86,6 +86,23 @@ const dict = {
     filterAllDocs: 'All documents',
     filterDocsComplete: 'All documents done',
     filterDocsIncomplete: 'Documents pending',
+
+    // ---- Group / family ledger detail page ----
+    backToList: 'Back to Care-of list',
+    membersCount: (n: number) => `${n} ${n === 1 ? 'passenger' : 'passengers'}`,
+    totalPackage: 'Total Package',
+    totalPaid: 'Total Paid',
+    totalDue: 'Total Due',
+    thMember: 'Passenger',
+    thProgram: 'Program',
+    thMemberPackage: 'Package',
+    thCharged: 'Package amount',
+    thPaid: 'Paid',
+    thDue: 'Due',
+    programHajj: 'Hajj',
+    programUmrah: 'Umrah',
+    noMembers: 'No passengers under this Care-of yet',
+    noMembersHint: 'Assign this Care-of on a Hajj or Umrah passenger and they will appear here together as a group.',
   },
 
   bn: {
@@ -167,6 +184,23 @@ const dict = {
     filterAllDocs: 'সব ডকুমেন্ট',
     filterDocsComplete: 'সব ডকুমেন্ট সম্পন্ন',
     filterDocsIncomplete: 'ডকুমেন্ট বাকি',
+
+    // ---- Group / family ledger detail page ----
+    backToList: 'কেয়ার অফ তালিকায় ফিরুন',
+    membersCount: (n: number) => `${n} জন যাত্রী`,
+    totalPackage: 'মোট প্যাকেজ',
+    totalPaid: 'মোট পরিশোধিত',
+    totalDue: 'মোট বকেয়া',
+    thMember: 'যাত্রী',
+    thProgram: 'প্রোগ্রাম',
+    thMemberPackage: 'প্যাকেজ',
+    thCharged: 'প্যাকেজ পরিমাণ',
+    thPaid: 'পরিশোধিত',
+    thDue: 'বকেয়া',
+    programHajj: 'হজ',
+    programUmrah: 'উমরাহ',
+    noMembers: 'এই কেয়ার অফের অধীনে এখনও কোনো যাত্রী নেই',
+    noMembersHint: 'হজ বা উমরাহ যাত্রীতে এই কেয়ার অফ যুক্ত করলে তারা এখানে একসাথে গ্রুপ হিসেবে দেখা যাবে।',
   },
 };
 

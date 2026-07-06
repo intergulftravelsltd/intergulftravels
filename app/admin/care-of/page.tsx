@@ -1,9 +1,11 @@
+import Link from 'next/link';
 import { PageHeader, EmptyState, TableWrap, thClass, tdClass, Badge } from '@/components/manage/ui';
 import { AffiliateForm } from '@/components/manage/affiliates/AffiliateForm';
 import { AffiliateRowActions } from '@/components/manage/affiliates/AffiliateRowActions';
 import { loadActiveAffiliates } from '@/lib/management/affiliates';
 import { branchShort } from '@/lib/management/branches';
 import { getLocale } from '@/lib/i18n-server';
+import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/careof';
 
 export const dynamic = 'force-dynamic';
@@ -39,7 +41,11 @@ export default async function CareOfPage() {
               {affiliates.map((a) => (
                 <tr key={a.id} className="transition hover:bg-muted/40">
                   <td className={`${tdClass} whitespace-nowrap font-mono text-xs text-ink-muted`}>{a.code ?? '—'}</td>
-                  <td className={`${tdClass} font-semibold text-ink`}>{a.name}</td>
+                  <td className={`${tdClass} font-semibold`}>
+                    <Link href={localizedPath(locale, `/admin/care-of/${a.id}`)} className="text-ink hover:text-brand-700">
+                      {a.name}
+                    </Link>
+                  </td>
                   <td className={tdClass}>
                     <Badge tone={a.type === 'family' ? 'gold' : 'emerald'}>
                       {a.type === 'family' ? t.typeFamily : t.typeAgent}

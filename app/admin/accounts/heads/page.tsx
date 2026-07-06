@@ -26,11 +26,19 @@ export default async function HeadsPage() {
   const t = getDict(locale);
   const heads = await loadActiveHeads();
 
-  const grouped = TYPE_ORDER.map((type) => ({
-    type,
-    label: t.heads[TYPE_LABEL_KEY[type]],
-    rows: heads.filter((h) => h.type === type),
-  })).filter((g) => g.rows.length > 0);
+  // Customer / passenger ledgers (auto-created per pilgrim) are shown as their
+  // own section rather than lumped under Assets — a pilgrim's balance swings
+  // between due (asset) and advance/refund (liability), so "Customer Ledger" is
+  // clearer for day-to-day work. Their DB type stays 'asset' for correct maths.
+  const grouped: { key: string; label: string; rows: AccountHead[] }[] = [];
+  const customerRows = heads.filter((h) => h.subtype === 'customer');
+  if (customerRows.length) {
+    grouped.push({ key: 'customer', label: t.heads.customerLedger, rows: customerRows });
+  }
+  for (const type of TYPE_ORDER) {
+    const rows = heads.filter((h) => h.type === type && h.subtype !== 'customer');
+    if (rows.length) grouped.push({ key: type, label: t.heads[TYPE_LABEL_KEY[type]], rows });
+  }
 
   return (
     <>
@@ -51,7 +59,7 @@ export default async function HeadsPage() {
       ) : (
         <div className="space-y-8">
           {grouped.map((g) => (
-            <section key={g.type}>
+            <section key={g.key}>
               <h2 className="mb-3 font-display text-lg font-semibold text-ink">{g.label}</h2>
               <TableWrap>
                 <thead>
