@@ -201,6 +201,13 @@ body {
 html[lang='bn'] {
   letter-spacing: normal;
 }
+/* The Latin stylistic sets (ss01/cv01/cv11) enabled on <body> leak into the
+   Bangla face and trigger alternate glyph forms that render unclearly — keep
+   Hind Siliguri on its clean default shaping on the Bangla version. */
+html[lang='bn'] body,
+html[lang='bn'] body * {
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+}
 html[lang='bn'] [class*='tracking-'] {
   letter-spacing: normal !important;
 }
