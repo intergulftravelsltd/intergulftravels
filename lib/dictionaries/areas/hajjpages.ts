@@ -11,7 +11,7 @@ const dict = {
         crumb: 'Hajj',
       },
       what: {
-        eyebrow: 'What is Hajj',
+        eyebrow: 'What is Hajj?',
         titleA: 'An obligation upon every able Muslim,',
         titleB: 'once in a lifetime',
         p1A: 'Hajj is the annual pilgrimage to Makkah, performed in the month of Dhul-Hijjah, and the fifth pillar of Islam. Allah commands in the Qur’an: ',
@@ -457,7 +457,7 @@ const dict = {
         crumb: 'হজ',
       },
       what: {
-        eyebrow: 'হজ কী',
+        eyebrow: 'হজ কী?',
         titleA: 'প্রত্যেক সামর্থ্যবান মুসলিমের ওপর ফরজ,',
         titleB: 'জীবনে একবার',
         p1A: 'হজ হলো জিলহজ মাসে মক্কায় পালিত বার্ষিক পবিত্র যাত্রা এবং ইসলামের পঞ্চম স্তম্ভ। আল্লাহ কুরআনে নির্দেশ দিয়েছেন: ',

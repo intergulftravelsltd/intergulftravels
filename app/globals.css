@@ -192,6 +192,32 @@ body {
   }
 }
 
+/* --------------------------- Bangla typography ---------------------------- *
+ * Bangla forms conjuncts + vowel signs that visually break when the letters
+ * are spaced apart, so on the Bangla version we drop the Latin-style wide
+ * letter-spacing (and uppercase kickers) and give small kicker labels a touch
+ * more size + line-height for a clean, clearly legible read. The Bangla face
+ * itself is Hind Siliguri (loaded in the root layout). */
+html[lang='bn'] {
+  letter-spacing: normal;
+}
+html[lang='bn'] [class*='tracking-'] {
+  letter-spacing: normal !important;
+}
+html[lang='bn'] h1,
+html[lang='bn'] h2,
+html[lang='bn'] h3,
+html[lang='bn'] h4 {
+  letter-spacing: normal;
+  line-height: 1.38;
+}
+html[lang='bn'] .ig-eyebrow {
+  font-size: 0.8rem;
+  letter-spacing: normal;
+  line-height: 1.6;
+  text-transform: none;
+}
+
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -13,7 +13,7 @@ export function Eyebrow({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.2em]',
+        'ig-eyebrow inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.2em]',
         light
           ? 'border-white/20 bg-white/10 text-gold-200'
           : 'border-brand-600/15 bg-brand-50 text-brand-700 dark:border-brand-400/20 dark:bg-brand-900/30 dark:text-brand-300',

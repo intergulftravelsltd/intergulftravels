@@ -11,7 +11,7 @@ const dict = {
         crumb: 'Umrah',
       },
       what: {
-        eyebrow: 'What is Umrah',
+        eyebrow: 'What is Umrah?',
         titleA: 'A blessed pilgrimage you can perform',
         titleB: 'at any time',
         p1: 'Umrah, the “lesser pilgrimage,” is a deeply rewarded act of worship performed by entering Ihram and completing Tawaf around the Kaaba, Sa‘i between Safa and Marwah, and Halq or Taqsir (shaving or trimming the hair). Unlike Hajj, it has no fixed time — it may be performed in any month of the year.',
@@ -419,7 +419,7 @@ const dict = {
         crumb: 'উমরাহ',
       },
       what: {
-        eyebrow: 'উমরাহ কী',
+        eyebrow: 'উমরাহ কী?',
         titleA: 'একটি বরকতময় পবিত্র যাত্রা, যা পালন করা যায়',
         titleB: 'যেকোনো সময়',
         p1: 'উমরাহ, অর্থাৎ “ছোট হজ,” হলো একটি অত্যন্ত সওয়াবপূর্ণ ইবাদত, যা ইহরাম বেঁধে কাবা শরিফের চারপাশে তাওয়াফ, সাফা ও মারওয়ার মধ্যে সাঈ এবং হলক বা কসর (মাথা মুণ্ডানো বা চুল ছাঁটা) সম্পন্ন করে আদায় করা হয়। হজের মতো এর কোনো নির্দিষ্ট সময় নেই — বছরের যেকোনো মাসেই এটি পালন করা যায়।',

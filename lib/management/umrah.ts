@@ -22,11 +22,6 @@ export function isExpiringSoon(dateStr: string | null | undefined, withinMonths 
   return m !== null && m < withinMonths;
 }
 
-/** Sum of received payments for a passenger (token + installments etc., minus refunds). */
-function paidFromPayments(payments: { amount: number; type: string | null }[]): number {
-  return payments.reduce((sum, p) => sum + (p.type === 'refund' ? -Number(p.amount) : Number(p.amount)), 0);
-}
-
 /** Active umrah packages for select inputs. */
 export async function loadUmrahPackages(): Promise<MgmtPackage[]> {
   try {
@@ -90,30 +85,17 @@ export async function loadPassengers(): Promise<PassengerRow[]> {
       (pData ?? []).forEach((p: { id: string; name: string }) => pkgs.set(p.id, p.name));
     }
 
-    // Payments → paid (aggregated per passenger).
-    const paidByParty = new Map<string, number>();
-    {
-      const { data: payData } = await db
-        .from('payments')
-        .select('party_id, amount, type')
-        .eq('party_table', 'umrah_passengers')
-        .in('party_id', passengers.map((p) => p.id));
-      const grouped = new Map<string, { amount: number; type: string | null }[]>();
-      (payData ?? []).forEach((row: { party_id: string; amount: number; type: string | null }) => {
-        const list = grouped.get(row.party_id) ?? [];
-        list.push({ amount: Number(row.amount), type: row.type });
-        grouped.set(row.party_id, list);
-      });
-      grouped.forEach((list, id) => paidByParty.set(id, paidFromPayments(list)));
-    }
-
     return passengers.map((p) => {
       const head = p.account_head_id ? heads.get(p.account_head_id) : undefined;
+      // Paid + due both come from the customer ledger (total credits / natural
+      // balance) so manually-posted vouchers count too — matching the statement
+      // receipt and the Hajj list.
+      const paid = head ? Math.max(0, Number(head.credit_total)) : 0;
       const due = head ? Math.max(0, naturalBalance(head)) : 0;
       return {
         ...p,
         package_name: p.package_id ? pkgs.get(p.package_id) ?? null : null,
-        paid: paidByParty.get(p.id) ?? 0,
+        paid,
         due,
       };
     });
