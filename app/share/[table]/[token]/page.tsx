@@ -281,16 +281,17 @@ export default async function SharedPilgrimFormPage({ params }: { params: { tabl
           {head && (
             <div className="mt-6">
               <p className="mb-2 text-sm font-semibold text-gray-700">{t.accountHeading}</p>
+              {/* Translucent tiles so the brand watermark stays visible behind them */}
               <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="rounded-xl bg-gray-50 px-3 py-2.5">
+                <div className="rounded-xl bg-gray-50/60 px-3 py-2.5">
                   <p className="text-xs text-gray-500">{t.charged}</p>
                   <p className="font-bold text-gray-900">{money(charged)}</p>
                 </div>
-                <div className="rounded-xl bg-emerald-50 px-3 py-2.5">
+                <div className="rounded-xl bg-emerald-50/60 px-3 py-2.5">
                   <p className="text-xs text-emerald-700">{t.paid}</p>
                   <p className="font-bold text-emerald-800">{money(paid)}</p>
                 </div>
-                <div className="rounded-xl bg-red-50 px-3 py-2.5">
+                <div className="rounded-xl bg-red-50/60 px-3 py-2.5">
                   <p className="text-xs text-red-600">{t.due}</p>
                   <p className="font-bold text-red-700">{money(due)}</p>
                 </div>

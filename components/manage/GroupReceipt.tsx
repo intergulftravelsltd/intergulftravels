@@ -177,8 +177,8 @@ export function GroupReceipt({ data, locale }: { data: GroupReceiptData; locale:
             </span>
           </div>
 
-          {/* Payer */}
-          <div className="rounded-xl bg-gray-50 p-4">
+          {/* Payer — translucent so the brand watermark stays visible behind it */}
+          <div className="rounded-xl bg-gray-50/60 p-4">
             <p className="text-sm text-gray-500">{t.receivedFrom}</p>
             <p className="text-lg font-bold text-gray-900">{data.payerName}</p>
             {data.payerPhone && <Row label={t.phone} value={data.payerPhone} />}

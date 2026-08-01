@@ -227,7 +227,7 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
 
         {data.voucher && (
           <>
-            <div className="my-4 rounded-xl bg-gray-50 p-4">
+            <div className="my-4 rounded-xl bg-gray-50/60 p-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t.debit}</p>
@@ -244,7 +244,7 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
                 </div>
               )}
             </div>
-            <div className="my-5 flex items-center justify-between rounded-xl border-2 border-emerald-700 bg-emerald-50 px-5 py-4">
+            <div className="my-5 flex items-center justify-between rounded-xl border-2 border-emerald-700 bg-emerald-50/60 px-5 py-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{t.amount}</p>
               <p className="text-3xl font-extrabold text-emerald-800">৳ {data.amount}</p>
             </div>
@@ -253,8 +253,8 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
 
         {!data.voucher && (
           <>
-        {/* Party */}
-        <div className="rounded-xl bg-gray-50 p-4">
+        {/* Party — translucent so the brand watermark stays visible behind it */}
+        <div className="rounded-xl bg-gray-50/60 p-4">
           <p className="text-sm text-gray-500">{data.isRefund ? t.refundTo : t.receivedFrom}</p>
           <p className="text-lg font-bold text-gray-900">{data.partyName}</p>
           {data.partyPassport && <Row label={t.passport} value={data.partyPassport} />}
@@ -269,7 +269,7 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
           <div className="my-5">
             <p className="mb-2 text-sm font-semibold text-gray-700">{t.statementHeading}</p>
             {data.ledger.length === 0 ? (
-              <p className="rounded-xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">{t.noPayments}</p>
+              <p className="rounded-xl bg-gray-50/60 px-4 py-6 text-center text-sm text-gray-500">{t.noPayments}</p>
             ) : (
               <table className="w-full border-collapse text-sm">
                 <thead>
@@ -322,7 +322,7 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
         ) : (
           <>
             {/* Single-payment amount */}
-            <div className="my-5 flex items-center justify-between rounded-xl border-2 border-emerald-700 bg-emerald-50 px-5 py-4">
+            <div className="my-5 flex items-center justify-between rounded-xl border-2 border-emerald-700 bg-emerald-50/60 px-5 py-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{t.amount}</p>
                 {data.amountWords && (

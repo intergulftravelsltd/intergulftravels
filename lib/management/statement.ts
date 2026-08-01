@@ -71,9 +71,13 @@ export async function buildStatementReceipt(opts: {
     totalCharge += charge;
     totalPaid += paid;
     const otherId = isCharge ? t.credit_account_id : t.debit_account_id;
+    const raw = t.narration || names.get(otherId) || '—';
+    // The package name is already in the receipt header — trim it off the
+    // standard charge narrations ("Hajj/Umrah package charge — <package>").
+    const particulars = /^(hajj|umrah) package charge/i.test(raw) ? raw.replace(/\s+—.*$/, '') : raw;
     return {
       date: fmtDate(t.date),
-      particulars: t.narration || names.get(otherId) || '—',
+      particulars,
       voucher: t.voucher_no || '',
       charge: charge ? money(charge, false) : '',
       paid: paid ? money(paid, false) : '',
@@ -81,10 +85,14 @@ export async function buildStatementReceipt(opts: {
     };
   });
 
+  // Receipt No = the latest auto voucher number in the ledger (JV/RV/DV-xxxxx),
+  // not the passport — the passport already has its own labelled row.
+  const lastVoucher = [...txs].reverse().find((t) => t.voucher_no)?.voucher_no;
+
   return {
     company: branchCompany(opts.party.branch),
     program: opts.program,
-    receiptNo: opts.party.passportNo || headId.slice(0, 8).toUpperCase(),
+    receiptNo: lastVoucher || headId.slice(0, 8).toUpperCase(),
     date: fmtDate(new Date().toISOString()),
     branch: branchLabel(opts.party.branch),
     partyName: opts.party.name,
