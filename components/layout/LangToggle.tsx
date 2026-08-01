@@ -9,15 +9,15 @@ import { cn } from '@/lib/utils';
  * EN / BN switch. Swaps to the same page in the other language version.
  *
  * Uses a plain full-page navigation (a real <a>, not next/link) on purpose:
- * /en/* is served via a middleware rewrite onto the same underlying route as
- * the Bangla version, so a soft client navigation would hit Next's router
+ * /bn/* is served via a middleware rewrite onto the same underlying route as
+ * the English version, so a soft client navigation would hit Next's router
  * cache and keep showing the old language. A hard navigation forces the server
  * to re-render in the chosen locale (fonts, <html lang> and all text included).
  */
 export function LangToggle({ className, tone = 'dark' }: { className?: string; tone?: 'dark' | 'light' }) {
   const locale = useLocale();
   const pathname = usePathname() || '/';
-  const base = stripLocale(pathname); // path without the /en prefix
+  const base = stripLocale(pathname); // path without the /bn prefix
 
   const items: { code: 'bn' | 'en'; label: string; href: string }[] = [
     { code: 'bn', label: 'BN', href: localizedPath('bn', base) },

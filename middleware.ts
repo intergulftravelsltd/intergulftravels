@@ -2,24 +2,33 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 /**
- * - Locale routing: Bangla is the default (no prefix); English lives under
- *   /en. We strip the /en prefix internally and pass the active locale to
- *   Server Components via the `x-locale` request header (the URL stays /en/*).
+ * - Locale routing: English is the default (no prefix); Bangla lives under
+ *   /bn. We strip the /bn prefix internally and pass the active locale to
+ *   Server Components via the `x-locale` request header (the URL stays /bn/*).
+ * - Legacy /en/* URLs (from the old bn-default scheme) 308-redirect to /*.
  * - Refreshes the Supabase auth session cookie on every request.
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isEn = pathname === '/en' || pathname.startsWith('/en/');
-  const locale = isEn ? 'en' : 'bn';
+
+  // English used to live under /en — keep old bookmarks and indexed links alive.
+  if (pathname === '/en' || pathname.startsWith('/en/')) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = pathname === '/en' ? '/' : pathname.replace(/^\/en/, '');
+    return NextResponse.redirect(redirectUrl, 308);
+  }
+
+  const isBn = pathname === '/bn' || pathname.startsWith('/bn/');
+  const locale = isBn ? 'bn' : 'en';
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-locale', locale);
 
   const rewriteUrl = request.nextUrl.clone();
-  if (isEn) rewriteUrl.pathname = pathname === '/en' ? '/' : pathname.replace(/^\/en/, '');
+  if (isBn) rewriteUrl.pathname = pathname === '/bn' ? '/' : pathname.replace(/^\/bn/, '');
 
   const build = () =>
-    isEn
+    isBn
       ? NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } })
       : NextResponse.next({ request: { headers: requestHeaders } });
 
