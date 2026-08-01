@@ -12,6 +12,7 @@ import type { HajjPilgrim, MgmtPackage } from '@/lib/management/types';
 import type { AffiliateOption } from '@/lib/management/affiliates';
 import { normalizeDocStatus, type DocStatusKey } from '@/lib/management/doc-status';
 import { useLocale } from '@/components/providers/LocaleProvider';
+import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminhajj';
 import { getDict as getCareDict } from '@/lib/dictionaries/areas/careof';
 import { CareOfSelect } from '@/components/manage/CareOfSelect';
@@ -124,10 +125,10 @@ export function PilgrimForm({
       }
       if (isEdit) {
         toast.success(t.toastPilgrimUpdated);
-        router.push(`/admin/hajj/${pilgrimId}`);
+        router.push(localizedPath(locale, `/admin/hajj/${pilgrimId}`));
       } else {
         toast.success(`${t.toastSavedPrefix} · ${data.tracking_no ?? ''}`.trim());
-        router.push(`/admin/hajj/${data.id}`);
+        router.push(localizedPath(locale, `/admin/hajj/${data.id}`));
       }
       router.refresh();
     } catch {

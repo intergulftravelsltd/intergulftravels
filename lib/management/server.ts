@@ -214,6 +214,41 @@ export async function recordPayment(p: {
   return { payment: data, transaction: tx };
 }
 
+/**
+ * Give a party a custom discount: Dr Package Income, Cr Customer head — the
+ * pilgrim's due drops by exactly the entered amount and the discount shows as
+ * its own line in the ledger/statement. Pure double-entry, no schema change.
+ */
+export async function recordDiscount(p: {
+  packageType: 'hajj' | 'umrah';
+  account_head_id: string;
+  amount: number;
+  date?: string;
+  narration?: string | null;
+  branch?: string;
+  ref_table?: string | null;
+  ref_id?: string | null;
+  created_by?: string | null;
+}) {
+  const income = await getSystemHead(INCOME_HEAD[p.packageType], p.branch ?? 'general');
+  if (!income) throw new Error('Package income head not found. Run the seed migration.');
+  const voucher_no = await nextVoucherNo('DV');
+  return postTransaction({
+    date: p.date,
+    type: 'journal',
+    debit_account_id: income.id,
+    credit_account_id: p.account_head_id,
+    amount: p.amount,
+    narration: p.narration ?? 'Discount',
+    branch: p.branch,
+    method: 'adjustment',
+    ref_table: p.ref_table ?? null,
+    ref_id: p.ref_id ?? null,
+    created_by: p.created_by,
+    voucher_no,
+  });
+}
+
 /** Charge a package price to a party: Dr Customer, Cr Package Income (creates the due). */
 export async function chargeParty(opts: {
   customer_head_id: string;

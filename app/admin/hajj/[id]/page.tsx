@@ -15,6 +15,7 @@ import {
 } from '@/components/manage/ui';
 import { ExportBar } from '@/components/manage/ExportBar';
 import { RecordPayment } from '@/components/manage/hajj/RecordPayment';
+import { DiscountForm } from '@/components/manage/DiscountForm';
 import { AssignPackage } from '@/components/manage/hajj/AssignPackage';
 import { StatusControl } from '@/components/manage/hajj/StatusControl';
 import { mgmtDb } from '@/lib/management/server';
@@ -230,6 +231,13 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
             <RecordPayment pilgrimId={pilgrim.id} bankAccounts={banks} />
           </Card>
 
+          <Card>
+            <h2 className="mb-4 font-display text-base font-semibold text-ink">
+              {locale === 'bn' ? 'ডিসকাউন্ট' : 'Discount'}
+            </h2>
+            <DiscountForm endpoint={`/api/admin/hajj/${pilgrim.id}/discount`} />
+          </Card>
+
           <div>
             <h2 className="mb-3 font-display text-base font-semibold text-ink">{t.paymentHistoryHeading}</h2>
             {payments.length === 0 ? (
@@ -261,6 +269,8 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
                       <td className={`${tdClass} whitespace-nowrap text-right`}>
                         <Link
                           href={localizedPath(locale, `/admin/receipt/${p.id}`)}
+                          target="_blank"
+                          rel="noopener"
                           className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700"
                         >
                           <Printer className="h-3.5 w-3.5" /> {locale === 'bn' ? 'রসিদ' : 'Receipt'}

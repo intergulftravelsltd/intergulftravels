@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { PageHeader, Card, Money, Badge, EmptyState, TableWrap, thClass, tdClass } from '@/components/manage/ui';
 import { RecordPayment } from '@/components/manage/umrah/RecordPayment';
+import { DiscountForm } from '@/components/manage/DiscountForm';
 import { AssignPackage } from '@/components/manage/umrah/AssignPackage';
 import { StatusControl } from '@/components/manage/umrah/StatusControl';
 import { PrintProfile } from '@/components/manage/umrah/PrintProfile';
@@ -276,6 +277,8 @@ export default async function PassengerProfilePage({ params }: { params: { id: s
                       <td className={`${tdClass} whitespace-nowrap text-right`}>
                         <Link
                           href={localizedPath(locale, `/admin/receipt/${p.id}`)}
+                          target="_blank"
+                          rel="noopener"
                           className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700"
                         >
                           <Printer className="h-3.5 w-3.5" /> {locale === 'bn' ? 'রসিদ' : 'Receipt'}
@@ -349,6 +352,13 @@ export default async function PassengerProfilePage({ params }: { params: { id: s
               <Receipt className="h-4 w-4 text-brand-600" /> {t.recordPaymentHeading}
             </h2>
             <RecordPayment passengerId={passenger.id} bankAccounts={bankAccounts} due={due} />
+          </Card>
+
+          <Card className="space-y-4">
+            <h2 className="font-display text-lg font-semibold text-ink">
+              {locale === 'bn' ? 'ডিসকাউন্ট' : 'Discount'}
+            </h2>
+            <DiscountForm endpoint={`/api/admin/umrah/${passenger.id}/discount`} />
           </Card>
         </div>
       </div>

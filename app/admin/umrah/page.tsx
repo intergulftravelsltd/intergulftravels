@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Users, UserCheck, HandCoins, CalendarClock, Plus, Plane, Printer } from 'lucide-react';
+import { Users, UserCheck, HandCoins, CalendarClock, Plus, Plane, Printer, Share2 } from 'lucide-react';
 import {
   PageHeader,
   StatCard,
@@ -12,6 +12,8 @@ import {
 } from '@/components/manage/ui';
 import { ExportBar } from '@/components/manage/ExportBar';
 import { RecordRowActions } from '@/components/manage/RecordRowActions';
+import { DocStatusViewer } from '@/components/manage/DocStatusViewer';
+import { sharePath } from '@/lib/management/share-token';
 import { Button } from '@/components/ui/Button';
 import { PassengerFilters } from '@/components/manage/umrah/PassengerFilters';
 import { loadPassengers, loadUmrahPackages, isExpiringSoon, monthsUntil, type PassengerRow } from '@/lib/management/umrah';
@@ -104,6 +106,9 @@ export default async function UmrahPassengersPage({
               rows={exportRows}
               orientation="l"
             />
+            <Button href={localizedPath(locale, '/admin/group-payment?type=umrah')} variant="outline">
+              <HandCoins className="h-4 w-4" /> {locale === 'bn' ? 'গ্রুপ পেমেন্ট' : 'Group payment'}
+            </Button>
             <Button href={localizedPath(locale, '/admin/umrah/new')}>
               <Plus className="h-4 w-4" /> {t.newPassenger}
             </Button>
@@ -229,11 +234,23 @@ export default async function UmrahPassengersPage({
                     <div className="inline-flex items-center gap-2">
                       <Link
                         href={localizedPath(locale, `/admin/receipt/passenger/umrah/${r.id}`)}
+                        target="_blank"
+                        rel="noopener"
                         title={locale === 'bn' ? 'রসিদ প্রিন্ট' : 'Print receipt'}
                         className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700"
                       >
                         <Printer className="h-3.5 w-3.5" />
                       </Link>
+                      <a
+                        href={sharePath('umrah', r.id)}
+                        target="_blank"
+                        rel="noopener"
+                        title={locale === 'bn' ? 'শেয়ারযোগ্য ফরম লিংক' : 'Shareable form link'}
+                        className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700"
+                      >
+                        <Share2 className="h-3.5 w-3.5" />
+                      </a>
+                      <DocStatusViewer name={r.name} subtitle={r.passport_no ?? undefined} value={r.doc_status} />
                       <RecordRowActions
                         editHref={localizedPath(locale, `/admin/umrah/${r.id}/edit`)}
                         deleteEndpoint={`/api/admin/umrah/${r.id}`}

@@ -248,6 +248,7 @@ export function branchCompany(branch?: string | null): {
   phone: string;
   email: string;
   license: string;
+  logo: string;
 } {
   const b = branches.find((x) => x.slug === branch);
   if (b) {
@@ -257,6 +258,7 @@ export function branchCompany(branch?: string | null): {
       phone: (b.offices[0]?.phones ?? contact.phones).join(', '),
       email: b.email,
       license: b.role,
+      logo: b.logo,
     };
   }
   return {
@@ -265,6 +267,7 @@ export function branchCompany(branch?: string | null): {
     phone: contact.phones.join(', '),
     email: contact.emails[0],
     license: siteConfig.license,
+    logo: branches[0].logo,
   };
 }
 

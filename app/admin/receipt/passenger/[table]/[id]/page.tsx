@@ -18,16 +18,18 @@ export default async function PassengerReceiptPage({ params }: { params: { table
   const db = mgmtDb();
   const scope = await getStaffScope();
 
-  const { data: personRow } = await db
-    .from(table)
-    .select('name, phone, address, package_id, account_head_id, branch, passport_no')
-    .eq('id', params.id)
-    .maybeSingle();
+  // hajj_pilgrims has a separate `district` column; umrah_passengers doesn't.
+  const columns =
+    params.table === 'hajj'
+      ? 'name, phone, address, district, package_id, account_head_id, branch, passport_no'
+      : 'name, phone, address, package_id, account_head_id, branch, passport_no';
+  const { data: personRow } = await db.from(table).select(columns).eq('id', params.id).maybeSingle();
   if (!personRow) notFound();
-  const person = personRow as {
+  const person = personRow as unknown as {
     name: string;
     phone: string | null;
     address: string | null;
+    district?: string | null;
     package_id: string | null;
     account_head_id: string | null;
     branch: string;
@@ -51,6 +53,7 @@ export default async function PassengerReceiptPage({ params }: { params: { table
       name: person.name,
       phone: person.phone,
       address: person.address,
+      district: person.district ?? null,
       passportNo: person.passport_no,
       branch: person.branch,
     },

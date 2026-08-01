@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Users, UserPlus, BadgeCheck, Wallet, Printer } from 'lucide-react';
+import { Users, UserPlus, BadgeCheck, Wallet, Printer, Share2, HandCoins } from 'lucide-react';
 import {
   PageHeader,
   StatCard,
@@ -12,6 +12,8 @@ import {
 } from '@/components/manage/ui';
 import { ExportBar } from '@/components/manage/ExportBar';
 import { RecordRowActions } from '@/components/manage/RecordRowActions';
+import { DocStatusViewer } from '@/components/manage/DocStatusViewer';
+import { sharePath } from '@/lib/management/share-token';
 import { Button } from '@/components/ui/Button';
 import { mgmtDb } from '@/lib/management/server';
 import { getStaffScope } from '@/lib/management/scope';
@@ -166,6 +168,9 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
               rows={exportRows}
               orientation="l"
             />
+            <Button href={localizedPath(locale, '/admin/group-payment?type=hajj')} size="sm" variant="outline">
+              <HandCoins className="h-4 w-4" /> {locale === 'bn' ? 'গ্রুপ পেমেন্ট' : 'Group payment'}
+            </Button>
             <Button href={localizedPath(locale, '/admin/hajj/new')} size="sm">
               <UserPlus className="h-4 w-4" /> {t.newPreReg}
             </Button>
@@ -339,11 +344,23 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                   <div className="inline-flex items-center gap-2">
                     <Link
                       href={localizedPath(locale, `/admin/receipt/passenger/hajj/${p.id}`)}
+                      target="_blank"
+                      rel="noopener"
                       title={locale === 'bn' ? 'রসিদ প্রিন্ট' : 'Print receipt'}
                       className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700"
                     >
                       <Printer className="h-3.5 w-3.5" />
                     </Link>
+                    <a
+                      href={sharePath('hajj', p.id)}
+                      target="_blank"
+                      rel="noopener"
+                      title={locale === 'bn' ? 'শেয়ারযোগ্য ফরম লিংক' : 'Shareable form link'}
+                      className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700"
+                    >
+                      <Share2 className="h-3.5 w-3.5" />
+                    </a>
+                    <DocStatusViewer name={p.name} subtitle={p.tracking_no ?? undefined} value={p.doc_status} />
                     <RecordRowActions
                       editHref={localizedPath(locale, `/admin/hajj/${p.id}/edit`)}
                       deleteEndpoint={`/api/admin/hajj/${p.id}`}

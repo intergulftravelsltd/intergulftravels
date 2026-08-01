@@ -16,6 +16,8 @@ export type StatementParty = {
   name: string;
   phone: string | null;
   address: string | null;
+  /** Shown first in the address line (client wants the district leading). */
+  district?: string | null;
   passportNo: string | null;
   branch: string;
 };
@@ -86,8 +88,10 @@ export async function buildStatementReceipt(opts: {
     date: fmtDate(new Date().toISOString()),
     branch: branchLabel(opts.party.branch),
     partyName: opts.party.name,
+    partyPassport: opts.party.passportNo || '',
     partyPhone: opts.party.phone || '—',
-    partyAddress: opts.party.address || '',
+    // District leads the address line, per the printed-receipt format.
+    partyAddress: [opts.party.district, opts.party.address].filter(Boolean).join(', '),
     packageName: opts.packageName,
     amount: money(totalPaid, false),
     amountWords: '',

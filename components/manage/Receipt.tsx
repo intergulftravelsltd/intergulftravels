@@ -4,12 +4,13 @@ import { useEffect } from 'react';
 import { Printer, ArrowLeft } from 'lucide-react';
 
 export type ReceiptData = {
-  company: { name: string; address: string; phone: string; email: string; license: string };
+  company: { name: string; address: string; phone: string; email: string; license: string; logo?: string };
   program: string; // "Umrah" / "Hajj" (already localized)
   receiptNo: string;
   date: string;
   branch: string;
   partyName: string;
+  partyPassport?: string;
   partyPhone: string;
   partyAddress: string;
   packageName: string;
@@ -54,6 +55,7 @@ const L = {
     print: 'Print / Save PDF',
     back: 'Back',
     only: 'only',
+    passport: 'Passport No',
     colDate: 'Date',
     colType: 'Type',
     colMethod: 'Method',
@@ -94,6 +96,7 @@ const L = {
     print: 'প্রিন্ট / PDF সেভ',
     back: 'ফিরুন',
     only: 'মাত্র',
+    passport: 'পাসপোর্ট নং',
     colDate: 'তারিখ',
     colType: 'ধরন',
     colMethod: 'মাধ্যম',
@@ -136,6 +139,7 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
           #receipt, #receipt * { visibility: visible !important; }
           #receipt { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: 0 !important; }
           .no-print { display: none !important; }
+          #receipt-watermark { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           @page { margin: 14mm; }
         }
       `}</style>
@@ -143,7 +147,12 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
       <div className="no-print mx-auto mb-4 flex max-w-2xl items-center justify-between">
         <button
           type="button"
-          onClick={() => window.history.back()}
+          onClick={() => {
+            // Opened in its own tab (from the list print buttons) → close it;
+            // otherwise behave like a normal back button.
+            if (window.history.length > 1) window.history.back();
+            else window.close();
+          }}
           className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
         >
           <ArrowLeft className="h-4 w-4" /> {t.back}
@@ -157,7 +166,19 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
         </button>
       </div>
 
-      <div id="receipt" className="mx-auto max-w-2xl rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+      <div id="receipt" className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+        {/* Brand watermark behind the content */}
+        {data.company.logo && (
+          <img
+            id="receipt-watermark"
+            src={data.company.logo}
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-1/2 w-[65%] -translate-x-1/2 -translate-y-1/2 select-none"
+            style={{ opacity: 0.3 }}
+          />
+        )}
+        <div className="relative">
         {/* Company header */}
         <div className="border-b-2 border-emerald-700 pb-4 text-center">
           <h1 className="text-2xl font-bold tracking-tight text-emerald-800">{data.company.name}</h1>
@@ -223,6 +244,7 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
         <div className="rounded-xl bg-gray-50 p-4">
           <p className="text-sm text-gray-500">{data.isRefund ? t.refundTo : t.receivedFrom}</p>
           <p className="text-lg font-bold text-gray-900">{data.partyName}</p>
+          {data.partyPassport && <Row label={t.passport} value={data.partyPassport} />}
           <Row label={t.phone} value={data.partyPhone} />
           {data.partyAddress && <Row label={t.address} value={data.partyAddress} />}
           <Row label={t.forProgram} value={data.program} />
@@ -318,6 +340,7 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
           <div className="text-center">
             <div className="w-48 border-t border-gray-400 pt-1 text-sm font-medium text-gray-700">{t.signature}</div>
           </div>
+        </div>
         </div>
       </div>
     </div>

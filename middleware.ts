@@ -25,9 +25,14 @@ export async function middleware(request: NextRequest) {
 
   let response = build();
 
+  // Session refresh needs a network round-trip to Supabase auth — only pay for
+  // it when the visitor actually has an auth cookie. Anonymous traffic (all of
+  // the public site, and everything PageSpeed/Lighthouse measures) skips it.
+  const hasAuthCookie = request.cookies.getAll().some((c) => c.name.startsWith('sb-'));
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (url && key) {
+  if (url && key && hasAuthCookie) {
     const supabase = createServerClient(url, key, {
       cookies: {
         getAll() {
