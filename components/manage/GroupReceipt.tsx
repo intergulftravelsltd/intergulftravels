@@ -92,9 +92,19 @@ export function GroupReceipt({ data, locale }: { data: GroupReceiptData; locale:
         @media print {
           body * { visibility: hidden !important; }
           #receipt, #receipt * { visibility: visible !important; }
-          #receipt { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: 0 !important; }
+          #receipt { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: 0 !important; overflow: visible !important; }
           .no-print { display: none !important; }
-          #receipt-watermark { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          /* Pin the watermark to the centre of the printed page so it can never
+             be clipped by the receipt box or a fragment boundary. */
+          #receipt-watermark {
+            position: fixed !important;
+            left: 50% !important;
+            top: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 62% !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
           @page { margin: 14mm; }
         }
       `}</style>
@@ -126,8 +136,8 @@ export function GroupReceipt({ data, locale }: { data: GroupReceiptData; locale:
             src={data.company.logo}
             alt=""
             aria-hidden
-            className="pointer-events-none absolute left-1/2 top-1/2 w-[65%] -translate-x-1/2 -translate-y-1/2 select-none"
-            style={{ opacity: 0.3 }}
+            className="pointer-events-none absolute left-1/2 top-1/2 w-[62%] -translate-x-1/2 -translate-y-1/2 select-none"
+            style={{ opacity: 0.12 }}
           />
         )}
         <div className="relative">

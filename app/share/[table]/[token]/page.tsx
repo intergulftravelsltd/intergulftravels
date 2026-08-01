@@ -164,9 +164,19 @@ export default async function SharedPilgrimFormPage({ params }: { params: { tabl
         @media print {
           body * { visibility: hidden !important; }
           #share-form, #share-form * { visibility: visible !important; }
-          #share-form { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: 0 !important; }
+          #share-form { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: 0 !important; overflow: visible !important; }
           .no-print { display: none !important; }
-          #share-watermark { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          /* Pin the watermark to the centre of the printed page so it can never
+             be clipped by the form box or a fragment boundary. */
+          #share-watermark {
+            position: fixed !important;
+            left: 50% !important;
+            top: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 62% !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
           @page { margin: 12mm; }
         }
       `}</style>
@@ -180,8 +190,8 @@ export default async function SharedPilgrimFormPage({ params }: { params: { tabl
           src={company.logo}
           alt=""
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 w-[65%] -translate-x-1/2 -translate-y-1/2 select-none"
-          style={{ opacity: 0.3 }}
+          className="pointer-events-none absolute left-1/2 top-1/2 w-[62%] -translate-x-1/2 -translate-y-1/2 select-none"
+          style={{ opacity: 0.12 }}
         />
 
         <div className="relative">
