@@ -191,7 +191,10 @@ export default async function SharedPilgrimFormPage({ params }: { params: { tabl
           alt=""
           aria-hidden
           className="pointer-events-none absolute left-1/2 top-1/2 w-[62%] -translate-x-1/2 -translate-y-1/2 select-none"
-          style={{ opacity: 0.12 }}
+          // Uniform grey stamp: without the grayscale+brightness filter the
+          // light-coloured parts of the logos fade into the white paper and the
+          // watermark looks "half printed".
+          style={{ opacity: 0.16, filter: 'grayscale(1) brightness(0.45)' }}
         />
 
         <div className="relative">
