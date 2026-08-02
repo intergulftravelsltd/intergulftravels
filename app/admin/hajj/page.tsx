@@ -77,6 +77,13 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
   const pkgById = new Map<string, MgmtPackage>(packages.map((p) => [p.id, p]));
   const affMap = new Map(affiliates.map((a) => [a.id, a]));
 
+  // Permanent family-group badges (migration 0008; harmless when absent).
+  const nameById = new Map(allPilgrims.map((p) => [p.id, p.name]));
+  const groupMembersByHead = new Map<string, number>();
+  for (const p of allPilgrims) {
+    if (p.group_head_id) groupMembersByHead.set(p.group_head_id, (groupMembersByHead.get(p.group_head_id) ?? 0) + 1);
+  }
+
   // Year tabs: every year present plus the current + next year.
   const yearSet = new Set<number>([CURRENT_YEAR, CURRENT_YEAR + 1]);
   for (const p of allPilgrims) if (p.year) yearSet.add(p.year);
@@ -313,6 +320,18 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                   )}
                   {careOf && (
                     <span className="block text-xs font-medium text-brand-700">{ct.careOf}: {careOf.name}</span>
+                  )}
+                  {p.group_head_id && nameById.has(p.group_head_id) && (
+                    <span className="block text-xs font-medium text-amber-600">
+                      {locale === 'bn' ? 'গ্রুপ' : 'Group'}: {nameById.get(p.group_head_id)}
+                    </span>
+                  )}
+                  {groupMembersByHead.has(p.id) && (
+                    <span className="block text-xs font-medium text-amber-600">
+                      {locale === 'bn'
+                        ? `গ্রুপ প্রধান · ${groupMembersByHead.get(p.id)} জন`
+                        : `Group head · ${groupMembersByHead.get(p.id)} members`}
+                    </span>
                   )}
                 </td>
                 <td className={tdClass}>{p.phone ?? '—'}</td>

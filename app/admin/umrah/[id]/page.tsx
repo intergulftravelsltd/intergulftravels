@@ -18,6 +18,9 @@ import {
 import { PageHeader, Card, Money, Badge, EmptyState, TableWrap, thClass, tdClass } from '@/components/manage/ui';
 import { RecordPayment } from '@/components/manage/umrah/RecordPayment';
 import { DiscountForm } from '@/components/manage/DiscountForm';
+import { AssignGroupHead } from '@/components/manage/AssignGroupHead';
+import { GroupLedgerCard } from '@/components/manage/GroupLedgerCard';
+import { loadGroupLedger, loadGroupHeadOptions } from '@/lib/management/group';
 import { AssignPackage } from '@/components/manage/umrah/AssignPackage';
 import { StatusControl } from '@/components/manage/umrah/StatusControl';
 import { PrintProfile } from '@/components/manage/umrah/PrintProfile';
@@ -104,6 +107,15 @@ export default async function PassengerProfilePage({ params }: { params: { id: s
   const t = getDict(locale);
 
   if (!passenger) notFound();
+
+  // Permanent family-group context (migration 0008; loaders are best-effort).
+  const [group, groupHeadOptions] = await Promise.all([
+    loadGroupLedger('umrah_passengers', passenger.id),
+    loadGroupHeadOptions('umrah_passengers', passenger.id, passenger.branch),
+  ]);
+  const isGroupMember = Boolean(passenger.group_head_id) && group !== null;
+  const groupCurrentHead = isGroupMember && group ? { id: group.headId, name: group.headName } : null;
+  const groupMemberCount = group && group.headId === passenger.id ? group.members.length - 1 : 0;
 
   const statusLabel = (s: string) =>
     s === 'cancelled' ? t.statusCancelled : s === 'completed' ? t.statusCompleted : t.statusActive;
@@ -360,6 +372,21 @@ export default async function PassengerProfilePage({ params }: { params: { id: s
             </h2>
             <DiscountForm endpoint={`/api/admin/umrah/${passenger.id}/discount`} />
           </Card>
+
+          <Card>
+            <h2 className="mb-3 font-display text-lg font-semibold text-ink">
+              {locale === 'bn' ? 'গ্রুপ / পরিবার' : 'Group / Family'}
+            </h2>
+            <AssignGroupHead
+              table="umrah"
+              personId={passenger.id}
+              currentHead={groupCurrentHead}
+              memberCount={groupMemberCount}
+              options={groupHeadOptions}
+            />
+          </Card>
+
+          {group && <GroupLedgerCard group={group} table="umrah" locale={locale} />}
         </div>
       </div>
     </>

@@ -71,6 +71,13 @@ export default async function UmrahPassengersPage({
   const affMap = new Map(affiliates.map((a) => [a.id, a]));
   const rows = applyFilters(all, searchParams);
 
+  // Permanent family-group badges (migration 0008; harmless when absent).
+  const nameById = new Map(all.map((p) => [p.id, p.name]));
+  const groupMembersByHead = new Map<string, number>();
+  for (const p of all) {
+    if (p.group_head_id) groupMembersByHead.set(p.group_head_id, (groupMembersByHead.get(p.group_head_id) ?? 0) + 1);
+  }
+
   const statusLabel = (s: string) =>
     s === 'cancelled' ? t.statusCancelled : s === 'completed' ? t.statusCompleted : t.statusActive;
 
@@ -187,6 +194,18 @@ export default async function UmrahPassengersPage({
                     )}
                     {careOf && (
                       <p className="text-xs font-medium text-brand-700">{ct.careOf}: {careOf.name}</p>
+                    )}
+                    {r.group_head_id && nameById.has(r.group_head_id) && (
+                      <p className="text-xs font-medium text-amber-600">
+                        {locale === 'bn' ? 'গ্রুপ' : 'Group'}: {nameById.get(r.group_head_id)}
+                      </p>
+                    )}
+                    {groupMembersByHead.has(r.id) && (
+                      <p className="text-xs font-medium text-amber-600">
+                        {locale === 'bn'
+                          ? `গ্রুপ প্রধান · ${groupMembersByHead.get(r.id)} জন`
+                          : `Group head · ${groupMembersByHead.get(r.id)} members`}
+                      </p>
                     )}
                     {r.status !== 'active' && (
                       <span className="mt-1 inline-block">

@@ -16,6 +16,9 @@ import {
 import { ExportBar } from '@/components/manage/ExportBar';
 import { RecordPayment } from '@/components/manage/hajj/RecordPayment';
 import { DiscountForm } from '@/components/manage/DiscountForm';
+import { AssignGroupHead } from '@/components/manage/AssignGroupHead';
+import { GroupLedgerCard } from '@/components/manage/GroupLedgerCard';
+import { loadGroupLedger, loadGroupHeadOptions } from '@/lib/management/group';
 import { AssignPackage } from '@/components/manage/hajj/AssignPackage';
 import { StatusControl } from '@/components/manage/hajj/StatusControl';
 import { mgmtDb } from '@/lib/management/server';
@@ -75,12 +78,20 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
   const pilgrim = await loadPilgrim(params.id);
   if (!pilgrim) notFound();
 
-  const [head, payments, packages, banks] = await Promise.all([
+  const [head, payments, packages, banks, group, headOptions] = await Promise.all([
     loadHead(pilgrim.account_head_id),
     loadPayments(pilgrim.id),
     loadHajjPackages(),
     loadBankAccounts(),
+    loadGroupLedger('hajj_pilgrims', pilgrim.id),
+    loadGroupHeadOptions('hajj_pilgrims', pilgrim.id, pilgrim.branch),
   ]);
+
+  // Permanent family-group context: who this pilgrim's head is (when a member),
+  // and how many members sit under them (when they are the head).
+  const isGroupMember = Boolean(pilgrim.group_head_id) && group !== null;
+  const groupCurrentHead = isGroupMember && group ? { id: group.headId, name: group.headName } : null;
+  const groupMemberCount = group && group.headId === pilgrim.id ? group.members.length - 1 : 0;
 
   const pkgById = new Map<string, MgmtPackage>(packages.map((p) => [p.id, p]));
   const assignedPkg = pilgrim.package_id ? pkgById.get(pilgrim.package_id) : undefined;
@@ -225,6 +236,21 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
               currentPackageId={pilgrim.package_id}
             />
           </Card>
+
+          <Card>
+            <h2 className="mb-3 font-display text-base font-semibold text-ink">
+              {locale === 'bn' ? 'গ্রুপ / পরিবার' : 'Group / Family'}
+            </h2>
+            <AssignGroupHead
+              table="hajj"
+              personId={pilgrim.id}
+              currentHead={groupCurrentHead}
+              memberCount={groupMemberCount}
+              options={headOptions}
+            />
+          </Card>
+
+          {group && <GroupLedgerCard group={group} table="hajj" locale={locale} />}
 
           <Card>
             <h2 className="mb-4 font-display text-base font-semibold text-ink">{t.recordPaymentHeading}</h2>

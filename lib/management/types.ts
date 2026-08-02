@@ -94,6 +94,8 @@ export type HajjPilgrim = {
   account_head_id: string | null;
   affiliate_id: string | null;
   doc_status: string[] | null;
+  /** Permanent family/group link: id of the group head row (0008). */
+  group_head_id?: string | null;
   branch: string;
   status: 'active' | 'cancelled' | 'completed';
   token_money: number | null;
@@ -116,6 +118,8 @@ export type UmrahPassenger = {
   account_head_id: string | null;
   affiliate_id: string | null;
   doc_status: string[] | null;
+  /** Permanent family/group link: id of the group head row (0008). */
+  group_head_id?: string | null;
   branch: string;
   status: 'active' | 'cancelled' | 'completed';
   token_money: number | null;
