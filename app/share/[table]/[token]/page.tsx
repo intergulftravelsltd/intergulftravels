@@ -4,7 +4,7 @@ import { mgmtDb } from '@/lib/management/server';
 import { verifyShareToken } from '@/lib/management/share-token';
 import { naturalBalance, type AccountHead } from '@/lib/management/types';
 import { money } from '@/lib/management/format';
-import { DOC_STATUS_KEYS, docStatusLabel, normalizeDocStatus } from '@/lib/management/doc-status';
+import { docStatusKeysFor, docStatusLabel, normalizeDocStatus } from '@/lib/management/doc-status';
 import { branchCompany } from '@/lib/site';
 import { getLocale } from '@/lib/i18n-server';
 import { ShareActions } from '@/components/manage/ShareActions';
@@ -254,7 +254,7 @@ export default async function SharedPilgrimFormPage({ params }: { params: { tabl
           <div className="mt-6">
             <p className="mb-2 text-sm font-semibold text-gray-700">{t.docsHeading}</p>
             <div className="grid gap-x-8 sm:grid-cols-2">
-              {DOC_STATUS_KEYS.map((k, i) => {
+              {docStatusKeysFor(isHajj ? 'hajj' : 'umrah').map((k, i) => {
                 const ok = docsDone.includes(k);
                 return (
                   <div key={k} className="flex items-center justify-between gap-3 border-b border-gray-100 py-1.5 text-sm">

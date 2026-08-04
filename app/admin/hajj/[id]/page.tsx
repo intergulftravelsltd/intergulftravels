@@ -100,6 +100,17 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
   const paid = head ? Number(head.credit_total) : 0;
   const due = head ? Math.max(0, naturalBalance(head)) : 0;
 
+  // In a family group the top summary mirrors the combined group figures, so
+  // the page never shows two different numbers for the same pilgrim.
+  const summaryCharged = group ? group.totalCharged : charged;
+  const summaryPaid = group ? group.totalPaid : paid;
+  const summaryDue = group ? group.totalDue : due;
+  const groupHint = group
+    ? locale === 'bn'
+      ? `গ্রুপ মোট — প্রধান: ${group.headName}`
+      : `Group total — head: ${group.headName}`
+    : undefined;
+
   const pkgOptions = packages
     .filter((p) => p.active || p.id === pilgrim.package_id)
     .map((p) => ({ id: p.id, name: p.name, price: p.price, year: p.year }));
@@ -166,11 +177,16 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
         }
       />
 
-      {/* Account summary */}
+      {/* Account summary (combined group figures when in a family group) */}
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <StatCard label={t.packageCharged} value={<Money value={charged} />} accent="slate" />
-        <StatCard label={t.totalPaid} value={<Money value={paid} />} accent="emerald" />
-        <StatCard label={t.dueBalance} value={<Money value={due} />} accent={due > 0 ? 'red' : 'emerald'} />
+        <StatCard label={t.packageCharged} value={<Money value={summaryCharged} />} hint={groupHint} accent="slate" />
+        <StatCard label={t.totalPaid} value={<Money value={summaryPaid} />} hint={groupHint} accent="emerald" />
+        <StatCard
+          label={t.dueBalance}
+          value={<Money value={summaryDue} />}
+          hint={groupHint}
+          accent={summaryDue > 0 ? 'red' : 'emerald'}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

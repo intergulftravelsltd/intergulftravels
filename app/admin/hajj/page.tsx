@@ -176,6 +176,19 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
     r.p.status,
   ]);
 
+  const fmtDob = (d?: string | null) =>
+    d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+
+  // Format B — Airlines / Visa office list: no money or phone, just identity.
+  const airlinesRows = rows.map((r, i) => [
+    i + 1,
+    r.p.name,
+    r.p.passport_no ?? '',
+    fmtDob(r.p.dob),
+    r.p.nid ?? '',
+    r.p.note ?? '',
+  ]);
+
   const qs = (patch: Partial<Search>) => {
     const sp = new URLSearchParams();
     const merged = { year: String(selectedYear), reg_type: regType, package: pkgFilter, branch: branchFilter, status: statusFilter, docs: docsFilter, care_of: careOfFilter, q: searchParams.q ?? '', ...patch };
@@ -191,14 +204,44 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
         subtitle={t.pilgrimsSubtitle}
         actions={
           <>
-            <ExportBar
-              filename={`hajj-pilgrims-${selectedYear}`}
-              title={`${t.pilgrimsTitle} — ${selectedYear}`}
-              subtitle={`${filtered.length} ${filtered.length === 1 ? t.recordSingular : t.recordPlural}`}
-              headers={[t.exTracking, t.exName, t.exPhone, t.exYear, t.exType, t.exPackage, t.exPaid, t.exDue, t.exBranch, t.exStatus]}
-              rows={exportRows}
-              orientation="l"
-            />
+            <div className="flex flex-col gap-2">
+              <ExportBar
+                label={locale === 'bn' ? 'বকেয়া তালিকা' : 'Due list'}
+                filename={`hajj-pilgrims-${selectedYear}`}
+                title={`${t.pilgrimsTitle} — ${selectedYear}`}
+                subtitle={`${filtered.length} ${filtered.length === 1 ? t.recordSingular : t.recordPlural}`}
+                headers={[t.exTracking, t.exName, t.exPhone, t.exYear, t.exType, t.exPackage, t.exPaid, t.exDue, t.exBranch, t.exStatus]}
+                rows={exportRows}
+                orientation="l"
+              />
+              <ExportBar
+                label={locale === 'bn' ? 'এয়ারলাইনস / ভিসা' : 'Airlines / Visa'}
+                filename={`hajj-airlines-visa-list-${selectedYear}`}
+                title={
+                  locale === 'bn'
+                    ? `হজ হাজী তালিকা — এয়ারলাইনস / ভিসা — ${selectedYear}`
+                    : `Hajj Pilgrim List — Airlines / Visa — ${selectedYear}`
+                }
+                subtitle={`${filtered.length} ${filtered.length === 1 ? t.recordSingular : t.recordPlural}`}
+                headers={
+                  locale === 'bn'
+                    ? ['ক্রমিক', 'নাম', 'পাসপোর্ট নং', 'জন্ম তারিখ', 'এনআইডি', 'নোট']
+                    : ['Serial', 'Name', 'Passport No', 'Date of Birth', 'NID', 'Note']
+                }
+                rows={airlinesRows}
+                orientation="l"
+              />
+            </div>
+            <Button
+              href={localizedPath(
+                locale,
+                `/admin/hajj/doc-report?year=${selectedYear}${pkgFilter ? `&package=${pkgFilter}` : ''}`,
+              )}
+              size="sm"
+              variant="outline"
+            >
+              {locale === 'bn' ? 'ডকুমেন্ট রিপোর্ট' : 'Document report'}
+            </Button>
             <Button href={localizedPath(locale, '/admin/group-payment?type=hajj')} size="sm" variant="outline">
               <HandCoins className="h-4 w-4" /> {locale === 'bn' ? 'গ্রুপ পেমেন্ট' : 'Group payment'}
             </Button>

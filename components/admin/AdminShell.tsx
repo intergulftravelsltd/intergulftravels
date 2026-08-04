@@ -36,6 +36,7 @@ import {
   Handshake,
   KeyRound,
   Contact,
+  BookOpen,
   type LucideIcon,
 } from 'lucide-react';
 import { LogoMark } from '@/components/brand/Logo';
@@ -64,6 +65,7 @@ const NAV: NavGroup[] = [
       { labelKey: 'vouchers', href: '/admin/accounts/vouchers', icon: Receipt },
       { labelKey: 'accountHeads', href: '/admin/accounts/heads', icon: Landmark },
       { labelKey: 'cashBank', href: '/admin/accounts/cash-bank', icon: Banknote },
+      { labelKey: 'cashBook', href: '/admin/accounts/cash-book', icon: BookOpen },
       { labelKey: 'customerDues', href: '/admin/accounts/due', icon: HandCoins },
       { labelKey: 'expenses', href: '/admin/accounts/expenses', icon: ScrollText },
       { labelKey: 'loans', href: '/admin/accounts/loans', icon: ArrowLeftRight },

@@ -133,6 +133,11 @@ export default async function PassengerProfilePage({ params }: { params: { id: s
 
   const due = head ? Math.max(0, naturalBalance(head)) : 0;
   const paid = payments.reduce((s, p) => s + (p.type === 'refund' ? -Number(p.amount) : Number(p.amount)), 0);
+
+  // In a family group the summary card mirrors the combined group figures, so
+  // the page never shows two different numbers for the same passenger.
+  const summaryPaid = group ? group.totalPaid : paid;
+  const summaryDue = group ? group.totalDue : due;
   const months = monthsUntil(passenger.passport_expiry);
   const expiring = isExpiringSoon(passenger.passport_expiry);
   const expired = months !== null && months < 0;
@@ -314,15 +319,22 @@ export default async function PassengerProfilePage({ params }: { params: { id: s
                 <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-brand-700">
                   <Wallet className="h-3.5 w-3.5" /> {t.paid}
                 </p>
-                <p className="mt-1 font-display text-lg font-semibold text-ink">{money(paid)}</p>
+                <p className="mt-1 font-display text-lg font-semibold text-ink">{money(summaryPaid)}</p>
               </div>
-              <div className={`rounded-2xl p-4 ${due > 0 ? 'bg-red-50' : 'bg-muted'}`}>
-                <p className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide ${due > 0 ? 'text-red-600' : 'text-ink-muted'}`}>
+              <div className={`rounded-2xl p-4 ${summaryDue > 0 ? 'bg-red-50' : 'bg-muted'}`}>
+                <p className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide ${summaryDue > 0 ? 'text-red-600' : 'text-ink-muted'}`}>
                   <HandCoins className="h-3.5 w-3.5" /> {t.due}
                 </p>
-                <p className={`mt-1 font-display text-lg font-semibold ${due > 0 ? 'text-red-600' : 'text-ink'}`}>{money(due)}</p>
+                <p className={`mt-1 font-display text-lg font-semibold ${summaryDue > 0 ? 'text-red-600' : 'text-ink'}`}>{money(summaryDue)}</p>
               </div>
             </div>
+            {group && (
+              <p className="text-xs font-medium text-amber-600">
+                {locale === 'bn'
+                  ? `গ্রুপ মোট — প্রধান: ${group.headName} · ${group.members.length} জন`
+                  : `Group total — head: ${group.headName} · ${group.members.length} members`}
+              </p>
+            )}
             {packagePrice != null && (
               <p className="text-xs text-ink-muted">
                 {t.packagePriceLine} <span className="font-medium text-ink">{money(packagePrice)}</span>

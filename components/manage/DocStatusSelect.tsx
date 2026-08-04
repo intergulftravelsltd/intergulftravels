@@ -2,20 +2,26 @@
 
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DOC_STATUS_KEYS, DOC_STATUS_TOTAL, docStatusLabel, type DocStatusKey } from '@/lib/management/doc-status';
+import { docStatusKeysFor, docStatusTotalFor, docStatusLabel, type DocProgram, type DocStatusKey } from '@/lib/management/doc-status';
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { getDict } from '@/lib/dictionaries/areas/careof';
 
-/** Multi-select toggle for the per-pilgrim document checkpoints. Controlled. */
+/** Multi-select toggle for the per-pilgrim document checkpoints. Controlled.
+ *  Program-aware: umrah hides the two Hajj-only registration steps. */
 export function DocStatusSelect({
   value,
   onChange,
+  program = 'hajj',
 }: {
   value: DocStatusKey[];
   onChange: (v: DocStatusKey[]) => void;
+  program?: DocProgram;
 }) {
   const locale = useLocale();
   const t = getDict(locale);
+  const keys = docStatusKeysFor(program);
+  const total = docStatusTotalFor(program);
+  const done = value.filter((k) => keys.includes(k)).length;
 
   const toggle = (k: DocStatusKey) =>
     onChange(value.includes(k) ? value.filter((x) => x !== k) : [...value, k]);
@@ -23,7 +29,7 @@ export function DocStatusSelect({
   return (
     <div>
       <div className="flex flex-wrap gap-2">
-        {DOC_STATUS_KEYS.map((k) => {
+        {keys.map((k) => {
           const on = value.includes(k);
           return (
             <button
@@ -44,7 +50,7 @@ export function DocStatusSelect({
           );
         })}
       </div>
-      <p className="mt-2 text-xs text-ink-muted">{t.docDone(value.length, DOC_STATUS_TOTAL)}</p>
+      <p className="mt-2 text-xs text-ink-muted">{t.docDone(done, total)}</p>
     </div>
   );
 }

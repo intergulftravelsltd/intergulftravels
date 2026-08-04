@@ -52,6 +52,27 @@ export function docStatusLabel(key: DocStatusKey, locale: 'en' | 'bn'): string {
   return LABELS[key]?.[locale] ?? key;
 }
 
+/* ---- Program-aware variants: pre/main registration are Hajj-only. ---- */
+
+export type DocProgram = 'hajj' | 'umrah';
+
+const HAJJ_ONLY_KEYS: readonly DocStatusKey[] = ['pre_registration', 'main_registration'];
+
+/** The checkpoints that apply to a program (umrah skips the two registrations). */
+export function docStatusKeysFor(program: DocProgram): DocStatusKey[] {
+  return program === 'hajj' ? [...DOC_STATUS_KEYS] : DOC_STATUS_KEYS.filter((k) => !HAJJ_ONLY_KEYS.includes(k));
+}
+
+export function docStatusTotalFor(program: DocProgram): number {
+  return docStatusKeysFor(program).length;
+}
+
+/** Done-count restricted to the program's own checkpoints. */
+export function docStatusDoneFor(value: unknown, program: DocProgram): number {
+  const keys = docStatusKeysFor(program);
+  return normalizeDocStatus(value).filter((k) => keys.includes(k)).length;
+}
+
 /** Coerce an unknown DB value (text[] / json / null) into valid, ordered keys. */
 export function normalizeDocStatus(value: unknown): DocStatusKey[] {
   if (!Array.isArray(value)) return [];

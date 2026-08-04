@@ -132,12 +132,16 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
   );
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-auto bg-neutral-100 p-4 text-black sm:p-8">
+    <div id="print-root" className="fixed inset-0 z-[100] overflow-auto bg-neutral-100 p-4 text-black sm:p-8">
       <style>{`
         @media print {
           body * { visibility: hidden !important; }
           #receipt, #receipt * { visibility: visible !important; }
-          #receipt { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: 0 !important; overflow: visible !important; }
+          /* The screen wrapper is position:fixed — printed fixed elements repeat
+             on EVERY page, which duplicated multi-page receipts. Flatten both
+             wrappers to normal flow for print. */
+          #print-root { position: static !important; inset: auto !important; overflow: visible !important; padding: 0 !important; background: #fff !important; }
+          #receipt { position: static !important; width: 100%; max-width: none !important; box-shadow: none !important; border: 0 !important; overflow: visible !important; }
           .no-print { display: none !important; }
           /* Pin the watermark to the centre of the printed page so it can never
              be clipped by the receipt box or a fragment boundary. */

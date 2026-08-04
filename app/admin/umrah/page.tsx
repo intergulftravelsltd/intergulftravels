@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { PassengerFilters } from '@/components/manage/umrah/PassengerFilters';
 import { loadPassengers, loadUmrahPackages, isExpiringSoon, monthsUntil, type PassengerRow } from '@/lib/management/umrah';
 import { loadActiveAffiliates } from '@/lib/management/affiliates';
-import { docStatusDone, DOC_STATUS_TOTAL } from '@/lib/management/doc-status';
+import { docStatusDoneFor, docStatusTotalFor } from '@/lib/management/doc-status';
 import { money } from '@/lib/management/format';
 import { branchShort } from '@/lib/management/branches';
 import { getLocale } from '@/lib/i18n-server';
@@ -48,8 +48,10 @@ function applyFilters(rows: PassengerRow[], sp: Record<string, string | undefine
   if (sp.branch) out = out.filter((r) => r.branch === sp.branch);
   if (sp.status) out = out.filter((r) => r.status === sp.status);
   if (sp.expiring === '1') out = out.filter((r) => isExpiringSoon(r.passport_expiry));
-  if (sp.docs === 'complete') out = out.filter((r) => docStatusDone(r.doc_status) === DOC_STATUS_TOTAL);
-  else if (sp.docs === 'incomplete') out = out.filter((r) => docStatusDone(r.doc_status) < DOC_STATUS_TOTAL);
+  if (sp.docs === 'complete')
+    out = out.filter((r) => docStatusDoneFor(r.doc_status, 'umrah') === docStatusTotalFor('umrah'));
+  else if (sp.docs === 'incomplete')
+    out = out.filter((r) => docStatusDoneFor(r.doc_status, 'umrah') < docStatusTotalFor('umrah'));
   if (sp.care_of === 'none') out = out.filter((r) => !r.affiliate_id);
   else if (sp.care_of) out = out.filter((r) => r.affiliate_id === sp.care_of);
   return out;
@@ -112,6 +114,16 @@ export default async function UmrahPassengersPage({
     money(r.due, false),
   ]);
 
+  // Format B — Airlines / Visa office list: no money or phone, just identity.
+  const airlinesRows = rows.map((r, i) => [
+    i + 1,
+    r.name,
+    r.passport_no ?? '',
+    fmtDate(r.dob),
+    fmtDate(r.passport_expiry),
+    r.note ?? '',
+  ]);
+
   return (
     <>
       <PageHeader
@@ -119,14 +131,39 @@ export default async function UmrahPassengersPage({
         subtitle={t.passengersSubtitle}
         actions={
           <>
-            <ExportBar
-              filename="umrah-passengers"
-              title={t.passengersTitle}
-              subtitle={`${rows.length} ${rows.length === 1 ? t.recordSingular : t.recordPlural}`}
-              headers={[t.exName, t.exPassport, t.exExpiry, t.exPhone, t.exPackage, t.exPaid, t.exDue]}
-              rows={exportRows}
-              orientation="l"
-            />
+            <div className="flex flex-col gap-2">
+              <ExportBar
+                label={locale === 'bn' ? 'বকেয়া তালিকা' : 'Due list'}
+                filename="umrah-passengers"
+                title={t.passengersTitle}
+                subtitle={`${rows.length} ${rows.length === 1 ? t.recordSingular : t.recordPlural}`}
+                headers={[t.exName, t.exPassport, t.exExpiry, t.exPhone, t.exPackage, t.exPaid, t.exDue]}
+                rows={exportRows}
+                orientation="l"
+              />
+              <ExportBar
+                label={locale === 'bn' ? 'এয়ারলাইনস / ভিসা' : 'Airlines / Visa'}
+                filename="umrah-airlines-visa-list"
+                title={locale === 'bn' ? 'উমরাহ যাত্রী তালিকা — এয়ারলাইনস / ভিসা' : 'Umrah Passenger List — Airlines / Visa'}
+                subtitle={`${rows.length} ${rows.length === 1 ? t.recordSingular : t.recordPlural}`}
+                headers={
+                  locale === 'bn'
+                    ? ['ক্রমিক', 'নাম', 'পাসপোর্ট নং', 'জন্ম তারিখ', 'পাসপোর্ট মেয়াদ', 'নোট']
+                    : ['Serial', 'Name', 'Passport No', 'Date of Birth', 'Passport Expiry', 'Note']
+                }
+                rows={airlinesRows}
+                orientation="l"
+              />
+            </div>
+            <Button
+              href={localizedPath(
+                locale,
+                `/admin/umrah/doc-report${searchParams.package ? `?package=${searchParams.package}` : ''}`,
+              )}
+              variant="outline"
+            >
+              {locale === 'bn' ? 'ডকুমেন্ট রিপোর্ট' : 'Document report'}
+            </Button>
             <Button href={localizedPath(locale, '/admin/group-payment?type=umrah')} variant="outline">
               <HandCoins className="h-4 w-4" /> {locale === 'bn' ? 'গ্রুপ পেমেন্ট' : 'Group payment'}
             </Button>
@@ -194,7 +231,8 @@ export default async function UmrahPassengersPage({
               const months = monthsUntil(r.passport_expiry);
               const expiring = isExpiringSoon(r.passport_expiry);
               const expired = months !== null && months < 0;
-              const done = docStatusDone(r.doc_status);
+              const done = docStatusDoneFor(r.doc_status, 'umrah');
+              const docTotal = docStatusTotalFor('umrah');
               const careOf = r.affiliate_id ? affMap.get(r.affiliate_id) : undefined;
               const groupHeadName = r.group_head_id ? nameById.get(r.group_head_id) : undefined;
               const isGroupHead = groupMembersByHead.has(r.id);
@@ -296,8 +334,8 @@ export default async function UmrahPassengersPage({
                     )}
                   </td>
                   <td className={tdClass}>
-                    <Badge tone={done === DOC_STATUS_TOTAL ? 'emerald' : done === 0 ? 'slate' : 'gold'}>
-                      {done}/{DOC_STATUS_TOTAL}
+                    <Badge tone={done === docTotal ? 'emerald' : done === 0 ? 'slate' : 'gold'}>
+                      {done}/{docTotal}
                     </Badge>
                   </td>
                   <td className={tdClass}>
@@ -323,7 +361,7 @@ export default async function UmrahPassengersPage({
                       >
                         <Share2 className="h-3.5 w-3.5" />
                       </a>
-                      <DocStatusViewer name={r.name} subtitle={r.passport_no ?? undefined} value={r.doc_status} />
+                      <DocStatusViewer name={r.name} subtitle={r.passport_no ?? undefined} value={r.doc_status} program="umrah" />
                       <RecordRowActions
                         editHref={localizedPath(locale, `/admin/umrah/${r.id}/edit`)}
                         deleteEndpoint={`/api/admin/umrah/${r.id}`}

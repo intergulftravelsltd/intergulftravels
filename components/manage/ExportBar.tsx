@@ -7,7 +7,8 @@ import { getDict } from '@/lib/dictionaries/areas/adminshell';
 
 type Cell = string | number | null | undefined;
 
-/** Excel / PDF / Print buttons for any list or ledger. */
+/** Excel / PDF / Print buttons for any list or ledger. `label` names the
+ *  format when a page offers more than one export (e.g. Due vs Airlines). */
 export function ExportBar({
   filename,
   title,
@@ -15,6 +16,7 @@ export function ExportBar({
   headers,
   rows,
   orientation = 'p',
+  label,
 }: {
   filename: string;
   title: string;
@@ -22,6 +24,7 @@ export function ExportBar({
   headers: string[];
   rows: Cell[][];
   orientation?: 'p' | 'l';
+  label?: string;
 }) {
   const t = getDict(useLocale()).export;
   const btn =
@@ -29,6 +32,9 @@ export function ExportBar({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {label && (
+        <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-ink-muted">{label}</span>
+      )}
       <button type="button" className={btn} onClick={() => exportToExcel(filename, headers, rows)}>
         <FileSpreadsheet className="h-4 w-4" /> {t.excel}
       </button>

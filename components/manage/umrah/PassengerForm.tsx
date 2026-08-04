@@ -231,7 +231,7 @@ export function PassengerForm({
               />
             </Field>
             <Field label={ct.docStatus} hint={ct.docStatusHint} className="sm:col-span-2">
-              <DocStatusSelect value={docStatus} onChange={setDocStatus} />
+              <DocStatusSelect value={docStatus} onChange={setDocStatus} program="umrah" />
             </Field>
             <Field label={t.note} className="sm:col-span-2">
               <textarea className={inputClass} rows={2} value={form.note} onChange={set('note')} placeholder={t.notePlaceholder} />

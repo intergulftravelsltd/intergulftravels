@@ -27,6 +27,8 @@ export type GroupMemberLedger = {
 /** One line of the combined, date-wise group statement. */
 export type GroupLedgerLine = {
   date: string; // formatted dd MMM yyyy
+  kind: 'charge' | 'discount' | 'payment';
+  /** Bold line: member name for charges/discounts, Cash/Bank label for payments. */
   member: string;
   particulars: string;
   voucher: string;
@@ -143,9 +145,11 @@ const fmtDate = (d: string): string => {
 };
 
 /**
- * The combined statement across every member's customer head: all package
- * charges first, then discounts & payments in date order, with a running group
- * balance — so the printout reads "what they owe → what they've paid → due".
+ * The combined statement across every member's customer head, in the order the
+ * office reads it: every member's package charge first, then any discounts,
+ * then the payments/installments date-wise — with a running group balance.
+ * Payment lines are labelled by HOW the money came in (Cash, or the bank
+ * account's name), not by a member's name.
  */
 async function loadCombinedLedger(rows: Row[]): Promise<GroupLedgerLine[]> {
   try {
@@ -165,22 +169,47 @@ async function loadCombinedLedger(rows: Row[]): Promise<GroupLedgerLine[]> {
     const txs = (data ?? []) as Transaction[];
 
     const isCharge = (t: Transaction) => memberByAccount.has(t.debit_account_id);
-    // Charges (Dr customer) first, then credits (payments/discounts) — each in
-    // the date order the query already gave us.
-    const ordered = [...txs.filter(isCharge), ...txs.filter((t) => !isCharge(t))];
+    const isDiscount = (t: Transaction) =>
+      !isCharge(t) && (t.method === 'adjustment' || (t.voucher_no ?? '').startsWith('DV'));
+
+    // Names of the cash/bank heads payments were received into.
+    const counterpartIds = Array.from(
+      new Set(txs.filter((t) => !isCharge(t)).map((t) => t.debit_account_id).filter((id) => !memberByAccount.has(id))),
+    );
+    const counterpartNames = new Map<string, string>();
+    if (counterpartIds.length) {
+      const { data: cps } = await db.from('account_heads').select('id, name, subtype').in('id', counterpartIds);
+      ((cps ?? []) as { id: string; name: string; subtype: string }[]).forEach((h) =>
+        counterpartNames.set(h.id, h.subtype === 'cash' ? 'Cash' : h.name),
+      );
+    }
+
+    // Charges → discounts → payments, each block date-ascending.
+    const ordered = [
+      ...txs.filter(isCharge),
+      ...txs.filter(isDiscount),
+      ...txs.filter((t) => !isCharge(t) && !isDiscount(t)),
+    ];
 
     let running = 0;
     return ordered.map((t) => {
       const charge = isCharge(t);
-      const member = memberByAccount.get(charge ? t.debit_account_id : t.credit_account_id);
+      const kind: GroupLedgerLine['kind'] = charge ? 'charge' : isDiscount(t) ? 'discount' : 'payment';
+      const memberRow = memberByAccount.get(charge ? t.debit_account_id : t.credit_account_id);
       const amount = Number(t.amount);
       running += charge ? amount : -amount;
       const raw = t.narration || (charge ? 'Package charge' : 'Payment received');
       // The package name lives in each member's own row — keep the line short.
       const particulars = /^(hajj|umrah) package charge/i.test(raw) ? raw.replace(/\s+—.*$/, '') : raw;
+      // Payments read "Cash" / bank name; charges & discounts read the member.
+      const label =
+        kind === 'payment'
+          ? counterpartNames.get(t.debit_account_id) ?? (t.method === 'bank' ? 'Bank' : 'Cash')
+          : memberRow?.name ?? '—';
       return {
         date: fmtDate(t.date),
-        member: member?.name ?? '—',
+        kind,
+        member: label,
         particulars,
         voucher: t.voucher_no || '',
         charge: charge ? amount : 0,

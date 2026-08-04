@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Eye, X, Check } from 'lucide-react';
-import { DOC_STATUS_KEYS, DOC_STATUS_TOTAL, docStatusLabel, normalizeDocStatus } from '@/lib/management/doc-status';
+import { docStatusKeysFor, docStatusTotalFor, docStatusLabel, normalizeDocStatus, type DocProgram } from '@/lib/management/doc-status';
 import { useLocale } from '@/components/providers/LocaleProvider';
 
 const L = {
@@ -14,11 +14,23 @@ const L = {
  * Eye-icon button that opens the full 14-point document checklist for one
  * pilgrim — ✓ (green) for every completed item, ✗ (red) for the pending ones.
  */
-export function DocStatusViewer({ name, subtitle, value }: { name: string; subtitle?: string; value: unknown }) {
+export function DocStatusViewer({
+  name,
+  subtitle,
+  value,
+  program = 'hajj',
+}: {
+  name: string;
+  subtitle?: string;
+  value: unknown;
+  program?: DocProgram;
+}) {
   const locale = useLocale();
   const t = L[locale];
   const [open, setOpen] = useState(false);
-  const done = normalizeDocStatus(value);
+  const keys = docStatusKeysFor(program);
+  const total = docStatusTotalFor(program);
+  const done = normalizeDocStatus(value).filter((k) => keys.includes(k));
 
   useEffect(() => {
     if (!open) return;
@@ -70,11 +82,11 @@ export function DocStatusViewer({ name, subtitle, value }: { name: string; subti
             </div>
 
             <p className="mb-3 text-xs font-semibold text-ink-muted">
-              {done.length}/{DOC_STATUS_TOTAL} {t.done}
+              {done.length}/{total} {t.done}
             </p>
 
             <ul className="divide-y divide-border/70">
-              {DOC_STATUS_KEYS.map((k, i) => {
+              {keys.map((k, i) => {
                 const ok = done.includes(k);
                 return (
                   <li key={k} className="flex items-center justify-between gap-3 py-2 text-sm">
