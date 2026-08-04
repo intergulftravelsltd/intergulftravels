@@ -71,21 +71,35 @@ export default async function UmrahPassengersPage({
   const affMap = new Map(affiliates.map((a) => [a.id, a]));
   const rows = applyFilters(all, searchParams);
 
-  // Permanent family-group badges (migration 0008; harmless when absent).
+  // Permanent family groups (migration 0008; harmless when absent). Members'
+  // money rolls up under their head, with advances netted against dues.
   const nameById = new Map(all.map((p) => [p.id, p.name]));
-  const groupMembersByHead = new Map<string, number>();
+  const passengerById = new Map(all.map((p) => [p.id, p]));
+  const groupMembersByHead = new Map<string, string[]>();
   for (const p of all) {
-    if (p.group_head_id) groupMembersByHead.set(p.group_head_id, (groupMembersByHead.get(p.group_head_id) ?? 0) + 1);
+    if (p.group_head_id) {
+      groupMembersByHead.set(p.group_head_id, [...(groupMembersByHead.get(p.group_head_id) ?? []), p.id]);
+    }
   }
+  const groupIdsOf = (headId: string) => [headId, ...(groupMembersByHead.get(headId) ?? [])];
+  const groupDueOf = (headId: string) =>
+    Math.max(0, groupIdsOf(headId).reduce((s, id) => s + (passengerById.get(id)?.balance ?? 0), 0));
+  const groupPaidOf = (headId: string) =>
+    groupIdsOf(headId).reduce((s, id) => s + (passengerById.get(id)?.paid ?? 0), 0);
 
   const statusLabel = (s: string) =>
     s === 'cancelled' ? t.statusCancelled : s === 'completed' ? t.statusCompleted : t.statusActive;
 
-  // Stats are computed across the full (unfiltered) set.
+  // Stats are computed across the full (unfiltered) set. Group members are
+  // counted through their head so an advance nets against a member's due.
   const total = all.length;
   const assigned = all.filter((r) => r.package_id).length;
   const unassigned = total - assigned;
-  const totalDue = all.reduce((s, r) => s + r.due, 0);
+  const totalDue = all.reduce((s, r) => {
+    if (r.group_head_id) return s; // rolled into their head's group figure
+    if (groupMembersByHead.has(r.id)) return s + groupDueOf(r.id);
+    return s + r.due;
+  }, 0);
   const expiringSoon = all.filter((r) => isExpiringSoon(r.passport_expiry) && r.status === 'active').length;
 
   const exportRows = rows.map((r) => [
@@ -182,6 +196,8 @@ export default async function UmrahPassengersPage({
               const expired = months !== null && months < 0;
               const done = docStatusDone(r.doc_status);
               const careOf = r.affiliate_id ? affMap.get(r.affiliate_id) : undefined;
+              const groupHeadName = r.group_head_id ? nameById.get(r.group_head_id) : undefined;
+              const isGroupHead = groupMembersByHead.has(r.id);
               return (
                 <tr key={r.id} className="transition hover:bg-muted/40">
                   <td className={tdClass}>
@@ -200,11 +216,11 @@ export default async function UmrahPassengersPage({
                         {locale === 'bn' ? 'গ্রুপ' : 'Group'}: {nameById.get(r.group_head_id)}
                       </p>
                     )}
-                    {groupMembersByHead.has(r.id) && (
+                    {isGroupHead && (
                       <p className="text-xs font-medium text-amber-600">
                         {locale === 'bn'
-                          ? `গ্রুপ প্রধান · ${groupMembersByHead.get(r.id)} জন`
-                          : `Group head · ${groupMembersByHead.get(r.id)} members`}
+                          ? `গ্রুপ প্রধান · ${groupMembersByHead.get(r.id)?.length ?? 0} জন`
+                          : `Group head · ${groupMembersByHead.get(r.id)?.length ?? 0} members`}
                       </p>
                     )}
                     {r.status !== 'active' && (
@@ -236,10 +252,48 @@ export default async function UmrahPassengersPage({
                     )}
                   </td>
                   <td className={`${tdClass} text-right`}>
-                    <Money value={r.paid} />
+                    {groupHeadName ? (
+                      r.paid > 0 ? (
+                        <Money value={r.paid} />
+                      ) : (
+                        <span className="text-xs text-ink-muted">—</span>
+                      )
+                    ) : isGroupHead ? (
+                      <>
+                        <Money value={groupPaidOf(r.id)} />
+                        <span className="block text-xs text-ink-muted">
+                          {locale === 'bn' ? 'গ্রুপ মোট' : 'Group total'}
+                        </span>
+                      </>
+                    ) : (
+                      <Money value={r.paid} />
+                    )}
                   </td>
                   <td className={`${tdClass} text-right`}>
-                    {r.due > 0 ? <Money value={r.due} className="font-semibold text-red-600" /> : <Money value={0} />}
+                    {groupHeadName ? (
+                      <span
+                        className="inline-block max-w-[10rem] truncate text-xs font-semibold text-amber-600"
+                        title={groupHeadName}
+                      >
+                        {locale === 'bn' ? `সংযুক্ত: ${groupHeadName}` : `Linked: ${groupHeadName}`}
+                      </span>
+                    ) : isGroupHead ? (
+                      (() => {
+                        const gd = groupDueOf(r.id);
+                        return (
+                          <>
+                            <Money value={gd} className={gd > 0 ? 'font-semibold text-red-600' : ''} />
+                            <span className="block text-xs text-ink-muted">
+                              {locale === 'bn' ? 'গ্রুপ মোট' : 'Group total'}
+                            </span>
+                          </>
+                        );
+                      })()
+                    ) : r.due > 0 ? (
+                      <Money value={r.due} className="font-semibold text-red-600" />
+                    ) : (
+                      <Money value={0} />
+                    )}
                   </td>
                   <td className={tdClass}>
                     <Badge tone={done === DOC_STATUS_TOTAL ? 'emerald' : done === 0 ? 'slate' : 'gold'}>

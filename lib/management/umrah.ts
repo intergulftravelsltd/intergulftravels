@@ -6,6 +6,8 @@ export type PassengerRow = UmrahPassenger & {
   package_name: string | null;
   paid: number;
   due: number;
+  /** Signed ledger balance (negative = advance) — used for group netting. */
+  balance: number;
 };
 
 /** Months until a passport expiry date (negative if already expired). */
@@ -91,12 +93,13 @@ export async function loadPassengers(): Promise<PassengerRow[]> {
       // balance) so manually-posted vouchers count too — matching the statement
       // receipt and the Hajj list.
       const paid = head ? Math.max(0, Number(head.credit_total)) : 0;
-      const due = head ? Math.max(0, naturalBalance(head)) : 0;
+      const balance = head ? naturalBalance(head) : 0;
       return {
         ...p,
         package_name: p.package_id ? pkgs.get(p.package_id) ?? null : null,
         paid,
-        due,
+        due: Math.max(0, balance),
+        balance,
       };
     });
   } catch {

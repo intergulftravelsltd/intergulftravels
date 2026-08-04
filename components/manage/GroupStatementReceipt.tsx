@@ -10,6 +10,8 @@ export type GroupStatementData = {
   branch: string;
   headName: string;
   rows: { name: string; ref: string; isHead: boolean; charged: string; paid: string; due: string }[];
+  /** Charges first, then discounts & payments date-wise, running balance. */
+  ledger: { date: string; member: string; particulars: string; voucher: string; charge: string; paid: string; balance: string }[];
   totalCharged: string;
   totalPaid: string;
   totalDue: string;
@@ -31,6 +33,10 @@ const L = {
     colDue: 'Due',
     head: 'Head',
     grandTotal: 'Group total',
+    ledgerHeading: 'Statement — charges first, then payments date-wise',
+    colDate: 'Date',
+    colParticulars: 'Particulars',
+    colBalance: 'Balance',
     totalPaid: 'Total paid',
     totalDue: 'Total due',
     signature: 'Authorised signature',
@@ -51,6 +57,10 @@ const L = {
     colDue: 'বকেয়া',
     head: 'প্রধান',
     grandTotal: 'গ্রুপ মোট',
+    ledgerHeading: 'হিসাব বিবরণী — আগে খরচ, তারপর তারিখ অনুযায়ী পেমেন্ট',
+    colDate: 'তারিখ',
+    colParticulars: 'বিবরণ',
+    colBalance: 'ব্যালেন্স',
     totalPaid: 'মোট পরিশোধিত',
     totalDue: 'মোট বকেয়া',
     signature: 'অনুমোদিত স্বাক্ষর',
@@ -208,14 +218,50 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
                 </tr>
               </tfoot>
             </table>
-            <div className="mt-3 flex flex-wrap justify-end gap-6 text-sm">
-              <span className="text-gray-600">
-                {t.totalPaid}: <span className="font-semibold text-gray-900">৳ {data.totalPaid}</span>
-              </span>
-              <span className="text-gray-600">
-                {t.totalDue}: <span className="font-semibold text-gray-900">৳ {data.totalDue}</span>
-              </span>
+          </div>
+
+          {/* Date-wise combined statement: charges first, then payments */}
+          {data.ledger.length > 0 && (
+            <div className="my-5">
+              <p className="mb-2 text-sm font-semibold text-gray-700">{t.ledgerHeading}</p>
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b-2 border-gray-300 text-left text-gray-500">
+                    <th className="py-2">{t.colDate}</th>
+                    <th className="py-2">{t.colParticulars}</th>
+                    <th className="py-2 text-right">{t.colCharged}</th>
+                    <th className="py-2 text-right">{t.colPaid}</th>
+                    <th className="py-2 text-right">{t.colBalance}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.ledger.map((line, i) => (
+                    <tr key={i} className="border-b border-gray-200 align-top">
+                      <td className="whitespace-nowrap py-2 text-gray-800">{line.date}</td>
+                      <td className="py-2">
+                        <span className="font-medium text-gray-900">{line.member}</span>
+                        <span className="block text-xs text-gray-400">
+                          {line.particulars}
+                          {line.voucher ? ` · ${line.voucher}` : ''}
+                        </span>
+                      </td>
+                      <td className="py-2 text-right text-gray-800">{line.charge ? `৳ ${line.charge}` : ''}</td>
+                      <td className="py-2 text-right text-gray-800">{line.paid ? `৳ ${line.paid}` : ''}</td>
+                      <td className="py-2 text-right font-medium text-gray-900">৳ {line.balance}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          )}
+
+          <div className="mt-3 flex flex-wrap justify-end gap-6 text-sm">
+            <span className="text-gray-600">
+              {t.totalPaid}: <span className="font-semibold text-gray-900">৳ {data.totalPaid}</span>
+            </span>
+            <span className="text-gray-600">
+              {t.totalDue}: <span className="font-semibold text-gray-900">৳ {data.totalDue}</span>
+            </span>
           </div>
 
           {/* Footer */}

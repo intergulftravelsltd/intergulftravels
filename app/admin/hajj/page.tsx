@@ -77,12 +77,31 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
   const pkgById = new Map<string, MgmtPackage>(packages.map((p) => [p.id, p]));
   const affMap = new Map(affiliates.map((a) => [a.id, a]));
 
-  // Permanent family-group badges (migration 0008; harmless when absent).
+  // Permanent family groups (migration 0008; harmless when absent). Members'
+  // money rolls up under their head, with advances netted against dues.
   const nameById = new Map(allPilgrims.map((p) => [p.id, p.name]));
-  const groupMembersByHead = new Map<string, number>();
+  const pilgrimById = new Map(allPilgrims.map((p) => [p.id, p]));
+  const groupMembersByHead = new Map<string, string[]>();
   for (const p of allPilgrims) {
-    if (p.group_head_id) groupMembersByHead.set(p.group_head_id, (groupMembersByHead.get(p.group_head_id) ?? 0) + 1);
+    if (p.group_head_id) {
+      groupMembersByHead.set(p.group_head_id, [...(groupMembersByHead.get(p.group_head_id) ?? []), p.id]);
+    }
   }
+  const groupIdsOf = (headPilgrimId: string) => [headPilgrimId, ...(groupMembersByHead.get(headPilgrimId) ?? [])];
+  const groupDueOf = (headPilgrimId: string) =>
+    Math.max(
+      0,
+      groupIdsOf(headPilgrimId).reduce(
+        (s, id) => s + dueForHead(pilgrimById.get(id)?.account_head_id ?? null, heads),
+        0,
+      ),
+    );
+  const groupPaidOf = (headPilgrimId: string) =>
+    groupIdsOf(headPilgrimId).reduce((s, id) => {
+      const accId = pilgrimById.get(id)?.account_head_id;
+      const acc = accId ? heads.get(accId) : undefined;
+      return s + (acc ? Number(acc.credit_total) : 0);
+    }, 0);
 
   // Year tabs: every year present plus the current + next year.
   const yearSet = new Set<number>([CURRENT_YEAR, CURRENT_YEAR + 1]);
@@ -117,10 +136,15 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
     return true;
   });
 
-  // Stats over the whole year (not the filtered subset).
+  // Stats over the whole year (not the filtered subset). Group members are
+  // counted through their head so an advance nets against a member's due.
   const preReg = yearPilgrims.filter((p) => p.reg_type === 'pre-registration').length;
   const registered = yearPilgrims.filter((p) => p.reg_type === 'registered').length;
-  const totalDue = yearPilgrims.reduce((sum, p) => sum + Math.max(0, dueForHead(p.account_head_id, heads)), 0);
+  const totalDue = yearPilgrims.reduce((sum, p) => {
+    if (p.group_head_id) return sum; // rolled into their head's group figure
+    if (groupMembersByHead.has(p.id)) return sum + groupDueOf(p.id);
+    return sum + Math.max(0, dueForHead(p.account_head_id, heads));
+  }, 0);
 
   // Build rows with paid/due once for both the table and the export.
   const rows = filtered.map((p) => {
@@ -303,6 +327,8 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
             {rows.map(({ p, pkgName, paid, due }) => {
               const done = docStatusDone(p.doc_status);
               const careOf = p.affiliate_id ? affMap.get(p.affiliate_id) : undefined;
+              const groupHeadName = p.group_head_id ? nameById.get(p.group_head_id) : undefined;
+              const isGroupHead = groupMembersByHead.has(p.id);
               return (
               <tr key={p.id} className="transition hover:bg-muted/40">
                 <td className={tdClass}>
@@ -326,11 +352,11 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                       {locale === 'bn' ? 'গ্রুপ' : 'Group'}: {nameById.get(p.group_head_id)}
                     </span>
                   )}
-                  {groupMembersByHead.has(p.id) && (
+                  {isGroupHead && (
                     <span className="block text-xs font-medium text-amber-600">
                       {locale === 'bn'
-                        ? `গ্রুপ প্রধান · ${groupMembersByHead.get(p.id)} জন`
-                        : `Group head · ${groupMembersByHead.get(p.id)} members`}
+                        ? `গ্রুপ প্রধান · ${groupMembersByHead.get(p.id)?.length ?? 0} জন`
+                        : `Group head · ${groupMembersByHead.get(p.id)?.length ?? 0} members`}
                     </span>
                   )}
                 </td>
@@ -344,10 +370,46 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                 </td>
                 <td className={tdClass}>{pkgName}</td>
                 <td className={`${tdClass} text-right`}>
-                  <Money value={paid} />
+                  {groupHeadName ? (
+                    paid > 0 ? (
+                      <Money value={paid} />
+                    ) : (
+                      <span className="text-xs text-ink-muted">—</span>
+                    )
+                  ) : isGroupHead ? (
+                    <>
+                      <Money value={groupPaidOf(p.id)} />
+                      <span className="block text-xs text-ink-muted">
+                        {locale === 'bn' ? 'গ্রুপ মোট' : 'Group total'}
+                      </span>
+                    </>
+                  ) : (
+                    <Money value={paid} />
+                  )}
                 </td>
                 <td className={`${tdClass} text-right`}>
-                  <Money value={Math.max(0, due)} className={due > 0 ? 'font-semibold text-red-600' : ''} />
+                  {groupHeadName ? (
+                    <span
+                      className="inline-block max-w-[10rem] truncate text-xs font-semibold text-amber-600"
+                      title={groupHeadName}
+                    >
+                      {locale === 'bn' ? `সংযুক্ত: ${groupHeadName}` : `Linked: ${groupHeadName}`}
+                    </span>
+                  ) : isGroupHead ? (
+                    (() => {
+                      const gd = groupDueOf(p.id);
+                      return (
+                        <>
+                          <Money value={gd} className={gd > 0 ? 'font-semibold text-red-600' : ''} />
+                          <span className="block text-xs text-ink-muted">
+                            {locale === 'bn' ? 'গ্রুপ মোট' : 'Group total'}
+                          </span>
+                        </>
+                      );
+                    })()
+                  ) : (
+                    <Money value={Math.max(0, due)} className={due > 0 ? 'font-semibold text-red-600' : ''} />
+                  )}
                 </td>
                 <td className={tdClass}>
                   <Badge tone={done === DOC_STATUS_TOTAL ? 'emerald' : done === 0 ? 'slate' : 'gold'}>
