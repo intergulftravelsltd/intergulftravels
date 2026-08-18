@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getAuthUser } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/manage/ui';
 import { AccountSettings } from '@/components/admin/AccountSettings';
 import { getLocale } from '@/lib/i18n-server';
@@ -9,9 +9,7 @@ export const metadata = { title: 'My Account' };
 
 export default async function AccountPage() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   let fullName = '';
   let avatarUrl: string | null = null;

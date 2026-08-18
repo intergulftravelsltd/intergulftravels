@@ -1,3 +1,5 @@
+import { unstable_cache } from 'next/cache';
+
 export type Affiliation = {
   id: string;
   category: 'flight' | 'hotel';
@@ -35,14 +37,15 @@ export const FALLBACK_AFFILIATIONS: Affiliation[] = [
   active: true,
 }));
 
-export async function getAffiliations(): Promise<Affiliation[]> {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+/** Home-page partner logos (cookieless + cached — was a live per-request query). */
+const load = async (): Promise<Affiliation[]> => {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return FALLBACK_AFFILIATIONS;
   }
   try {
-    const { createClient } = await import('@/lib/supabase/server');
-    const supabase = createClient();
-    const { data } = await supabase
+    const { createAdminClient } = await import('@/lib/supabase/server');
+    const db = createAdminClient();
+    const { data } = await db
       .from('affiliations')
       .select('*')
       .eq('active', true)
@@ -51,4 +54,9 @@ export async function getAffiliations(): Promise<Affiliation[]> {
   } catch {
     return FALLBACK_AFFILIATIONS;
   }
-}
+};
+
+export const getAffiliations = unstable_cache(load, ['affiliations-v1'], {
+  revalidate: 120,
+  tags: ['affiliations'],
+});

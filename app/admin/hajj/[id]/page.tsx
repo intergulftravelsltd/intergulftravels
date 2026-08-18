@@ -75,15 +75,19 @@ const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString('en-G
 export default async function PilgrimProfilePage({ params }: { params: { id: string } }) {
   const locale = getLocale();
   const t = getDict(locale);
-  const pilgrim = await loadPilgrim(params.id);
-  if (!pilgrim) notFound();
-
-  const [head, payments, packages, banks, group, headOptions] = await Promise.all([
-    loadHead(pilgrim.account_head_id),
-    loadPayments(pilgrim.id),
+  // Everything keyed only by the URL id starts immediately alongside the
+  // pilgrim row; the two loaders that need the row's fields follow in one step.
+  const [pilgrim, payments, packages, banks, group] = await Promise.all([
+    loadPilgrim(params.id),
+    loadPayments(params.id),
     loadHajjPackages(),
     loadBankAccounts(),
-    loadGroupLedger('hajj_pilgrims', pilgrim.id),
+    loadGroupLedger('hajj_pilgrims', params.id),
+  ]);
+  if (!pilgrim) notFound();
+
+  const [head, headOptions] = await Promise.all([
+    loadHead(pilgrim.account_head_id),
     loadGroupHeadOptions('hajj_pilgrims', pilgrim.id, pilgrim.branch),
   ]);
 

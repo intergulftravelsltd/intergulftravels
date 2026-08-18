@@ -73,19 +73,24 @@ export async function loadPassengers(): Promise<PassengerRow[]> {
     const headIds = passengers.map((p) => p.account_head_id).filter(Boolean) as string[];
     const pkgIds = Array.from(new Set(passengers.map((p) => p.package_id).filter(Boolean))) as string[];
 
-    // Account heads → due.
-    const heads = new Map<string, AccountHead>();
-    if (headIds.length) {
-      const { data: hData } = await db.from('account_heads').select('*').in('id', headIds);
-      (hData ?? []).forEach((h: AccountHead) => heads.set(h.id, h));
-    }
+    // Heads (→ due) and package names are independent lookups — one round-trip.
+    const [hRes, pRes] = await Promise.all([
+      headIds.length
+        ? db
+            .from('account_heads')
+            .select('id, type, opening_balance, opening_is_debit, debit_total, credit_total')
+            .in('id', headIds)
+        : Promise.resolve({ data: [] as AccountHead[] }),
+      pkgIds.length
+        ? db.from('mgmt_packages').select('id, name').in('id', pkgIds)
+        : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    ]);
 
-    // Packages → names.
+    const heads = new Map<string, AccountHead>();
+    ((hRes.data ?? []) as AccountHead[]).forEach((h) => heads.set(h.id, h));
+
     const pkgs = new Map<string, string>();
-    if (pkgIds.length) {
-      const { data: pData } = await db.from('mgmt_packages').select('id, name').in('id', pkgIds);
-      (pData ?? []).forEach((p: { id: string; name: string }) => pkgs.set(p.id, p.name));
-    }
+    ((pRes.data ?? []) as { id: string; name: string }[]).forEach((p) => pkgs.set(p.id, p.name));
 
     return passengers.map((p) => {
       const head = p.account_head_id ? heads.get(p.account_head_id) : undefined;

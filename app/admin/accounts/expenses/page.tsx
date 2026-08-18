@@ -23,18 +23,19 @@ export default async function ExpensesPage({
   searchParams: { from?: string; to?: string; range?: string };
 }) {
   const tt = getDict(getLocale());
-  const heads = await loadActiveHeads();
+  const [heads, txns] = await Promise.all([
+    loadActiveHeads(),
+    loadTransactions({
+      from: searchParams.from || undefined,
+      to: searchParams.to || undefined,
+      limit: 1000,
+    }),
+  ]);
   const map = headMap(heads);
 
   const expenseHeads = heads.filter((h) => h.type === 'expense');
   const expenseIds = new Set(expenseHeads.map((h) => h.id));
   const bankHeads = heads.filter((h) => h.subtype === 'bank');
-
-  const txns = await loadTransactions({
-    from: searchParams.from || undefined,
-    to: searchParams.to || undefined,
-    limit: 2000,
-  });
   // An expense voucher debits an expense head.
   const expenseTxns = txns.filter((t) => expenseIds.has(t.debit_account_id));
 

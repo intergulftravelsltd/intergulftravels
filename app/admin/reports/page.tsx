@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import Link from 'next/link';
 import {
   Scale,
@@ -96,7 +97,9 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 /* ----------------------------- data fetchers ----------------------------- */
 
-async function fetchHeads(branch: string): Promise<AccountHead[]> {
+// cache(): several report views on one page ask for the same head list —
+// fetch it once per request instead of once per view.
+const fetchHeads = cache(async function fetchHeads(branch: string): Promise<AccountHead[]> {
   try {
     const db = mgmtDb();
     let q = db.from('account_heads').select('*').eq('active', true);
@@ -107,7 +110,7 @@ async function fetchHeads(branch: string): Promise<AccountHead[]> {
   } catch {
     return [];
   }
-}
+});
 
 async function fetchTransactions(opts: {
   branch: string;

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireStaff } from '@/lib/management/guard';
@@ -102,6 +103,7 @@ export async function POST(request: Request) {
       detail: { name: d.name, category: d.category },
     });
 
+    revalidateTag('affiliations');
     return NextResponse.json({ ok: true, id: data.id });
   } catch (err) {
     console.error('[admin/affiliations] unexpected error:', err);
@@ -165,6 +167,7 @@ export async function PATCH(request: Request) {
       detail: update,
     });
 
+    revalidateTag('affiliations');
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[admin/affiliations] unexpected error:', err);
@@ -204,6 +207,7 @@ export async function DELETE(request: Request) {
       entity_id: id,
     });
 
+    revalidateTag('affiliations');
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[admin/affiliations] unexpected error:', err);

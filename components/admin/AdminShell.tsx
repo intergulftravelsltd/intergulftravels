@@ -392,6 +392,9 @@ function Avatar({
       <img
         src={avatarUrl}
         alt=""
+        width={36}
+        height={36}
+        loading="lazy"
         className="h-9 w-9 rounded-full object-cover ring-2 ring-brand-600/20"
       />
     );

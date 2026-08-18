@@ -9,12 +9,19 @@ import { Logo } from '@/components/brand/Logo';
 import { Button } from '@/components/ui/Button';
 import Image from 'next/image';
 import { SocialIcon } from '@/components/layout/SocialIcons';
-import { MobileMenu } from '@/components/layout/MobileMenu';
 import { LangToggle } from '@/components/layout/LangToggle';
 import { Icon } from '@/components/ui/Icon';
 import { useDictionary, useLocale } from '@/components/providers/LocaleProvider';
 import { localizedPath, stripLocale } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import nextDynamic from 'next/dynamic';
+
+// The drawer (and its framer-motion dependency) loads only in the browser —
+// it is never part of the desktop-critical first load.
+const MobileMenu = nextDynamic(
+  () => import('@/components/layout/MobileMenu').then((m) => m.MobileMenu),
+  { ssr: false },
+);
 
 /** Map default nav hrefs → dictionary keys for translated top-level labels. */
 const NAV_KEY: Record<string, keyof ReturnType<typeof useDictionary>['nav']> = {

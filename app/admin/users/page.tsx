@@ -1,4 +1,4 @@
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient, getAuthUser, getProfileLite } from '@/lib/supabase/server';
 import { isAdminEmail } from '@/lib/admin';
 import { getLocale } from '@/lib/i18n-server';
 import { getDict } from '@/lib/dictionaries/areas/adminsystem';
@@ -38,14 +38,11 @@ async function loadStaff(): Promise<StaffRow[]> {
 
 async function resolveViewer(): Promise<{ isAdmin: boolean; userId: string | null }> {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) return { isAdmin: false, userId: null };
     if (isAdminEmail(user.email)) return { isAdmin: true, userId: user.id };
-    const { data } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
-    return { isAdmin: data?.role === 'admin', userId: user.id };
+    const profile = await getProfileLite(user.id);
+    return { isAdmin: profile?.role === 'admin', userId: user.id };
   } catch {
     return { isAdmin: false, userId: null };
   }

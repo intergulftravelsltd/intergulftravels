@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient, getAuthUser, getProfileLite } from '@/lib/supabase/server';
 import { isAdminEmail } from '@/lib/admin';
 import { decryptSecret } from '@/lib/vault-crypto';
 import { SecureVault, type VaultCredential } from '@/components/admin/SecureVault';
@@ -30,15 +30,12 @@ async function loadItems(): Promise<VaultCredential[]> {
 
 export default async function SecureVaultPage() {
   // Admin-only — resolve the same way the layout does.
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   let isAdmin = isAdminEmail(user?.email);
   if (!isAdmin && user) {
-    const { data } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
-    if (data?.role === 'admin') isAdmin = true;
+    const profile = await getProfileLite(user.id);
+    if (profile?.role === 'admin') isAdmin = true;
   }
   if (!isAdmin) redirect('/admin');
 

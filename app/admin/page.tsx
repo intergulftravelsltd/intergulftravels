@@ -29,6 +29,9 @@ import { getDict } from '@/lib/dictionaries/areas/adminshell';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Dashboard' };
 
+/** Only the fields the dashboard actually renders for a recent voucher row. */
+type DashTx = { id: string; voucher_no: string | null; date: string; amount: number };
+
 type DashData = {
   cash: number;
   bank: number;
@@ -40,7 +43,7 @@ type DashData = {
   umrahThisYear: number;
   newContacts: number;
   newEstimates: number;
-  recentTx: { tx: Transaction; debitName: string; creditName: string }[];
+  recentTx: { tx: DashTx; debitName: string; creditName: string }[];
   recentPilgrims: any[];
   hasManagement: boolean;
 };
@@ -64,16 +67,92 @@ async function loadDashboard(range: { from: string; to: string }): Promise<DashD
 
   const year = new Date().getFullYear();
   const scope = await getStaffScope();
+  const db = mgmtDb();
 
-  // --- account heads: cash / bank / receivable balances ---
-  let heads: AccountHead[] = [];
+  // Fast path: the whole dashboard comes back in ONE round-trip from the
+  // dashboard_summary RPC (migration 0009) — balances, period sums, counts and
+  // recent rows are all aggregated inside Postgres, so the numbers are exact
+  // even past PostgREST's 1000-row page cap.
   try {
-    const db = mgmtDb();
-    let hq = db.from('account_heads').select('*').eq('active', true);
-    if (scope.branch) hq = hq.eq('branch', scope.branch);
-    const { data, error } = await hq;
+    const { data, error } = await db.rpc('dashboard_summary', {
+      p_branch: scope.branch,
+      p_from: range.from || null,
+      p_to: range.to || null,
+      p_year: year,
+    });
     if (!error && data) {
-      heads = data as AccountHead[];
+      const s = data as Record<string, any>;
+      d.cash = Number(s.cash) || 0;
+      d.bank = Number(s.bank) || 0;
+      d.bankOverdraft = Number(s.bank_overdraft) || 0;
+      d.receivable = Number(s.receivable) || 0;
+      d.periodIncome = Number(s.period_income) || 0;
+      d.periodExpense = Number(s.period_expense) || 0;
+      d.hajjThisYear = Number(s.hajj_this_year) || 0;
+      d.umrahThisYear = Number(s.umrah_total) || 0;
+      d.newContacts = Number(s.new_contacts) || 0;
+      d.newEstimates = Number(s.new_estimates) || 0;
+      d.recentTx = ((s.recent_tx ?? []) as any[]).map((r) => ({
+        tx: { id: r.id, voucher_no: r.voucher_no, date: r.date, amount: Number(r.amount) },
+        debitName: r.debit_name ?? 'Unknown',
+        creditName: r.credit_name ?? 'Unknown',
+      }));
+      d.recentPilgrims = (s.recent_pilgrims ?? []) as any[];
+      d.hasManagement = true;
+      return d;
+    }
+  } catch {
+    // RPC not deployed yet — fall through to the legacy per-table path below.
+  }
+
+  // Legacy path (0009 not applied): the same numbers from per-table queries.
+  // All eight queries are independent, so they run concurrently instead of the
+  // old serial waterfall, and each selects only the columns it renders.
+  try {
+    const head = { count: 'exact' as const, head: true };
+    const b = scope.branch;
+
+    let hq = db.from('account_heads').select('*').eq('active', true);
+    if (b) hq = hq.eq('branch', b);
+
+    let tq = db.from('transactions').select('amount, debit_account_id, credit_account_id');
+    if (range.from) tq = tq.gte('date', range.from);
+    if (range.to) tq = tq.lte('date', range.to);
+    if (b) tq = tq.eq('branch', b);
+
+    let rq = db
+      .from('transactions')
+      .select('id, voucher_no, date, amount, debit_account_id, credit_account_id');
+    if (b) rq = rq.eq('branch', b);
+
+    let hajjQ = db.from('hajj_pilgrims').select('id', head).eq('year', year);
+    let umrahQ = db.from('umrah_passengers').select('id', head);
+    let recentQ = db
+      .from('hajj_pilgrims')
+      .select('id, tracking_no, name, reg_type, branch, created_at, year')
+      .order('created_at', { ascending: false })
+      .limit(6);
+    if (b) {
+      hajjQ = hajjQ.eq('branch', b);
+      umrahQ = umrahQ.eq('branch', b);
+      recentQ = recentQ.eq('branch', b);
+    }
+
+    const [headsRes, periodRes, recentTxRes, hajjCount, umrahCount, recentPil, contacts, estimates] =
+      await Promise.all([
+        hq,
+        tq,
+        rq.order('created_at', { ascending: false }).limit(6),
+        hajjQ,
+        umrahQ,
+        recentQ,
+        db.from('contact_requests').select('id', head).eq('handled', false),
+        db.from('estimate_requests').select('id', head).eq('status', 'new'),
+      ]);
+
+    let heads: AccountHead[] = [];
+    if (!headsRes.error && headsRes.data) {
+      heads = headsRes.data as AccountHead[];
       d.hasManagement = true;
       for (const h of heads) {
         if (h.subtype === 'cash') d.cash += netDebit(h);
@@ -89,45 +168,27 @@ async function loadDashboard(range: { from: string; to: string }): Promise<DashD
         }
       }
     }
-  } catch {
-    // management tables not present yet
-  }
 
-  // --- income & expense over the selected period ---
-  try {
-    const db = mgmtDb();
-    let tq = db.from('transactions').select('*');
-    if (range.from) tq = tq.gte('date', range.from);
-    if (range.to) tq = tq.lte('date', range.to);
-    if (scope.branch) tq = tq.eq('branch', scope.branch);
-    const { data } = await tq;
-    const periodTx = (data ?? []) as Transaction[];
-    if (heads.length) {
-      const byId = new Map(heads.map((h) => [h.id, h]));
-      for (const tx of periodTx) {
-        const credited = byId.get(tx.credit_account_id);
-        const debited = byId.get(tx.debit_account_id);
-        if (credited?.type === 'income') d.periodIncome += Number(tx.amount);
-        if (debited?.type === 'expense') d.periodExpense += Number(tx.amount);
-      }
+    const byId = new Map(heads.map((h) => [h.id, h]));
+    for (const tx of (periodRes.data ?? []) as Pick<
+      Transaction,
+      'amount' | 'debit_account_id' | 'credit_account_id'
+    >[]) {
+      const credited = byId.get(tx.credit_account_id);
+      const debited = byId.get(tx.debit_account_id);
+      if (credited?.type === 'income') d.periodIncome += Number(tx.amount);
+      if (debited?.type === 'expense') d.periodExpense += Number(tx.amount);
     }
-  } catch {
-    // ignore
-  }
 
-  // --- recent transactions (with head names) ---
-  try {
-    const db = mgmtDb();
-    let rq = db.from('transactions').select('*');
-    if (scope.branch) rq = rq.eq('branch', scope.branch);
-    const { data } = await rq.order('created_at', { ascending: false }).limit(6);
-    const recent = (data ?? []) as Transaction[];
+    const recent = (recentTxRes.data ?? []) as (DashTx & {
+      debit_account_id: string;
+      credit_account_id: string;
+    })[];
     if (recent.length) {
-      const ids = Array.from(
-        new Set(recent.flatMap((tx) => [tx.debit_account_id, tx.credit_account_id])),
-      );
       const nameOf = new Map(heads.map((h) => [h.id, h.name]));
-      const missing = ids.filter((id) => !nameOf.has(id));
+      const missing = Array.from(
+        new Set(recent.flatMap((tx) => [tx.debit_account_id, tx.credit_account_id])),
+      ).filter((id) => !nameOf.has(id));
       if (missing.length) {
         const { data: extra } = await db.from('account_heads').select('id, name').in('id', missing);
         for (const h of extra ?? []) nameOf.set(h.id, h.name);
@@ -138,47 +199,14 @@ async function loadDashboard(range: { from: string; to: string }): Promise<DashD
         creditName: nameOf.get(tx.credit_account_id) ?? 'Unknown',
       }));
     }
-  } catch {
-    // ignore
-  }
 
-  // --- this-year pilgrim / passenger counts + recent pilgrims ---
-  try {
-    const db = mgmtDb();
-    const head = { count: 'exact' as const, head: true };
-    const b = scope.branch;
-    let hajjQ = db.from('hajj_pilgrims').select('id', head).eq('year', year);
-    let umrahQ = db.from('umrah_passengers').select('id', head);
-    let recentQ = db
-      .from('hajj_pilgrims')
-      .select('id, tracking_no, name, reg_type, branch, created_at, year')
-      .order('created_at', { ascending: false })
-      .limit(6);
-    if (b) {
-      hajjQ = hajjQ.eq('branch', b);
-      umrahQ = umrahQ.eq('branch', b);
-      recentQ = recentQ.eq('branch', b);
-    }
-    const [hajjCount, umrahCount, recent] = await Promise.all([hajjQ, umrahQ, recentQ]);
     d.hajjThisYear = hajjCount.count ?? 0;
     d.umrahThisYear = umrahCount.count ?? 0;
-    d.recentPilgrims = recent.data ?? [];
-  } catch {
-    // ignore
-  }
-
-  // --- website enquiries (existing tables) ---
-  try {
-    const db = mgmtDb();
-    const head = { count: 'exact' as const, head: true };
-    const [contacts, estimates] = await Promise.all([
-      db.from('contact_requests').select('id', head).eq('handled', false),
-      db.from('estimate_requests').select('id', head).eq('status', 'new'),
-    ]);
+    d.recentPilgrims = recentPil.data ?? [];
     d.newContacts = contacts.count ?? 0;
     d.newEstimates = estimates.count ?? 0;
   } catch {
-    // ignore
+    // management tables not present yet
   }
 
   return d;

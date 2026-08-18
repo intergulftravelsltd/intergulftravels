@@ -24,18 +24,23 @@ export default async function HajjDocReportPage({
   const locale = getLocale();
   const scope = await getStaffScope();
 
+  const year = searchParams.year ? Number(searchParams.year) : null;
+
+  // Filters ride the indexed columns in SQL, and the package list loads in
+  // parallel instead of after the pilgrims.
   let q = mgmtDb()
     .from('hajj_pilgrims')
-    .select('id, name, tracking_no, phone, year, package_id, doc_status, status, branch');
+    .select('id, name, tracking_no, phone, year, package_id, doc_status, status, branch')
+    .neq('status', 'cancelled');
   if (scope.branch) q = q.eq('branch', scope.branch);
-  const { data } = await q.order('created_at', { ascending: false });
-  let pilgrims = ((data ?? []) as HajjPilgrim[]).filter((p) => p.status !== 'cancelled');
+  if (year) q = q.eq('year', year);
+  if (searchParams.package) q = q.eq('package_id', searchParams.package);
 
-  const year = searchParams.year ? Number(searchParams.year) : null;
-  if (year) pilgrims = pilgrims.filter((p) => p.year === year);
-  if (searchParams.package) pilgrims = pilgrims.filter((p) => p.package_id === searchParams.package);
-
-  const packages = await loadHajjPackages();
+  const [{ data }, packages] = await Promise.all([
+    q.order('created_at', { ascending: false }),
+    loadHajjPackages(),
+  ]);
+  const pilgrims = (data ?? []) as HajjPilgrim[];
   const pkgName = searchParams.package ? packages.find((p) => p.id === searchParams.package)?.name : null;
 
   const subtitleParts = [

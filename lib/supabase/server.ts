@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
@@ -42,12 +43,52 @@ export function createClient() {
 }
 
 /**
+ * Request-deduped validated auth lookup. The admin layout, requireStaff() and
+ * getStaffScope() all need the current user; without cache() each caller pays
+ * its own network round-trip to Supabase auth on every render.
+ */
+export const getAuthUser = cache(async () => {
+  try {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return user;
+  } catch {
+    return null;
+  }
+});
+
+export type ProfileLite = { full_name: string | null; avatar_url: string | null; role: string | null };
+
+/** Request-deduped profile fetch — name, avatar and role come back in one query. */
+export const getProfileLite = cache(async (userId: string): Promise<ProfileLite | null> => {
+  try {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('profiles')
+      .select('full_name, avatar_url, role')
+      .eq('id', userId)
+      .maybeSingle();
+    return (data as ProfileLite) ?? null;
+  } catch {
+    return null;
+  }
+});
+
+/**
  * Service-role client for trusted server-side work (image upload, webhooks,
  * admin writes that bypass RLS). NEVER import this into a client component.
+ *
+ * Held as a module-level singleton: it carries no per-request state (no
+ * cookies), and hot pages used to construct ~10 fresh clients per render.
  */
+let adminClient: any = null;
+
 export function createAdminClient() {
+  if (adminClient) return adminClient;
   const { createClient: createSb } = require('@supabase/supabase-js');
-  return createSb(
+  adminClient = createSb(
     process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
     process.env.SUPABASE_SERVICE_ROLE_KEY || 'service-role-placeholder',
     {
@@ -55,4 +96,5 @@ export function createAdminClient() {
       global: { fetch: timeoutFetch },
     },
   );
+  return adminClient;
 }

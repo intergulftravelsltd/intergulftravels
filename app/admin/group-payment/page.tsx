@@ -16,16 +16,21 @@ export function generateMetadata() {
 async function loadHajjMembers(): Promise<GroupMember[]> {
   try {
     const scope = await getStaffScope();
-    let q = mgmtDb().from('hajj_pilgrims').select('id, name, tracking_no, phone, branch, account_head_id, status');
+    let q = mgmtDb()
+      .from('hajj_pilgrims')
+      .select('id, name, tracking_no, phone, branch, account_head_id, status')
+      .neq('status', 'cancelled');
     if (scope.branch) q = q.eq('branch', scope.branch);
-    const { data } = await q.order('created_at', { ascending: false });
+    // The pilgrim list and the head map are independent — one round-trip.
+    const [{ data }, heads] = await Promise.all([
+      q.order('created_at', { ascending: false }),
+      loadHeadMap(),
+    ]);
     const rows = (data ?? []) as Pick<
       HajjPilgrim,
       'id' | 'name' | 'tracking_no' | 'phone' | 'branch' | 'account_head_id' | 'status'
     >[];
-    const heads = await loadHeadMap();
     return rows
-      .filter((p) => p.status !== 'cancelled')
       .map((p) => ({
         id: p.id,
         name: p.name,

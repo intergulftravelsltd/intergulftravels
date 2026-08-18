@@ -1,9 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { marked } from 'marked';
-import DOMPurify from 'isomorphic-dompurify';
 import { toast } from 'sonner';
 import {
   Loader2,
@@ -96,10 +94,25 @@ export function PostEditor({ initial }: { initial?: Partial<PostFormData> }) {
   const set = <K extends keyof PostFormData>(key: K, value: PostFormData[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const previewHtml = useMemo(() => {
-    const raw = marked.parse(form.content || '', { async: false }) as string;
-    return DOMPurify.sanitize(raw);
-  }, [form.content]);
+  // marked + dompurify (~35KB gz) load on demand the first time Preview is
+  // opened — most editing sessions never pay for them.
+  const [previewHtml, setPreviewHtml] = useState('');
+  useEffect(() => {
+    if (!preview) return;
+    let cancelled = false;
+    (async () => {
+      const [{ marked }, { default: DOMPurify }] = await Promise.all([
+        import('marked'),
+        import('isomorphic-dompurify'),
+      ]);
+      if (cancelled) return;
+      const raw = marked.parse(form.content || '', { async: false }) as string;
+      setPreviewHtml(DOMPurify.sanitize(raw));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [preview, form.content]);
 
   async function save() {
     if (form.title.trim().length < 2) {

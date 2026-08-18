@@ -36,8 +36,8 @@ export default async function AccountsHomePage() {
   const locale = getLocale();
   const tt = getDict(locale);
   const today = new Date().toISOString().slice(0, 10);
-  const heads = await loadActiveHeads();
-  const [recent, todays] = await Promise.all([
+  const [heads, recent, todays] = await Promise.all([
+    loadActiveHeads(),
     loadTransactions({ limit: 10 }),
     loadTransactions({ from: today, to: today }),
   ]);

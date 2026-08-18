@@ -8,7 +8,7 @@ import { getStaffScope } from '@/lib/management/scope';
 import { presetRange, type RangeKey } from '@/lib/date-range';
 import { money } from '@/lib/management/format';
 import { branchShort } from '@/lib/management/branches';
-import type { AccountHead, Transaction } from '@/lib/management/types';
+import { netDebit, type AccountHead, type Transaction } from '@/lib/management/types';
 import { getLocale } from '@/lib/i18n-server';
 
 export const dynamic = 'force-dynamic';
@@ -114,10 +114,16 @@ export default async function CashBookPage({
   const liquidName = new Map(liquidHeads.map((h) => [h.id, h.name]));
   const ids = Array.from(liquidIds);
 
-  const { data: txData } = await db
+  // Fetch only from `from` onwards instead of the entire history: rows inside
+  // the window render the book, and the rows after it roll the live (trigger-
+  // maintained) balance back to derive the opening — so the opening stays
+  // exact without ever reading years of past transactions.
+  let txq = db
     .from('transactions')
     .select('*')
-    .or(`debit_account_id.in.(${ids.join(',')}),credit_account_id.in.(${ids.join(',')})`)
+    .or(`debit_account_id.in.(${ids.join(',')}),credit_account_id.in.(${ids.join(',')})`);
+  if (from) txq = txq.gte('date', from);
+  const { data: txData } = await txq
     .order('date', { ascending: true })
     .order('created_at', { ascending: true });
   const allTxs = (txData ?? []) as Transaction[];
@@ -127,10 +133,11 @@ export default async function CashBookPage({
     (liquidIds.has(tx.debit_account_id) ? Number(tx.amount) : 0) -
     (liquidIds.has(tx.credit_account_id) ? Number(tx.amount) : 0);
 
-  const before = from ? allTxs.filter((tx) => tx.date < from) : [];
   const inRange = allTxs.filter((tx) => (!from || tx.date >= from) && (!to || tx.date <= to));
 
-  const opening = liquidHeads.reduce((s, h) => s + bookOpening(h), 0) + before.reduce((s, tx) => s + flow(tx), 0);
+  const opening = from
+    ? liquidHeads.reduce((s, h) => s + netDebit(h), 0) - allTxs.reduce((s, tx) => s + flow(tx), 0)
+    : liquidHeads.reduce((s, h) => s + bookOpening(h), 0);
 
   // Names for the non-liquid counterpart heads (fallback particulars).
   const counterpartIds = Array.from(

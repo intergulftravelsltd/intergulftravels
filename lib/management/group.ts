@@ -91,11 +91,19 @@ export async function loadGroupLedger(table: GroupTable, personId: string): Prom
     if (!head) return null;
 
     const headIds = rows.map((r) => r.account_head_id).filter(Boolean) as string[];
+    // The member balances (heads) and the combined statement (transactions)
+    // are independent — run both round-trips concurrently.
+    const [hRes, ledger] = await Promise.all([
+      headIds.length
+        ? db
+            .from('account_heads')
+            .select('id, type, opening_balance, opening_is_debit, debit_total, credit_total')
+            .in('id', headIds)
+        : Promise.resolve({ data: [] as AccountHead[] }),
+      loadCombinedLedger(rows),
+    ]);
     const heads = new Map<string, AccountHead>();
-    if (headIds.length) {
-      const { data: hData } = await db.from('account_heads').select('*').in('id', headIds);
-      ((hData ?? []) as AccountHead[]).forEach((h) => heads.set(h.id, h));
-    }
+    ((hRes.data ?? []) as AccountHead[]).forEach((h) => heads.set(h.id, h));
 
     const toLedger = (r: Row): GroupMemberLedger => {
       const acc = r.account_head_id ? heads.get(r.account_head_id) : undefined;
@@ -127,7 +135,7 @@ export async function loadGroupLedger(table: GroupTable, personId: string): Prom
       headName: head.name,
       branch: head.branch,
       members,
-      ledger: await loadCombinedLedger(rows),
+      ledger,
       totalCharged: members.reduce((s, m) => s + m.charged, 0),
       totalPaid: members.reduce((s, m) => s + m.paid, 0),
       totalDue,
@@ -162,7 +170,7 @@ async function loadCombinedLedger(rows: Row[]): Promise<GroupLedgerLine[]> {
     const ors = accountIds.map((id) => `debit_account_id.eq.${id},credit_account_id.eq.${id}`).join(',');
     const { data } = await db
       .from('transactions')
-      .select('*')
+      .select('date, created_at, voucher_no, narration, method, amount, debit_account_id, credit_account_id')
       .or(ors)
       .order('date', { ascending: true })
       .order('created_at', { ascending: true });
@@ -240,15 +248,15 @@ export async function loadGroupHeadOptions(
     const refCol = table === 'hajj_pilgrims' ? 'tracking_no' : 'passport_no';
     const { data, error } = await db
       .from(table)
-      .select(`id, name, ${refCol}, group_head_id, status, branch`)
+      .select(`id, name, ${refCol}`)
       .eq('branch', branch)
       .neq('id', personId)
       .neq('status', 'cancelled')
-      .order('created_at', { ascending: false });
+      .is('group_head_id', null) // a member of another group can't be a head
+      .order('created_at', { ascending: false })
+      .limit(1000);
     if (error || !data) return [];
-    return (data as (Row & { status: string })[])
-      .filter((r) => !r.group_head_id) // a member of another group can't be a head
-      .map((r) => ({ id: r.id, name: r.name, ref: r.tracking_no ?? r.passport_no ?? '' }));
+    return (data as Row[]).map((r) => ({ id: r.id, name: r.name, ref: r.tracking_no ?? r.passport_no ?? '' }));
   } catch {
     return [];
   }

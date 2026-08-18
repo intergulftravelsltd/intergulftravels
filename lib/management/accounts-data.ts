@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getStaffScope } from '@/lib/management/scope';
 import type { AccountHead, Transaction } from '@/lib/management/types';
@@ -11,7 +12,7 @@ import type { AccountHead, Transaction } from '@/lib/management/types';
  * empty state instead of crashing the build.
  */
 
-export async function loadActiveHeads(): Promise<AccountHead[]> {
+export const loadActiveHeads = cache(async function loadActiveHeads(): Promise<AccountHead[]> {
   try {
     const scope = await getStaffScope();
     const db = createAdminClient();
@@ -27,9 +28,9 @@ export async function loadActiveHeads(): Promise<AccountHead[]> {
   } catch {
     return [];
   }
-}
+});
 
-export async function loadHead(id: string): Promise<AccountHead | null> {
+export const loadHead = cache(async function loadHead(id: string): Promise<AccountHead | null> {
   try {
     const db = createAdminClient();
     const { data } = await db.from('account_heads').select('*').eq('id', id).maybeSingle();
@@ -37,7 +38,7 @@ export async function loadHead(id: string): Promise<AccountHead | null> {
   } catch {
     return null;
   }
-}
+});
 
 export type TxFilters = {
   from?: string;

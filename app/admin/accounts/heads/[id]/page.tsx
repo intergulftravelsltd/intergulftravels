@@ -31,13 +31,12 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
 export default async function AccountLedgerPage({ params }: { params: { id: string } }) {
   const locale = getLocale();
   const t = getDict(locale);
-  const head = await loadHead(params.id);
-  if (!head) notFound();
-
-  const [allHeads, txns] = await Promise.all([
+  const [head, allHeads, txns] = await Promise.all([
+    loadHead(params.id),
     loadActiveHeads(),
-    loadTransactions({ accountId: params.id, limit: 2000 }),
+    loadTransactions({ accountId: params.id, limit: 1000 }),
   ]);
+  if (!head) notFound();
   const map = headMap(allHeads);
 
   // Oldest → newest for the running balance walk.

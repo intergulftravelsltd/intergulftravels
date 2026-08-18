@@ -100,8 +100,16 @@ async function loadProfile(id: string): Promise<ProfileData> {
 }
 
 export default async function PassengerProfilePage({ params }: { params: { id: string } }) {
-  const [{ passenger, head, packageName, packagePrice, payments, alreadyCharged }, packages, bankAccounts] =
-    await Promise.all([loadProfile(params.id), loadUmrahPackages(), loadBankAccounts()]);
+  // The group ledger is keyed by the URL id alone, so it loads with the
+  // profile instead of after it; only the head-options list (needs the row's
+  // branch) waits for the profile.
+  const [{ passenger, head, packageName, packagePrice, payments, alreadyCharged }, packages, bankAccounts, group] =
+    await Promise.all([
+      loadProfile(params.id),
+      loadUmrahPackages(),
+      loadBankAccounts(),
+      loadGroupLedger('umrah_passengers', params.id),
+    ]);
 
   const locale = getLocale();
   const t = getDict(locale);
@@ -109,10 +117,7 @@ export default async function PassengerProfilePage({ params }: { params: { id: s
   if (!passenger) notFound();
 
   // Permanent family-group context (migration 0008; loaders are best-effort).
-  const [group, groupHeadOptions] = await Promise.all([
-    loadGroupLedger('umrah_passengers', passenger.id),
-    loadGroupHeadOptions('umrah_passengers', passenger.id, passenger.branch),
-  ]);
+  const groupHeadOptions = await loadGroupHeadOptions('umrah_passengers', passenger.id, passenger.branch);
   const isGroupMember = Boolean(passenger.group_head_id) && group !== null;
   const groupCurrentHead = isGroupMember && group ? { id: group.headId, name: group.headName } : null;
   const groupMemberCount = group && group.headId === passenger.id ? group.members.length - 1 : 0;

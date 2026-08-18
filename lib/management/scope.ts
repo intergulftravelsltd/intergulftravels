@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthUser, getProfileLite } from '@/lib/supabase/server';
 import { isAdminEmail } from '@/lib/admin';
 
 /**
@@ -22,10 +22,7 @@ export type StaffScope = { isAdmin: boolean; branch: string | null; email: strin
  */
 export const getStaffScope = cache(async function getStaffScope(): Promise<StaffScope> {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) return { isAdmin: false, branch: null, email: null };
 
     const email = (user.email ?? '').toLowerCase();
@@ -40,8 +37,8 @@ export const getStaffScope = cache(async function getStaffScope(): Promise<Staff
 
     let isAdmin = isAdminEmail(email);
     if (!isAdmin) {
-      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
-      if (data?.role === 'admin') isAdmin = true;
+      const profile = await getProfileLite(user.id);
+      if (profile?.role === 'admin') isAdmin = true;
     }
     return { isAdmin, branch, email };
   } catch {

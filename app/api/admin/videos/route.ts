@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/server';
 import { youtubeId } from '@/lib/videos';
@@ -74,6 +75,7 @@ export async function POST(request: Request) {
       detail: { title: parsed.data.title, youtube_id: id },
     });
 
+    revalidateTag('videos');
     return NextResponse.json({ ok: true, id: data.id, youtube_id: id });
   } catch (err) {
     console.error('[admin/videos] unexpected error:', err);
@@ -151,6 +153,7 @@ export async function PATCH(request: Request) {
       detail: update,
     });
 
+    revalidateTag('videos');
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[admin/videos] unexpected error:', err);
@@ -186,6 +189,7 @@ export async function DELETE(request: Request) {
       entity_id: id,
     });
 
+    revalidateTag('videos');
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[admin/videos] unexpected error:', err);

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthUser, getProfileLite } from '@/lib/supabase/server';
 import { isAdminEmail } from '@/lib/admin';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { AuthShell } from '@/components/auth/AuthShell';
@@ -21,11 +21,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   // Not signed in → show the staff login right here at /admin (no separate URL).
   if (!user) {
@@ -50,11 +46,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   let avatarUrl: string | null = null;
 
   try {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name, avatar_url, role')
-      .eq('id', user.id)
-      .maybeSingle();
+    const profile = await getProfileLite(user.id);
 
     if (profile?.role) role = profile.role;
     if (role === 'admin') isAdmin = true;
