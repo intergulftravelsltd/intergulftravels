@@ -11,6 +11,13 @@ import {
   Calculator,
   NotebookPen,
   BarChart3,
+  Activity,
+  PieChart,
+  ArrowUpRight,
+  ArrowDownRight,
+  ArrowLeftRight,
+  ScrollText,
+  ChevronRight,
 } from 'lucide-react';
 import { mgmtDb } from '@/lib/management/server';
 import { getStaffScope } from '@/lib/management/scope';
@@ -19,18 +26,19 @@ import { netDebit, naturalBalance } from '@/lib/management/types';
 import { money } from '@/lib/management/format';
 import { branchLabel } from '@/lib/management/branches';
 import { formatDate } from '@/lib/utils';
-import { PageHeader, Card, StatCard, EmptyState, TableWrap, thClass, tdClass, Money, Badge } from '@/components/manage/ui';
+import { PageHeader, Card, StatCard, EmptyState, Badge } from '@/components/manage/ui';
 import { DateRangeFilter } from '@/components/manage/DateRangeFilter';
+import { CountUp, DonutChart, TowersChart, FlowChips, type MonthPoint } from '@/components/manage/charts';
 import { presetRange, type RangeKey } from '@/lib/date-range';
 import { getLocale } from '@/lib/i18n-server';
-import { localizedPath } from '@/lib/i18n';
+import { localizedPath, type Locale } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminshell';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Dashboard' };
 
 /** Only the fields the dashboard actually renders for a recent voucher row. */
-type DashTx = { id: string; voucher_no: string | null; date: string; amount: number };
+type DashTx = { id: string; voucher_no: string | null; date: string; amount: number; type?: string };
 
 type DashData = {
   cash: number;
@@ -93,7 +101,7 @@ async function loadDashboard(range: { from: string; to: string }): Promise<DashD
       d.newContacts = Number(s.new_contacts) || 0;
       d.newEstimates = Number(s.new_estimates) || 0;
       d.recentTx = ((s.recent_tx ?? []) as any[]).map((r) => ({
-        tx: { id: r.id, voucher_no: r.voucher_no, date: r.date, amount: Number(r.amount) },
+        tx: { id: r.id, voucher_no: r.voucher_no, date: r.date, amount: Number(r.amount), type: r.type },
         debitName: r.debit_name ?? 'Unknown',
         creditName: r.credit_name ?? 'Unknown',
       }));
@@ -122,7 +130,7 @@ async function loadDashboard(range: { from: string; to: string }): Promise<DashD
 
     let rq = db
       .from('transactions')
-      .select('id, voucher_no, date, amount, debit_account_id, credit_account_id');
+      .select('id, voucher_no, date, amount, type, debit_account_id, credit_account_id');
     if (b) rq = rq.eq('branch', b);
 
     let hajjQ = db.from('hajj_pilgrims').select('id', head).eq('year', year);
@@ -212,6 +220,82 @@ async function loadDashboard(range: { from: string; to: string }): Promise<DashD
   return d;
 }
 
+/** 12-month income/expense towers — one dashboard_trend RPC (0010), with a
+ *  two-query fallback so the chart still renders before the migration runs. */
+async function loadTrend(locale: Locale): Promise<MonthPoint[]> {
+  const MONTHS = 12;
+  const now = new Date();
+  const skeleton: string[] = [];
+  for (let i = MONTHS - 1; i >= 0; i--) {
+    const dt = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    skeleton.push(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`);
+  }
+  const label = (ym: string) => {
+    const [y, m] = ym.split('-').map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString(locale === 'bn' ? 'bn-BD' : 'en-GB', { month: 'short' });
+  };
+  const empty = () => skeleton.map((ym) => ({ label: label(ym), income: 0, expense: 0 }));
+
+  try {
+    const scope = await getStaffScope();
+    const db = mgmtDb();
+    try {
+      const { data, error } = await db.rpc('dashboard_trend', { p_branch: scope.branch, p_months: MONTHS });
+      if (!error && Array.isArray(data)) {
+        const byYm = new Map((data as any[]).map((r) => [r.ym, r]));
+        return skeleton.map((ym) => ({
+          label: label(ym),
+          income: Number(byYm.get(ym)?.income) || 0,
+          expense: Number(byYm.get(ym)?.expense) || 0,
+        }));
+      }
+    } catch {
+      // RPC not deployed yet — fall through to the two-query fallback.
+    }
+
+    let tq = db
+      .from('transactions')
+      .select('date, amount, debit_account_id, credit_account_id')
+      .gte('date', `${skeleton[0]}-01`);
+    if (scope.branch) tq = tq.eq('branch', scope.branch);
+    const [txRes, headRes] = await Promise.all([tq, db.from('account_heads').select('id, type')]);
+    const typeOf = new Map(
+      ((headRes.data ?? []) as { id: string; type: string }[]).map((h) => [h.id, h.type]),
+    );
+    const buckets = new Map(skeleton.map((ym) => [ym, { income: 0, expense: 0 }]));
+    for (const tx of (txRes.data ?? []) as {
+      date: string;
+      amount: number;
+      debit_account_id: string;
+      credit_account_id: string;
+    }[]) {
+      const b = buckets.get(String(tx.date).slice(0, 7));
+      if (!b) continue;
+      if (typeOf.get(tx.credit_account_id) === 'income') b.income += Number(tx.amount);
+      if (typeOf.get(tx.debit_account_id) === 'expense') b.expense += Number(tx.amount);
+    }
+    return skeleton.map((ym) => ({ label: label(ym), ...buckets.get(ym)! }));
+  } catch {
+    return empty();
+  }
+}
+
+/** Direction icon + tones for a recent-voucher row. */
+function txVisual(type?: string) {
+  switch (type) {
+    case 'receipt':
+    case 'income':
+      return { Icon: ArrowUpRight, chip: 'bg-brand-50 text-brand-700', amount: 'text-brand-700', sign: '+' };
+    case 'payment':
+    case 'expense':
+      return { Icon: ArrowDownRight, chip: 'bg-red-50 text-red-600', amount: 'text-red-600', sign: '−' };
+    case 'contra':
+      return { Icon: ArrowLeftRight, chip: 'bg-sky-50 text-sky-700', amount: 'text-ink', sign: '' };
+    default:
+      return { Icon: ScrollText, chip: 'bg-muted text-ink-muted', amount: 'text-ink', sign: '' };
+  }
+}
+
 export default async function ManagementDashboard({
   searchParams,
 }: {
@@ -223,14 +307,18 @@ export default async function ManagementDashboard({
   // (Lifetime clears both dates) overrides it. rangeKey drives the highlight.
   const rangeKey = (searchParams.range || (from || to ? 'custom' : 'this-month')) as RangeKey;
   const range = rangeKey === 'custom' ? { from, to } : presetRange(rangeKey);
-  const d = await loadDashboard(range);
   const locale = getLocale();
+  const [d, trend] = await Promise.all([loadDashboard(range), loadTrend(locale)]);
   const t = getDict(locale);
   // Branch admins see their branch name as a welcome; the super admin keeps the
   // group-wide heading.
   const scope = await getStaffScope();
   const branchName = scope.branch ? branchLabel(scope.branch) : null;
   const periodHint = range.from && range.to ? `${formatDate(range.from)} — ${formatDate(range.to)}` : '';
+
+  const net = d.periodIncome - d.periodExpense;
+  const flowIncome = trend.reduce((s, m) => s + m.income, 0);
+  const flowExpense = trend.reduce((s, m) => s + m.expense, 0);
 
   const quickActions = [
     { label: t.dash.qaDailyEntry, href: '/admin/accounts/entry', icon: NotebookPen },
@@ -242,15 +330,29 @@ export default async function ManagementDashboard({
   return (
     <>
       <PageHeader
-        title={branchName ?? t.dash.title}
+        title={
+          <span className="inline-flex flex-wrap items-center gap-3">
+            {branchName ?? t.dash.title}
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[10px] font-bold tracking-widest text-brand-700 ring-1 ring-brand-600/20">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500 opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-600" />
+              </span>
+              {t.dash.live}
+            </span>
+          </span>
+        }
         subtitle={branchName ? t.dash.branchGlance : t.dash.subtitle}
         actions={
-          <Link
-            href={localizedPath(locale, '/admin/accounts/entry')}
-            className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-emerald transition hover:bg-brand-700"
-          >
-            <NotebookPen className="h-4 w-4" /> {t.dash.newEntry}
-          </Link>
+          <>
+            <DateRangeFilter from={range.from} to={range.to} range={rangeKey} />
+            <Link
+              href={localizedPath(locale, '/admin/accounts/entry')}
+              className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-emerald transition hover:-translate-y-0.5 hover:bg-brand-700"
+            >
+              <NotebookPen className="h-4 w-4" /> {t.dash.newEntry}
+            </Link>
+          </>
         }
       />
 
@@ -260,28 +362,29 @@ export default async function ManagementDashboard({
         </div>
       )}
 
-      <Card className="mb-4">
-        <DateRangeFilter from={range.from} to={range.to} range={rangeKey} />
-      </Card>
-
-      {/* Money stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {/* Money stats — the four figures the office asks for first */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Link href={localizedPath(locale, '/admin/accounts/cash-bank')} className="block">
-          <StatCard label={t.dash.cashInHand} value={<Money value={d.cash} />} icon={Wallet} accent="emerald" />
+          <StatCard
+            label={t.dash.cashInHand}
+            value={<CountUp value={d.cash} money />}
+            icon={Wallet}
+            accent="emerald"
+          />
         </Link>
         <Link href={localizedPath(locale, '/admin/accounts/cash-bank')} className="block">
           <StatCard
             label={t.dash.bankBalance}
-            value={<Money value={d.bank} />}
+            value={<CountUp value={d.bank} money />}
             icon={Banknote}
-            accent="emerald"
+            accent="blue"
             hint={d.bankOverdraft > 0 ? `${locale === 'bn' ? 'ওভারড্রাফট' : 'Overdraft'} ${money(d.bankOverdraft)}` : undefined}
           />
         </Link>
         <Link href={localizedPath(locale, '/admin/accounts/due')} className="block">
           <StatCard
             label={t.dash.totalReceivable}
-            value={<Money value={d.receivable} />}
+            value={<CountUp value={d.receivable} money />}
             icon={HandCoins}
             accent="gold"
             hint={t.dash.totalReceivableHint}
@@ -289,8 +392,22 @@ export default async function ManagementDashboard({
         </Link>
         <Link href={localizedPath(locale, '/admin/reports')} className="block">
           <StatCard
+            label={t.dash.netPeriod}
+            value={<CountUp value={net} money />}
+            icon={net >= 0 ? TrendingUp : TrendingDown}
+            accent={net >= 0 ? 'emerald' : 'red'}
+            hint={periodHint || t.dash.netHint}
+          />
+        </Link>
+      </div>
+
+      {/* Secondary metrics */}
+      <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+        <Link href={localizedPath(locale, '/admin/reports')} className="block">
+          <StatCard
+            sm
             label={t.dash.periodIncome}
-            value={<Money value={d.periodIncome} />}
+            value={<CountUp value={d.periodIncome} money />}
             icon={TrendingUp}
             accent="emerald"
             hint={periodHint}
@@ -298,8 +415,9 @@ export default async function ManagementDashboard({
         </Link>
         <Link href={localizedPath(locale, '/admin/accounts/expenses')} className="block">
           <StatCard
+            sm
             label={t.dash.periodExpense}
-            value={<Money value={d.periodExpense} />}
+            value={<CountUp value={d.periodExpense} money />}
             icon={TrendingDown}
             accent="red"
             hint={periodHint}
@@ -307,24 +425,29 @@ export default async function ManagementDashboard({
         </Link>
         <Link href={localizedPath(locale, '/admin/hajj')} className="block">
           <StatCard
+            sm
             label={t.dash.hajjPilgrims}
-            value={d.hajjThisYear}
+            value={<CountUp value={d.hajjThisYear} />}
             icon={Users}
-            accent="emerald"
+            accent="blue"
             hint={t.dash.registeredThisYear}
           />
         </Link>
-      </div>
-
-      {/* Operational stats */}
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Link href={localizedPath(locale, '/admin/umrah')} className="block">
-          <StatCard label={t.dash.umrahPassengers} value={d.umrahThisYear} icon={Moon} accent="emerald" hint={t.dash.totalOnRecord} />
+          <StatCard
+            sm
+            label={t.dash.umrahPassengers}
+            value={<CountUp value={d.umrahThisYear} />}
+            icon={Moon}
+            accent="purple"
+            hint={t.dash.totalOnRecord}
+          />
         </Link>
         <Link href={localizedPath(locale, '/admin/contacts')} className="block">
           <StatCard
+            sm
             label={t.dash.unhandledContacts}
-            value={d.newContacts}
+            value={<CountUp value={d.newContacts} />}
             icon={Inbox}
             accent="gold"
             hint={t.dash.awaitingReply}
@@ -332,13 +455,59 @@ export default async function ManagementDashboard({
         </Link>
         <Link href={localizedPath(locale, '/admin/estimates')} className="block">
           <StatCard
+            sm
             label={t.dash.newEstimates}
-            value={d.newEstimates}
+            value={<CountUp value={d.newEstimates} />}
             icon={Calculator}
             accent="gold"
             hint={t.dash.toBeQuoted}
           />
         </Link>
+      </div>
+
+      {/* Charts — cash-flow towers + money-mix donut */}
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <Card className="xl:col-span-2">
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-ink">
+                <Activity className="h-5 w-5 text-brand-700" /> {t.dash.cashFlow}
+              </h2>
+              <p className="mt-0.5 text-xs text-ink-muted">{t.dash.cashFlowHint}</p>
+            </div>
+            <FlowChips
+              income={flowIncome}
+              expense={flowExpense}
+              inLabel={t.dash.inLabel}
+              outLabel={t.dash.outLabel}
+              netLabel={t.dash.netLabel}
+            />
+          </div>
+          <TowersChart
+            data={trend}
+            inLabel={t.dash.inLabel}
+            outLabel={t.dash.outLabel}
+            emptyLabel={t.dash.noChart}
+          />
+        </Card>
+
+        <Card>
+          <div className="mb-6">
+            <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-ink">
+              <PieChart className="h-5 w-5 text-brand-700" /> {t.dash.moneyMix}
+            </h2>
+            <p className="mt-0.5 text-xs text-ink-muted">{t.dash.moneyMixHint}</p>
+          </div>
+          <DonutChart
+            centerLabel={t.dash.totalLabel}
+            emptyLabel={t.dash.noChart}
+            segments={[
+              { label: t.dash.cashInHand, value: d.cash, color: '#0e7c5a' },
+              { label: t.dash.bankBalance, value: d.bank, color: '#c9a24b' },
+              { label: t.dash.totalReceivable, value: d.receivable, color: '#38bdf8' },
+            ]}
+          />
+        </Card>
       </div>
 
       {/* Quick actions */}
@@ -351,9 +520,11 @@ export default async function ManagementDashboard({
               <Link
                 key={a.href}
                 href={localizedPath(locale, a.href)}
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-background/50 px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-600/40 hover:bg-brand-50 hover:text-brand-700"
+                className="group inline-flex items-center gap-2 rounded-full border border-border bg-background/50 px-4 py-2 text-sm font-medium text-ink transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-600/40 hover:bg-brand-50 hover:text-brand-700 hover:shadow-soft"
               >
-                <Icon className="h-4 w-4" />
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-brand-50 text-brand-700 transition-colors group-hover:bg-brand-600 group-hover:text-white">
+                  <Icon className="h-3.5 w-3.5" />
+                </span>
                 {a.label}
               </Link>
             );
@@ -364,84 +535,94 @@ export default async function ManagementDashboard({
       {/* Recent activity */}
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
         {/* Recent transactions */}
-        <div>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-lg font-semibold text-ink">{t.dash.recentTransactions}</h2>
-            <Link href={localizedPath(locale, '/admin/accounts/vouchers')} className="text-sm font-semibold text-brand-700 hover:underline">
-              {t.dash.viewAll}
+        <Card className="p-0">
+          <div className="flex items-center justify-between px-5 pb-1 pt-5">
+            <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-ink">
+              <ScrollText className="h-5 w-5 text-brand-700" /> {t.dash.recentTransactions}
+            </h2>
+            <Link
+              href={localizedPath(locale, '/admin/accounts/vouchers')}
+              className="inline-flex items-center gap-0.5 text-sm font-semibold text-brand-700 transition hover:gap-1.5 hover:underline"
+            >
+              {t.dash.viewAll} <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
           {d.recentTx.length === 0 ? (
-            <EmptyState
-              title={t.dash.noTransactions}
-              hint={t.dash.noTransactionsHint}
-            />
+            <div className="p-5">
+              <EmptyState title={t.dash.noTransactions} hint={t.dash.noTransactionsHint} />
+            </div>
           ) : (
-            <TableWrap className="min-w-0">
-              <thead>
-                <tr>
-                  <th className={thClass}>{t.dash.voucher}</th>
-                  <th className={thClass}>{t.dash.particulars}</th>
-                  <th className={`${thClass} text-right`}>{t.dash.amount}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {d.recentTx.map(({ tx, debitName, creditName }) => (
-                  <tr key={tx.id}>
-                    <td className={`${tdClass} align-top`}>
-                      <p className="font-mono text-xs text-ink">{tx.voucher_no ?? '—'}</p>
-                      <p className="text-xs text-ink-muted">{formatDate(tx.date, { day: 'numeric', month: 'short' })}</p>
-                    </td>
-                    <td className={`${tdClass} align-top`}>
-                      <p className="text-ink">
-                        <span className="font-medium">{t.dash.dr}</span> {debitName}
+            <ul className="divide-y divide-border/60 pb-2">
+              {d.recentTx.map(({ tx, debitName, creditName }) => {
+                const v = txVisual(tx.type);
+                const Icon = v.Icon;
+                return (
+                  <li key={tx.id} className="group flex items-center gap-3.5 px-5 py-3 transition-colors hover:bg-muted/40">
+                    <span
+                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${v.chip} transition-transform duration-200 group-hover:scale-110`}
+                    >
+                      <Icon className="h-[18px] w-[18px]" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-ink">
+                        {t.dash.dr} {debitName}
                       </p>
-                      <p className="text-ink-muted">
-                        <span className="font-medium">{t.dash.cr}</span> {creditName}
+                      <p className="truncate text-xs text-ink-muted">
+                        {t.dash.cr} {creditName}
+                        {tx.voucher_no ? ` · ${tx.voucher_no}` : ''} ·{' '}
+                        {formatDate(tx.date, { day: 'numeric', month: 'short' })}
                       </p>
-                    </td>
-                    <td className={`${tdClass} text-right align-top tabular-nums`}>{money(tx.amount, false)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </TableWrap>
+                    </div>
+                    <span className={`shrink-0 text-sm font-bold tabular-nums ${v.amount}`}>
+                      {v.sign}
+                      {money(tx.amount, false)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           )}
-        </div>
+        </Card>
 
         {/* Recent pilgrims */}
-        <div>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-lg font-semibold text-ink">{t.dash.recentPilgrims}</h2>
-            <Link href={localizedPath(locale, '/admin/hajj')} className="text-sm font-semibold text-brand-700 hover:underline">
-              {t.dash.viewAll}
+        <Card className="p-0">
+          <div className="flex items-center justify-between px-5 pb-1 pt-5">
+            <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-ink">
+              <Users className="h-5 w-5 text-brand-700" /> {t.dash.recentPilgrims}
+            </h2>
+            <Link
+              href={localizedPath(locale, '/admin/hajj')}
+              className="inline-flex items-center gap-0.5 text-sm font-semibold text-brand-700 transition hover:gap-1.5 hover:underline"
+            >
+              {t.dash.viewAll} <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
           {d.recentPilgrims.length === 0 ? (
-            <EmptyState
-              title={t.dash.noPilgrims}
-              hint={t.dash.noPilgrimsHint}
-            />
-          ) : (
-            <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
-              <ul className="divide-y divide-border/70">
-                {d.recentPilgrims.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between gap-3 px-5 py-3.5">
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-ink">{p.name}</p>
-                      <p className="truncate text-xs text-ink-muted">
-                        {p.tracking_no ? `${p.tracking_no} · ` : ''}
-                        {branchLabel(p.branch)}
-                      </p>
-                    </div>
-                    <Badge tone={p.reg_type === 'registered' ? 'emerald' : 'gold'}>
-                      {p.reg_type === 'registered' ? t.dash.registered : t.dash.preReg}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
+            <div className="p-5">
+              <EmptyState title={t.dash.noPilgrims} hint={t.dash.noPilgrimsHint} />
             </div>
+          ) : (
+            <ul className="divide-y divide-border/60 pb-2">
+              {d.recentPilgrims.map((p) => (
+                <li key={p.id} className="group flex items-center gap-3.5 px-5 py-3 transition-colors hover:bg-muted/40">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand-600 to-brand-400 font-display text-sm font-bold text-white shadow-emerald transition-transform duration-200 group-hover:scale-110">
+                    {(p.name ?? '?').trim().charAt(0).toUpperCase() || '?'}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-ink">{p.name}</p>
+                    <p className="truncate text-xs text-ink-muted">
+                      {p.tracking_no ? `${p.tracking_no} · ` : ''}
+                      {branchLabel(p.branch)}
+                    </p>
+                  </div>
+                  <Badge tone={p.reg_type === 'registered' ? 'emerald' : 'gold'}>
+                    {p.reg_type === 'registered' ? t.dash.registered : t.dash.preReg}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
           )}
-        </div>
+        </Card>
       </div>
     </>
   );

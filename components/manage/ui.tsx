@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { money } from '@/lib/management/format';
+import { ArrowUpRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export function PageHeader({
@@ -7,7 +8,7 @@ export function PageHeader({
   subtitle,
   actions,
 }: {
-  title: string;
+  title: React.ReactNode;
   subtitle?: string;
   actions?: React.ReactNode;
 }) {
@@ -45,45 +46,99 @@ export function Card({
   );
 }
 
+/**
+ * KPI tile — soft-tinted gradient card with an icon chip, a big figure and a
+ * corner arrow that appears on hover (pages usually wrap it in a <Link>).
+ */
 export function StatCard({
   label,
   value,
   icon: Icon,
   hint,
   accent = 'emerald',
+  sm = false,
 }: {
   label: string;
   value: React.ReactNode;
   icon?: LucideIcon;
   hint?: string;
-  accent?: 'emerald' | 'gold' | 'red' | 'slate';
+  accent?: 'emerald' | 'gold' | 'red' | 'slate' | 'blue' | 'purple';
+  /** Compact variant for secondary metric rows. */
+  sm?: boolean;
 }) {
-  const ring = {
-    emerald: 'bg-brand-50 text-brand-700',
-    gold: 'bg-gold-50 text-gold-700',
-    red: 'bg-red-50 text-red-600',
-    slate: 'bg-muted text-ink-muted',
+  const t = {
+    emerald: {
+      card: 'from-brand-50/90 to-emerald-50/40 border-brand-600/15',
+      chip: 'text-brand-700',
+      blob: 'bg-brand-400/25',
+    },
+    gold: {
+      card: 'from-gold-50/95 to-amber-50/40 border-gold-500/25',
+      chip: 'text-gold-700',
+      blob: 'bg-gold-400/30',
+    },
+    red: {
+      card: 'from-red-50/90 to-rose-50/40 border-red-500/15',
+      chip: 'text-red-600',
+      blob: 'bg-red-400/20',
+    },
+    blue: {
+      card: 'from-sky-50/90 to-blue-50/40 border-sky-500/20',
+      chip: 'text-sky-700',
+      blob: 'bg-sky-400/25',
+    },
+    purple: {
+      card: 'from-violet-50/90 to-purple-50/40 border-violet-500/20',
+      chip: 'text-violet-700',
+      blob: 'bg-violet-400/25',
+    },
+    slate: {
+      card: 'from-muted/80 to-muted/30 border-border',
+      chip: 'text-ink-muted',
+      blob: 'bg-ink-muted/10',
+    },
   }[accent];
+
   return (
-    <Card hover className="group flex items-center gap-4">
-      {Icon && (
-        <span
-          className={cn(
-            'grid h-12 w-12 shrink-0 place-items-center rounded-xl transition-transform duration-300 group-hover:scale-110',
-            ring,
-          )}
-        >
-          <Icon className="h-6 w-6" />
-        </span>
+    <div
+      className={cn(
+        'group relative h-full overflow-hidden rounded-2xl border bg-gradient-to-br shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-emerald',
+        t.card,
+        sm ? 'p-4' : 'p-5',
       )}
-      <div className="min-w-0">
-        <p className="truncate text-xs font-medium uppercase tracking-wide text-ink-muted">{label}</p>
-        <p className="mt-0.5 font-display text-xl font-semibold text-ink transition-colors duration-300 group-hover:text-brand-700">
-          {value}
-        </p>
-        {hint && <p className="text-xs text-ink-muted">{hint}</p>}
+    >
+      {/* decorative glow that swells on hover */}
+      <span
+        aria-hidden
+        className={cn(
+          'pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full blur-2xl transition-transform duration-500 group-hover:scale-150',
+          t.blob,
+        )}
+      />
+      <div className="relative flex items-start justify-between gap-2">
+        {Icon ? (
+          <span
+            className={cn(
+              'grid shrink-0 place-items-center rounded-xl bg-white/90 shadow-soft ring-1 ring-black/5 transition-transform duration-300 group-hover:scale-110',
+              sm ? 'h-9 w-9' : 'h-11 w-11',
+              t.chip,
+            )}
+          >
+            <Icon className={sm ? 'h-4 w-4' : 'h-5 w-5'} />
+          </span>
+        ) : (
+          <span />
+        )}
+        <ArrowUpRight
+          className="h-4 w-4 -translate-x-1 translate-y-1 text-ink-muted/0 transition-all duration-300 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:text-ink-muted/70"
+        />
       </div>
-    </Card>
+      <p className={cn('relative mt-3 font-display font-bold tracking-tight text-ink', sm ? 'text-lg' : 'text-[26px] leading-9')}>
+        {value}
+      </p>
+      <p className={cn('relative mt-0.5 font-semibold text-ink', sm ? 'text-xs' : 'text-[13px]')}>{label}</p>
+      {hint && <p className="relative mt-0.5 truncate text-xs text-ink-muted">{hint}</p>}
+    </div>
   );
 }
 

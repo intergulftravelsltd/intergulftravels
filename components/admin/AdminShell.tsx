@@ -312,10 +312,10 @@ function SidebarContent({
                           onClick={onNavigate}
                           aria-current={active ? 'page' : undefined}
                           className={cn(
-                            'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
+                            'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
                             active
-                              ? 'bg-white/10 text-white shadow-[inset_3px_0_0_0_theme(colors.gold.400)]'
-                              : 'text-white/65 hover:bg-white/5 hover:text-white',
+                              ? 'bg-gradient-to-r from-white/15 via-white/8 to-transparent text-white shadow-[inset_3px_0_0_0_theme(colors.gold.400)]'
+                              : 'text-white/65 hover:translate-x-0.5 hover:bg-white/5 hover:text-white',
                           )}
                         >
                           <Icon
@@ -343,10 +343,10 @@ function SidebarContent({
           onClick={onNavigate}
           aria-current={accountActive ? 'page' : undefined}
           className={cn(
-            'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
+            'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
             accountActive
-              ? 'bg-white/10 text-white shadow-[inset_3px_0_0_0_theme(colors.gold.400)]'
-              : 'text-white/65 hover:bg-white/5 hover:text-white',
+              ? 'bg-gradient-to-r from-white/15 via-white/8 to-transparent text-white shadow-[inset_3px_0_0_0_theme(colors.gold.400)]'
+              : 'text-white/65 hover:translate-x-0.5 hover:bg-white/5 hover:text-white',
           )}
         >
           <UserCog
