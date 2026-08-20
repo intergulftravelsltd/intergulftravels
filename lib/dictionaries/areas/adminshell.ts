@@ -47,6 +47,7 @@ const dict = {
       vault: 'Vault',
       staffRoles: 'Staff & Roles',
       activityLog: 'Activity Log',
+      changelog: 'Changelog',
     },
     // ---- Topbar ----
     adminConsole: 'Administration console',
@@ -59,6 +60,16 @@ const dict = {
     adminPanel: 'Admin Panel',
     footerTagline: 'Inter Gulf Travels Ltd · Hajj & Umrah',
     footerLicense: 'Government Licensed — since 2002',
+    whatsNew: "What's new",
+
+    // ---- Changelog (app/admin/changelog) ----
+    changelog: {
+      title: 'Changelog',
+      subtitle: 'Every release since day one — what shipped, version by version.',
+      latest: 'Latest',
+      releases: 'releases',
+      firstRelease: 'First release',
+    },
 
     // ---- Dashboard (app/admin/page.tsx) ----
     dash: {
@@ -235,6 +246,7 @@ const dict = {
       vault: 'ভল্ট',
       staffRoles: 'স্টাফ ও ভূমিকা',
       activityLog: 'কার্যকলাপ লগ',
+      changelog: 'চেঞ্জলগ',
     },
     // ---- Topbar ----
     adminConsole: 'অ্যাডমিনিস্ট্রেশন কনসোল',
@@ -247,6 +259,16 @@ const dict = {
     adminPanel: 'অ্যাডমিন প্যানেল',
     footerTagline: 'ইন্টার গালফ ট্রাভেলস লিমিটেড · হজ ও উমরাহ',
     footerLicense: 'সরকার অনুমোদিত — ২০০২ সাল থেকে',
+    whatsNew: 'নতুন কী এলো',
+
+    // ---- Changelog ----
+    changelog: {
+      title: 'চেঞ্জলগ',
+      subtitle: 'প্রথম দিন থেকে প্রতিটি রিলিজ — ভার্সন ধরে ধরে কী কী এসেছে।',
+      latest: 'সর্বশেষ',
+      releases: 'রিলিজ',
+      firstRelease: 'প্রথম রিলিজ',
+    },
 
     // ---- Dashboard ----
     dash: {

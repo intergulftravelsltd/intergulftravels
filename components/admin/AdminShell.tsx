@@ -37,9 +37,11 @@ import {
   KeyRound,
   Contact,
   BookOpen,
+  Rocket,
   type LucideIcon,
 } from 'lucide-react';
 import { LogoMark } from '@/components/brand/Logo';
+import { APP_VERSION } from '@/lib/changelog';
 import { ConfirmHost } from '@/components/admin/confirm';
 import { LangToggle } from '@/components/layout/LangToggle';
 import { BranchScopeProvider } from '@/components/providers/BranchScope';
@@ -118,6 +120,7 @@ const NAV: NavGroup[] = [
       { labelKey: 'vault', href: '/admin/secure-vault', icon: KeyRound },
       { labelKey: 'staffRoles', href: '/admin/users', icon: Users2 },
       { labelKey: 'activityLog', href: '/admin/activity', icon: History },
+      { labelKey: 'changelog', href: '/admin/changelog', icon: Rocket },
     ],
   },
 ];
@@ -144,7 +147,7 @@ export function AdminShell({
     <div className="min-h-screen bg-sand-soft text-ink">
       <ConfirmHost />
       {/* ---------- Desktop sidebar ---------- */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col bg-brand-900 text-white lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-border bg-card text-ink lg:flex">
         <SidebarContent pathname={pathname} isAdmin={isAdmin} locale={locale} />
       </aside>
 
@@ -156,11 +159,11 @@ export function AdminShell({
             className="absolute inset-0 bg-ink/60 backdrop-blur-sm"
             onClick={() => setDrawerOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[82%] flex-col bg-brand-900 text-white shadow-2xl">
+          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[82%] flex-col bg-card text-ink shadow-2xl">
             <button
               aria-label={t.closeNavigation}
               onClick={() => setDrawerOpen(false)}
-              className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
+              className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full text-ink-muted transition hover:bg-muted hover:text-ink"
             >
               <X className="h-5 w-5" />
             </button>
@@ -268,11 +271,11 @@ function SidebarContent({
 
   return (
     <>
-      <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
+      <div className="flex h-16 items-center gap-3 border-b border-border px-5">
         <LogoMark className="h-9 w-9" />
         <div className="leading-none">
-          <p className="font-display text-lg font-semibold tracking-tight">Inter Gulf</p>
-          <p className="mt-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.3em] text-gold-300">
+          <p className="font-display text-lg font-semibold tracking-tight text-ink">Inter Gulf</p>
+          <p className="mt-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.3em] text-gold-600">
             {t.adminPanel}
           </p>
         </div>
@@ -289,15 +292,15 @@ function SidebarContent({
                 onClick={() => toggle(section.groupKey)}
                 aria-expanded={isOpen}
                 className={cn(
-                  'flex w-full items-center justify-between rounded-lg px-3 py-2 font-semibold transition hover:bg-white/5',
+                  'flex w-full items-center justify-between rounded-lg px-3 py-2 font-semibold transition hover:bg-muted/70',
                   locale === 'bn'
                     ? 'text-[0.95rem] tracking-wide'
                     : 'text-[0.65rem] uppercase tracking-[0.22em]',
                 )}
               >
-                <span className={cn(hasActive ? 'text-gold-300' : 'text-white/70')}>{t.groups[section.groupKey]}</span>
+                <span className={cn(hasActive ? 'text-brand-700' : 'text-ink-muted')}>{t.groups[section.groupKey]}</span>
                 <ChevronDown
-                  className={cn('h-3.5 w-3.5 text-white/40 transition-transform', isOpen && 'rotate-180')}
+                  className={cn('h-3.5 w-3.5 text-ink-muted/50 transition-transform', isOpen && 'rotate-180')}
                 />
               </button>
               {isOpen && (
@@ -314,14 +317,14 @@ function SidebarContent({
                           className={cn(
                             'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
                             active
-                              ? 'bg-gradient-to-r from-white/15 via-white/8 to-transparent text-white shadow-[inset_3px_0_0_0_theme(colors.gold.400)]'
-                              : 'text-white/65 hover:translate-x-0.5 hover:bg-white/5 hover:text-white',
+                              ? 'bg-brand-600 font-semibold text-white shadow-emerald'
+                              : 'text-ink-muted hover:translate-x-0.5 hover:bg-muted/70 hover:text-ink',
                           )}
                         >
                           <Icon
                             className={cn(
                               'h-[18px] w-[18px] shrink-0 transition',
-                              active ? 'text-gold-300' : 'text-white/55 group-hover:text-white',
+                              active ? 'text-white' : 'text-ink-muted/70 group-hover:text-brand-700',
                             )}
                           />
                           {t.nav[item.labelKey]}
@@ -337,7 +340,7 @@ function SidebarContent({
       </nav>
 
       {/* My Account — pinned to the very bottom, above the footer. */}
-      <div className="border-t border-white/10 px-3 py-3">
+      <div className="border-t border-border px-3 py-3">
         <Link
           href={localizedPath(locale, '/admin/account')}
           onClick={onNavigate}
@@ -345,22 +348,39 @@ function SidebarContent({
           className={cn(
             'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
             accountActive
-              ? 'bg-gradient-to-r from-white/15 via-white/8 to-transparent text-white shadow-[inset_3px_0_0_0_theme(colors.gold.400)]'
-              : 'text-white/65 hover:translate-x-0.5 hover:bg-white/5 hover:text-white',
+              ? 'bg-brand-600 font-semibold text-white shadow-emerald'
+              : 'text-ink-muted hover:translate-x-0.5 hover:bg-muted/70 hover:text-ink',
           )}
         >
           <UserCog
             className={cn(
               'h-[18px] w-[18px] shrink-0 transition',
-              accountActive ? 'text-gold-300' : 'text-white/55 group-hover:text-white',
+              accountActive ? 'text-white' : 'text-ink-muted/70 group-hover:text-brand-700',
             )}
           />
           {t.nav.myAccount}
         </Link>
       </div>
 
-      <div className="border-t border-white/10 px-5 py-4">
-        <p className="text-[0.7rem] leading-relaxed text-white/40">
+      {/* What's new + version — promisepd-style footer */}
+      <div className="border-t border-border px-5 py-3.5">
+        <div className="flex items-center justify-between gap-2">
+          <Link
+            href={localizedPath(locale, '/admin/changelog')}
+            onClick={onNavigate}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-muted transition hover:text-brand-700"
+          >
+            <Rocket className="h-3.5 w-3.5" /> {t.whatsNew}
+          </Link>
+          <Link
+            href={localizedPath(locale, '/admin/changelog')}
+            onClick={onNavigate}
+            className="rounded-full bg-brand-50 px-2.5 py-1 font-mono text-[11px] font-bold text-brand-700 ring-1 ring-brand-600/15 transition hover:bg-brand-600 hover:text-white"
+          >
+            v{APP_VERSION}
+          </Link>
+        </div>
+        <p className="mt-2.5 text-[0.7rem] leading-relaxed text-ink-muted/70">
           {t.footerTagline}
           <br />
           {t.footerLicense}
