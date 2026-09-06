@@ -3,6 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Download, FileSpreadsheet, FileText, Printer } from 'lucide-react';
 import { exportToExcel, exportToPDF, printTable, type ExportPeriod } from '@/lib/export';
+import {
+  applyColumnSelection,
+  defaultSelection,
+  loadSelection,
+  saveSelection,
+  type ColumnSelection,
+} from '@/lib/export-columns';
+import { ColumnChooser, COLUMN_LABELS } from '@/components/manage/ColumnChooser';
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { useCompanyProfile } from '@/components/providers/CompanyProfile';
 import { getDict } from '@/lib/dictionaries/areas/adminshell';
@@ -25,16 +33,29 @@ export type ExportSet = {
 };
 
 /**
- * One compact "Export" pill that opens a menu of export formats, each with
- * Excel / PDF / Print. Replaces the two stacked ExportBars on the Hajj and
- * Umrah list pages so the header stays a single tidy row.
+ * One compact "Export" pill that opens a menu of export formats. Under each
+ * format staff tick the columns they want (e.g. only Name, Phone, Tracking
+ * No.), optionally add a serial column, then pick Excel / PDF / Print. The
+ * column choice is remembered per format.
  */
 export function ExportMenu({ sets, label }: { sets: ExportSet[]; label?: string }) {
   const locale = useLocale();
   const t = getDict(locale).export;
+  const tc = COLUMN_LABELS[locale];
   const company = useCompanyProfile();
   const [open, setOpen] = useState(false);
+  const [active, setActive] = useState<string>(sets[0]?.key ?? '');
+  const [sels, setSels] = useState<Record<string, ColumnSelection>>({});
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Restore remembered column choices after mount (localStorage is browser-only).
+  const setsKey = sets.map((s) => s.key + ':' + s.headers.join('|')).join('||');
+  useEffect(() => {
+    const next: Record<string, ColumnSelection> = {};
+    for (const s of sets) next[s.key] = loadSelection(s.headers) ?? defaultSelection(s.headers.length);
+    setSels(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setsKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -52,25 +73,33 @@ export function ExportMenu({ sets, label }: { sets: ExportSet[]; label?: string 
     };
   }, [open]);
 
-  const iconBtn =
-    'inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700';
+  const selFor = (s: ExportSet) => sels[s.key] ?? defaultSelection(s.headers.length);
 
   const run = (s: ExportSet, kind: 'excel' | 'pdf' | 'print') => {
     const meta = { company, period: s.period, locale };
-    if (kind === 'excel') void exportToExcel(s.filename, s.headers, s.rows, { ...meta, title: s.title, subtitle: s.subtitle });
-    else if (kind === 'pdf')
+    const p = applyColumnSelection(s.headers, s.rows, selFor(s), tc.serialHeader);
+    if (kind === 'excel') {
+      void exportToExcel(s.filename, p.headers, p.rows, { ...meta, title: s.title, subtitle: s.subtitle });
+    } else if (kind === 'pdf') {
       void exportToPDF({
         filename: s.filename,
         title: s.title,
         subtitle: s.subtitle,
-        headers: s.headers,
-        rows: s.rows,
+        headers: p.headers,
+        rows: p.rows,
         orientation: s.orientation ?? 'l',
         ...meta,
       });
-    else printTable({ title: s.title, subtitle: s.subtitle, headers: s.headers, rows: s.rows, ...meta });
+    } else {
+      printTable({ title: s.title, subtitle: s.subtitle, headers: p.headers, rows: p.rows, ...meta });
+    }
     setOpen(false);
   };
+
+  const btn =
+    'inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700';
+
+  const current = sets.find((s) => s.key === active) ?? sets[0];
 
   return (
     <div ref={wrapRef} className="relative inline-block">
@@ -89,28 +118,58 @@ export function ExportMenu({ sets, label }: { sets: ExportSet[]; label?: string 
         <ChevronDown className={cn('h-4 w-4 transition-transform duration-200', open && 'rotate-180')} />
       </button>
 
-      {open && (
+      {open && current && (
         <div
           role="menu"
-          className="absolute right-0 z-40 mt-2 w-80 origin-top-right animate-fade-up rounded-2xl border border-border bg-card p-2 shadow-emerald [animation-duration:200ms]"
+          className="absolute right-0 z-40 mt-2 w-[26rem] max-w-[92vw] origin-top-right animate-fade-up rounded-2xl border border-border bg-card p-3 shadow-emerald [animation-duration:200ms]"
         >
-          {sets.map((s, i) => (
-            <div key={s.key} className={cn('rounded-xl px-3 py-2.5', i > 0 && 'mt-1 border-t border-border/70')}>
-              <p className="text-sm font-semibold text-ink">{s.label}</p>
-              {s.hint && <p className="mt-0.5 text-xs text-ink-muted">{s.hint}</p>}
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                <button type="button" className={iconBtn} onClick={() => run(s, 'excel')}>
-                  <FileSpreadsheet className="h-3.5 w-3.5" /> {t.excel}
+          {/* Format tabs */}
+          {sets.length > 1 && (
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {sets.map((s) => (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => setActive(s.key)}
+                  className={cn(
+                    'rounded-full border px-3 py-1 text-xs font-semibold transition',
+                    s.key === current.key
+                      ? 'border-brand-600 bg-brand-600 text-white'
+                      : 'border-border bg-card text-ink-muted hover:border-brand-600/40 hover:text-brand-700',
+                  )}
+                >
+                  {s.label}
                 </button>
-                <button type="button" className={iconBtn} onClick={() => run(s, 'pdf')}>
-                  <FileText className="h-3.5 w-3.5" /> {t.pdf}
-                </button>
-                <button type="button" className={iconBtn} onClick={() => run(s, 'print')}>
-                  <Printer className="h-3.5 w-3.5" /> {t.print}
-                </button>
-              </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          <p className="text-sm font-semibold text-ink">{current.label}</p>
+          {current.hint && <p className="mt-0.5 text-xs text-ink-muted">{current.hint}</p>}
+
+          <div className="mt-3 rounded-xl border border-border/70 bg-muted/30 p-2.5">
+            <ColumnChooser
+              headers={current.headers}
+              selection={selFor(current)}
+              locale={locale}
+              onChange={(next) => {
+                setSels((prev) => ({ ...prev, [current.key]: next }));
+                saveSelection(current.headers, next);
+              }}
+            />
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <button type="button" className={btn} onClick={() => run(current, 'excel')}>
+              <FileSpreadsheet className="h-3.5 w-3.5" /> {t.excel}
+            </button>
+            <button type="button" className={btn} onClick={() => run(current, 'pdf')}>
+              <FileText className="h-3.5 w-3.5" /> {t.pdf}
+            </button>
+            <button type="button" className={btn} onClick={() => run(current, 'print')}>
+              <Printer className="h-3.5 w-3.5" /> {t.print}
+            </button>
+          </div>
         </div>
       )}
     </div>

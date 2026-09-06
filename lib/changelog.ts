@@ -14,6 +14,16 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.4.1',
+    date: '2026-09-06',
+    items: [
+      {
+        en: 'Choose what to print: every Excel / PDF / Print export now has a Columns picker — tick only the columns you need (e.g. Name, Phone, Tracking No.), add a serial-number column, and the choice is remembered per list.',
+        bn: 'কী প্রিন্ট হবে বেছে নিন: প্রতিটি Excel / PDF / Print এক্সপোর্টে এখন কলাম পিকার — শুধু দরকারি কলাম টিক দিন (যেমন নাম, ফোন, ট্র্যাকিং নং), ক্রমিক নং কলাম যোগ করুন; পছন্দ প্রতিটি তালিকার জন্য মনে রাখা হয়।',
+      },
+    ],
+  },
+  {
     version: '1.4.0',
     date: '2026-09-06',
     items: [
