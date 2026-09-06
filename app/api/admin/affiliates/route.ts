@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireStaff } from '@/lib/management/guard';
-import { logActivity, nextAffiliateCode } from '@/lib/management/server';
+import { logActivity, nextAffiliateCode, ensureGroupFundHead } from '@/lib/management/server';
 import { enforceBranch, getStaffScope } from '@/lib/management/scope';
 
 export const runtime = 'nodejs';
@@ -17,18 +17,37 @@ const createSchema = z.object({
   code: z.preprocess(emptyToNull, z.string().trim().max(40).nullable().optional()),
   note: z.preprocess(emptyToNull, z.string().trim().max(1000).nullable().optional()),
   type: z.enum(['agent', 'family']).optional().default('agent'),
+  /** Section the care-of belongs to. */
+  program: z.enum(['hajj', 'umrah', 'both']).optional().default('both'),
+  /** individual = pilgrims pay their own ledger; group_fund = leader pays in bulk. */
+  fund_mode: z.enum(['individual', 'group_fund']).optional().default('individual'),
   branch: z.string().trim().max(60).optional().default('general'),
 });
 
-export async function GET() {
+/** Columns added by 0012 are written separately so a pre-migration DB still works. */
+async function writeExtras(
+  id: string,
+  extras: { program?: string; fund_mode?: string; type?: string },
+): Promise<void> {
+  const db = createAdminClient();
+  for (const [key, value] of Object.entries(extras)) {
+    if (value === undefined) continue;
+    const { error } = await db.from('affiliates').update({ [key]: value }).eq('id', id);
+    if (error) console.error(`[affiliates] ${key} skipped (migration pending?):`, error.message);
+  }
+}
+
+export async function GET(request: Request) {
   const guard = await requireStaff();
   if (!guard.ok) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: guard.status });
 
+  const program = new URL(request.url).searchParams.get('program');
   try {
     const scope = await getStaffScope();
     const db = createAdminClient();
     let q = db.from('affiliates').select('*').eq('active', true);
     if (scope.branch) q = q.eq('branch', scope.branch);
+    if (program === 'hajj' || program === 'umrah') q = q.in('program', [program, 'both']);
     const { data, error } = await q.order('name', { ascending: true });
     if (error) return NextResponse.json({ ok: true, affiliates: [] });
     return NextResponse.json({ ok: true, affiliates: data ?? [] });
@@ -85,11 +104,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // type is written best-effort so care-of creation still works before the
-    // 0007 migration (which adds the column) is applied.
-    if (d.type !== 'agent') {
-      const { error: typeErr } = await db.from('affiliates').update({ type: d.type }).eq('id', data.id);
-      if (typeErr) console.error('[affiliates] type skipped:', typeErr.message);
+    // type / program / fund_mode are written best-effort so care-of creation
+    // still works before the 0007 / 0012 migrations are applied.
+    await writeExtras(data.id, {
+      type: d.type !== 'agent' ? d.type : undefined,
+      program: d.program !== 'both' ? d.program : undefined,
+      fund_mode: d.fund_mode !== 'individual' ? d.fund_mode : undefined,
+    });
+
+    let account_head_id: string | null = null;
+    if (d.fund_mode === 'group_fund') {
+      account_head_id = await ensureGroupFundHead({ id: data.id, name: data.name, phone: data.phone, branch });
     }
 
     await logActivity({
@@ -98,11 +123,14 @@ export async function POST(request: Request) {
       action: 'create',
       entity: 'affiliate',
       entity_id: data.id,
-      detail: { name: data.name, code: data.code },
+      detail: { name: data.name, code: data.code, program: d.program, fund_mode: d.fund_mode },
       branch,
     });
 
-    return NextResponse.json({ ok: true, affiliate: data });
+    return NextResponse.json({
+      ok: true,
+      affiliate: { ...data, program: d.program, fund_mode: d.fund_mode, account_head_id },
+    });
   } catch (err) {
     console.error('[affiliates] unexpected error:', err);
     return NextResponse.json({ ok: false, error: 'Unexpected error.' }, { status: 500 });
@@ -143,7 +171,7 @@ export async function PATCH(request: Request) {
     const scope = await getStaffScope();
 
     // Branch-scoped staff may only touch their own branch's care-of.
-    const { data: existing } = await db.from('affiliates').select('branch').eq('id', id).maybeSingle();
+    const { data: existing } = await db.from('affiliates').select('*').eq('id', id).maybeSingle();
     if (!existing) return NextResponse.json({ ok: false, error: 'Care-of not found.' }, { status: 404 });
     if (scope.branch && existing.branch !== scope.branch) {
       return NextResponse.json({ ok: false, error: 'Care-of not found.' }, { status: 404 });
@@ -153,7 +181,8 @@ export async function PATCH(request: Request) {
     // never move a record out of (or into) another branch.
     if (rest.branch !== undefined) patch.branch = await enforceBranch(rest.branch);
 
-    if (Object.keys(patch).length === 0 && rest.type === undefined) {
+    const hasExtras = rest.type !== undefined || rest.program !== undefined || rest.fund_mode !== undefined;
+    if (Object.keys(patch).length === 0 && !hasExtras) {
       return NextResponse.json({ ok: false, error: 'Nothing to update.' }, { status: 400 });
     }
 
@@ -165,10 +194,31 @@ export async function PATCH(request: Request) {
       }
     }
 
-    // type is written best-effort so edits still work before 0007 is applied.
-    if (rest.type !== undefined) {
-      const { error: typeErr } = await db.from('affiliates').update({ type: rest.type }).eq('id', id);
-      if (typeErr) console.error('[affiliates] type patch skipped:', typeErr.message);
+    await writeExtras(id, { type: rest.type, program: rest.program, fund_mode: rest.fund_mode });
+
+    // Switching a leader to Group Fund provisions their ledger head (idempotent).
+    // Keep the head's name / phone in step with the care-of.
+    let account_head_id: string | null = (existing.account_head_id as string | null) ?? null;
+    if (rest.fund_mode === 'group_fund') {
+      account_head_id = await ensureGroupFundHead({
+        id,
+        name: (patch.name as string) ?? existing.name,
+        phone: (patch.phone as string | null | undefined) ?? existing.phone,
+        branch: (patch.branch as string) ?? existing.branch,
+        account_head_id,
+      });
+      if (!account_head_id) {
+        return NextResponse.json(
+          { ok: false, error: 'Group Fund needs migration 0012 — the fund account could not be created.' },
+          { status: 500 },
+        );
+      }
+    }
+    if (account_head_id && (patch.name !== undefined || patch.phone !== undefined)) {
+      const headPatch: Record<string, unknown> = {};
+      if (patch.name !== undefined) headPatch.name = `${patch.name} (Group Fund)`;
+      if (patch.phone !== undefined) headPatch.party_phone = patch.phone;
+      await db.from('account_heads').update(headPatch).eq('id', account_head_id).eq('ref_table', 'affiliates');
     }
 
     await logActivity({
@@ -177,9 +227,9 @@ export async function PATCH(request: Request) {
       action: 'update',
       entity: 'affiliate',
       entity_id: id,
-      detail: patch,
+      detail: { ...patch, program: rest.program, fund_mode: rest.fund_mode },
     });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, account_head_id });
   } catch (err) {
     console.error('[affiliates] unexpected error:', err);
     return NextResponse.json({ ok: false, error: 'Unexpected error.' }, { status: 500 });

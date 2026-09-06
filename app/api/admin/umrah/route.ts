@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireStaff } from '@/lib/management/guard';
 import { chargeParty, recordPayment, logActivity } from '@/lib/management/server';
 import { enforceBranch } from '@/lib/management/scope';
-import { resolveReferenceableAffiliate } from '@/lib/management/affiliates';
+import { resolveReferenceableAffiliate, resolveChargeTarget } from '@/lib/management/affiliates';
 import { BRANCHES } from '@/lib/management/branches';
 import { DOC_STATUS_KEYS } from '@/lib/management/doc-status';
 
@@ -22,6 +22,7 @@ const passengerSchema = z.object({
   passport_issue: z.preprocess(emptyToNull, z.string().trim().nullable().optional()),
   passport_expiry: z.preprocess(emptyToNull, z.string().trim().nullable().optional()),
   dob: z.preprocess(emptyToNull, z.string().trim().nullable().optional()),
+  gender: z.preprocess(emptyToNull, z.enum(['male', 'female']).nullable().optional()),
   phone: z.preprocess(emptyToNull, z.string().trim().max(40).nullable().optional()),
   address: z.preprocess(emptyToNull, z.string().trim().max(400).nullable().optional()),
   branch: z.enum(BRANCH_VALUES).default('inter-gulf-travels'),
@@ -92,20 +93,28 @@ export async function POST(request: Request) {
       );
     }
 
-    // Care-of + document status are optional add-ons written best-effort, so a
-    // pre-migration schema (columns not yet added) never blocks passenger entry.
-    if (d.affiliate_id || (d.doc_status && d.doc_status.length)) {
+    // Care-of, gender + document status are optional add-ons written
+    // best-effort, so a pre-migration schema (columns not yet added) never
+    // blocks passenger entry.
+    const affiliateId = await resolveReferenceableAffiliate(d.affiliate_id);
+    if (affiliateId || (d.doc_status && d.doc_status.length)) {
       const { error: metaErr } = await supabase
         .from('umrah_passengers')
         .update({
-          affiliate_id: await resolveReferenceableAffiliate(d.affiliate_id),
+          affiliate_id: affiliateId,
           doc_status: d.doc_status ?? [],
         })
         .eq('id', passenger.id);
       if (metaErr) console.error('[admin/umrah] care-of/doc_status skipped:', metaErr.message);
     }
+    if (d.gender) {
+      const { error: gErr } = await supabase.from('umrah_passengers').update({ gender: d.gender }).eq('id', passenger.id);
+      if (gErr) console.error('[admin/umrah] gender skipped (run migration 0012):', gErr.message);
+    }
 
-    const headId = passenger.account_head_id as string | null;
+    // Under a Group Fund care-of the leader's fund head carries the money.
+    const target = await resolveChargeTarget(passenger.account_head_id as string | null, affiliateId);
+    const headId = target.headId;
 
     // If assigned to a package at creation, charge the package price once.
     if (d.package_id && headId) {
@@ -121,7 +130,9 @@ export async function POST(request: Request) {
             packageType: 'umrah',
             amount: Number(pkg.price),
             branch: passenger.branch,
-            narration: `Umrah package charge — ${pkg.name}`,
+            narration: target.groupFund
+              ? `Umrah package charge — ${pkg.name} · ${d.name}`
+              : `Umrah package charge — ${pkg.name}`,
             ref_table: 'umrah_passengers',
             ref_id: passenger.id,
             created_by: guard.user.id,
@@ -132,17 +143,18 @@ export async function POST(request: Request) {
       }
     }
 
-    // Record the token money as a received payment.
+    // Record the token money as a received payment (into the fund head when
+    // the passenger sits under a Group Fund leader).
     if (d.token_money && d.token_money > 0 && headId) {
       try {
         await recordPayment({
-          party_table: 'umrah_passengers',
-          party_id: passenger.id,
+          party_table: target.groupFund ? 'affiliates' : 'umrah_passengers',
+          party_id: target.groupFund ? target.groupFund.affiliateId : passenger.id,
           account_head_id: headId,
           amount: d.token_money,
           method: 'cash',
           type: 'token',
-          narration: 'Token money received',
+          narration: target.groupFund ? `Token money — ${d.name}` : 'Token money received',
           branch: passenger.branch,
           created_by: guard.user.id,
         });

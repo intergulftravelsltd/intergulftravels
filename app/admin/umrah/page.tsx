@@ -21,6 +21,7 @@ import { loadActiveAffiliates } from '@/lib/management/affiliates';
 import { docStatusDoneFor, docStatusTotalFor } from '@/lib/management/doc-status';
 import { money } from '@/lib/management/format';
 import { branchShort } from '@/lib/management/branches';
+import { isGroupFund } from '@/lib/management/types';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminumrah';
@@ -54,6 +55,7 @@ function applyFilters(rows: PassengerRow[], sp: Record<string, string | undefine
     out = out.filter((r) => docStatusDoneFor(r.doc_status, 'umrah') < docStatusTotalFor('umrah'));
   if (sp.care_of === 'none') out = out.filter((r) => !r.affiliate_id);
   else if (sp.care_of) out = out.filter((r) => r.affiliate_id === sp.care_of);
+  if (sp.gender) out = out.filter((r) => (r.gender ?? '').toLowerCase() === sp.gender);
   return out;
 }
 
@@ -68,10 +70,11 @@ export default async function UmrahPassengersPage({
   const [all, packages, affiliates] = await Promise.all([
     loadPassengers(),
     loadUmrahPackages(),
-    loadActiveAffiliates(),
+    loadActiveAffiliates('umrah'),
   ]);
   const affMap = new Map(affiliates.map((a) => [a.id, a]));
   const rows = applyFilters(all, searchParams);
+  const genderLabel = (g?: string | null) => (g === 'male' ? ct.male : g === 'female' ? ct.female : '');
 
   // Permanent family groups (migration 0008; harmless when absent). Members'
   // money rolls up under their head, with advances netted against dues.
@@ -109,6 +112,7 @@ export default async function UmrahPassengersPage({
     r.passport_no ?? '',
     fmtDate(r.passport_expiry),
     r.phone ?? '',
+    genderLabel(r.gender),
     r.package_name ?? t.unassigned,
     money(r.paid, false),
     money(r.due, false),
@@ -140,7 +144,7 @@ export default async function UmrahPassengersPage({
                   filename: 'umrah-passengers',
                   title: t.passengersTitle,
                   subtitle: `${rows.length} ${rows.length === 1 ? t.recordSingular : t.recordPlural}`,
-                  headers: [t.exName, t.exPassport, t.exExpiry, t.exPhone, t.exPackage, t.exPaid, t.exDue],
+                  headers: [t.exName, t.exPassport, t.exExpiry, t.exPhone, locale === 'bn' ? 'লিঙ্গ' : 'Gender', t.exPackage, t.exPaid, t.exDue],
                   rows: exportRows,
                   orientation: 'l',
                 },
@@ -239,8 +243,18 @@ export default async function UmrahPassengersPage({
               const done = docStatusDoneFor(r.doc_status, 'umrah');
               const docTotal = docStatusTotalFor('umrah');
               const careOf = r.affiliate_id ? affMap.get(r.affiliate_id) : undefined;
+              const viaFund = isGroupFund(careOf);
               const groupHeadName = r.group_head_id ? nameById.get(r.group_head_id) : undefined;
               const isGroupHead = groupMembersByHead.has(r.id);
+              const fundCell = careOf ? (
+                <Link
+                  href={localizedPath(locale, `/admin/care-of/${careOf.id}?from=umrah`)}
+                  className="inline-block max-w-[10rem] truncate text-xs font-semibold text-amber-600 hover:underline"
+                  title={careOf.name}
+                >
+                  {ct.fundBadge}
+                </Link>
+              ) : null;
               return (
                 <tr key={r.id} className="transition hover:bg-muted/40">
                   <td className={tdClass}>
@@ -252,7 +266,10 @@ export default async function UmrahPassengersPage({
                       <p className="text-xs text-ink-muted">{[r.phone, r.address].filter(Boolean).join(' · ')}</p>
                     )}
                     {careOf && (
-                      <p className="text-xs font-medium text-brand-700">{ct.careOf}: {careOf.name}</p>
+                      <p className="text-xs font-medium text-brand-700">
+                        {ct.careOf}: {careOf.name}
+                        {viaFund && <span className="ml-1 text-amber-600">· {ct.fundBadge}</span>}
+                      </p>
                     )}
                     {r.group_head_id && nameById.has(r.group_head_id) && (
                       <p className="text-xs font-medium text-amber-600">
@@ -295,7 +312,9 @@ export default async function UmrahPassengersPage({
                     )}
                   </td>
                   <td className={`${tdClass} text-right`}>
-                    {groupHeadName ? (
+                    {viaFund ? (
+                      fundCell
+                    ) : groupHeadName ? (
                       r.paid > 0 ? (
                         <Money value={r.paid} />
                       ) : (
@@ -313,7 +332,9 @@ export default async function UmrahPassengersPage({
                     )}
                   </td>
                   <td className={`${tdClass} text-right`}>
-                    {groupHeadName ? (
+                    {viaFund ? (
+                      fundCell
+                    ) : groupHeadName ? (
                       <span
                         className="inline-block max-w-[10rem] truncate text-xs font-semibold text-amber-600"
                         title={groupHeadName}

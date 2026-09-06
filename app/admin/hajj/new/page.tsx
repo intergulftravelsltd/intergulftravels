@@ -18,7 +18,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 export default async function NewPilgrimPage() {
   const locale = getLocale();
   const t = getDict(locale);
-  const [packages, affiliates] = await Promise.all([loadHajjPackages(), loadActiveAffiliates()]);
+  const [packages, affiliates] = await Promise.all([loadHajjPackages(), loadActiveAffiliates('hajj')]);
   const options = packages
     .filter((p) => p.active)
     .map((p) => ({ id: p.id, name: p.name, price: p.price, year: p.year }));

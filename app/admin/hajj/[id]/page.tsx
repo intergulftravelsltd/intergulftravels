@@ -23,7 +23,9 @@ import { AssignPackage } from '@/components/manage/hajj/AssignPackage';
 import { StatusControl } from '@/components/manage/hajj/StatusControl';
 import { mgmtDb } from '@/lib/management/server';
 import { loadBankAccounts, loadHajjPackages } from '@/lib/management/hajj';
-import { naturalBalance } from '@/lib/management/types';
+import { loadAffiliate } from '@/lib/management/affiliates';
+import { naturalBalance, isGroupFund } from '@/lib/management/types';
+import { getDict as getCareDict } from '@/lib/dictionaries/areas/careof';
 import { money } from '@/lib/management/format';
 import { branchLabel } from '@/lib/management/branches';
 import type { AccountHead, HajjPilgrim, MgmtPackage, Payment } from '@/lib/management/types';
@@ -86,10 +88,13 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
   ]);
   if (!pilgrim) notFound();
 
-  const [head, headOptions] = await Promise.all([
+  const [head, headOptions, affiliate] = await Promise.all([
     loadHead(pilgrim.account_head_id),
     loadGroupHeadOptions('hajj_pilgrims', pilgrim.id, pilgrim.branch),
+    loadAffiliate(pilgrim.affiliate_id),
   ]);
+  const ct = getCareDict(locale);
+  const viaFund = isGroupFund(affiliate);
 
   // Permanent family-group context: who this pilgrim's head is (when a member),
   // and how many members sit under them (when they are the head).
@@ -279,7 +284,20 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
 
           <Card>
             <h2 className="mb-4 font-display text-base font-semibold text-ink">{t.recordPaymentHeading}</h2>
-            <RecordPayment pilgrimId={pilgrim.id} bankAccounts={banks} />
+            {viaFund && affiliate ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <p className="font-semibold">{ct.fundBadge} · {affiliate.name}</p>
+                <p className="mt-1">{ct.fundNotice(affiliate.name)}</p>
+                <Link
+                  href={localizedPath(locale, `/admin/care-of/${affiliate.id}?from=hajj`)}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-600 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-700"
+                >
+                  {ct.openFund}
+                </Link>
+              </div>
+            ) : (
+              <RecordPayment pilgrimId={pilgrim.id} bankAccounts={banks} />
+            )}
           </Card>
 
           <Card>

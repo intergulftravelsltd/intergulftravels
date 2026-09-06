@@ -14,6 +14,24 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.5.0',
+    date: '2026-09-06',
+    items: [
+      {
+        en: 'Group Fund accounts: a Care-of / group leader can be switched to "Group Fund" — bulk money they send is credited to their own ledger head and every package assigned to a pilgrim under them is debited from it, so the leader\'s statement shows total received, package charges and advance / due. Pilgrims under a Group Fund carry no individual due.',
+        bn: 'গ্রুপ ফান্ড অ্যাকাউন্ট: কেয়ার অফ / গ্রুপ লিডারকে "Group Fund" মোডে দিলে তার পাঠানো টাকা তার নিজের লেজার হেডে জমা হয় এবং তার আন্ডারের হাজীকে প্যাকেজ দিলে সেই খরচ ওই হেড থেকে কাটা হয়; লিডারের বিবরণীতে মোট জমা, প্যাকেজ খরচ ও অগ্রিম/পাওনা দেখা যায়। ওই হাজীদের আলাদা কোনো বকেয়া থাকে না।',
+      },
+      {
+        en: 'Care-of lists now live inside each section: Hajj → Care of (Hajj), Umrah → Care of (Umrah). Each record is tagged Hajj, Umrah or both.',
+        bn: 'কেয়ার অফ তালিকা এখন প্রতিটি সেকশনের ভেতরে: হজ → কেয়ার অফ (হজ), উমরাহ → কেয়ার অফ (উমরাহ)। প্রতিটি রেকর্ড হজ, উমরাহ বা উভয় হিসেবে ট্যাগ করা।',
+      },
+      {
+        en: 'Male / Female filter on the Hajj and Umrah lists (Umrah passengers get a gender field), gender column in exports, and a single-row filter bar with a compact search box.',
+        bn: 'হজ ও উমরাহ তালিকায় পুরুষ / মহিলা ফিল্টার (উমরাহ যাত্রীতে লিঙ্গ ফিল্ড), এক্সপোর্টে লিঙ্গ কলাম এবং ছোট সার্চ বক্সসহ এক লাইনের ফিল্টার বার।',
+      },
+    ],
+  },
+  {
     version: '1.4.1',
     date: '2026-09-06',
     items: [

@@ -60,6 +60,8 @@ export function AffiliateRowActions({ affiliate }: { affiliate: Affiliate }) {
       phone: String(fd.get('phone') ?? '').trim(),
       address: String(fd.get('address') ?? '').trim(),
       type: String(fd.get('type') ?? affiliate.type),
+      program: String(fd.get('program') ?? affiliate.program ?? 'both'),
+      fund_mode: String(fd.get('fund_mode') ?? affiliate.fund_mode ?? 'individual'),
       branch: String(fd.get('branch') ?? affiliate.branch),
     };
     if (!payload.name) {
@@ -136,6 +138,19 @@ export function AffiliateRowActions({ affiliate }: { affiliate: Affiliate }) {
                 <select name="type" defaultValue={affiliate.type} className={inputClass}>
                   <option value="agent">{t.typeAgent}</option>
                   <option value="family">{t.typeFamily}</option>
+                </select>
+              </Field>
+              <Field label={t.program}>
+                <select name="program" defaultValue={affiliate.program ?? 'both'} className={inputClass}>
+                  <option value="hajj">{t.programHajj}</option>
+                  <option value="umrah">{t.programUmrah}</option>
+                  <option value="both">{t.programBoth}</option>
+                </select>
+              </Field>
+              <Field label={t.fundMode} hint={t.fundModeHint}>
+                <select name="fund_mode" defaultValue={affiliate.fund_mode ?? 'individual'} className={inputClass}>
+                  <option value="individual">{t.fundIndividual}</option>
+                  <option value="group_fund">{t.fundGroup}</option>
                 </select>
               </Field>
               <Field label={t.address} className="sm:col-span-2">

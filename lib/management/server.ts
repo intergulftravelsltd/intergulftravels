@@ -24,6 +24,66 @@ export async function nextAffiliateCode(): Promise<string> {
   return `CO-${String(n).padStart(4, '0')}`;
 }
 
+/**
+ * Make sure a Group Fund care-of has its own ledger head. The head is a
+ * customer-type asset head (like a pilgrim's): money the leader sends is a
+ * credit (advance held for them), package charges for pilgrims under them are
+ * debits. Natural balance > 0 = the leader still owes; < 0 = advance in hand.
+ * Returns the head id, or null if it could not be created.
+ */
+export async function ensureGroupFundHead(affiliate: {
+  id: string;
+  name: string;
+  phone?: string | null;
+  branch: string;
+  account_head_id?: string | null;
+}): Promise<string | null> {
+  const db = mgmtDb();
+  if (affiliate.account_head_id) {
+    const { data } = await db.from('account_heads').select('id, active').eq('id', affiliate.account_head_id).maybeSingle();
+    if (data) {
+      if (data.active === false) await db.from('account_heads').update({ active: true }).eq('id', data.id);
+      return data.id as string;
+    }
+  }
+  // Reuse a head previously created for this care-of (e.g. after a toggle off/on).
+  const { data: existing } = await db
+    .from('account_heads')
+    .select('id')
+    .eq('ref_table', 'affiliates')
+    .eq('ref_id', affiliate.id)
+    .maybeSingle();
+  let headId: string | null = existing?.id ?? null;
+  if (!headId) {
+    const code = `GF-${String(await nextCounter('group_fund')).padStart(4, '0')}`;
+    const { data: created, error } = await db
+      .from('account_heads')
+      .insert({
+        code,
+        name: `${affiliate.name} (Group Fund)`,
+        type: 'asset',
+        subtype: 'customer',
+        branch: affiliate.branch,
+        party_phone: affiliate.phone ?? null,
+        ref_table: 'affiliates',
+        ref_id: affiliate.id,
+        active: true,
+      })
+      .select('id')
+      .single();
+    if (error || !created) {
+      console.error('[group-fund] head create failed:', error?.message);
+      return null;
+    }
+    headId = created.id as string;
+  } else {
+    await db.from('account_heads').update({ active: true }).eq('id', headId);
+  }
+  const { error: linkErr } = await db.from('affiliates').update({ account_head_id: headId }).eq('id', affiliate.id);
+  if (linkErr) console.error('[group-fund] link failed (run migration 0012):', linkErr.message);
+  return headId;
+}
+
 /** Canonical display name per built-in head key — used only as a fallback to
  *  locate a head before the system_key migration (0007) is applied. */
 const SYSTEM_HEAD_NAME: Record<string, string> = {
@@ -182,7 +242,8 @@ export async function postTransaction(tx: PostTx) {
 
 /** Record a customer payment: Dr Cash/Bank, Cr Customer head (reduces their due). */
 export async function recordPayment(p: {
-  party_table: 'hajj_pilgrims' | 'umrah_passengers';
+  /** 'affiliates' = bulk money from a Group Fund leader (credited to their fund head). */
+  party_table: 'hajj_pilgrims' | 'umrah_passengers' | 'affiliates';
   party_id: string;
   account_head_id: string;
   amount: number;

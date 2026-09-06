@@ -53,6 +53,7 @@ export function PassengerForm({
     passport_issue: initial?.passport_issue ?? '',
     passport_expiry: initial?.passport_expiry ?? '',
     dob: initial?.dob ?? '',
+    gender: initial?.gender ?? '',
     phone: initial?.phone ?? '',
     address: initial?.address ?? '',
     branch: initial?.branch ?? 'inter-gulf-travels',
@@ -106,6 +107,7 @@ export function PassengerForm({
         passport_issue: form.passport_issue,
         passport_expiry: form.passport_expiry,
         dob: form.dob,
+        gender: form.gender,
         phone: form.phone,
         address: form.address,
         note: form.note,
@@ -161,6 +163,13 @@ export function PassengerForm({
             </Field>
             <Field label={t.dateOfBirth}>
               <input type="date" className={inputClass} value={form.dob} onChange={set('dob')} />
+            </Field>
+            <Field label={locale === 'bn' ? 'লিঙ্গ' : 'Gender'}>
+              <select className={inputClass} value={form.gender} onChange={set('gender')}>
+                <option value="">{locale === 'bn' ? 'নির্বাচন করুন…' : 'Select…'}</option>
+                <option value="male">{ct.male}</option>
+                <option value="female">{ct.female}</option>
+              </select>
             </Field>
             <Field label={t.address} className="sm:col-span-2">
               <textarea className={inputClass} rows={2} value={form.address} onChange={set('address')} placeholder={t.addressPlaceholder} />
@@ -228,6 +237,7 @@ export function PassengerForm({
                 value={affiliateId}
                 onChange={setAffiliateId}
                 branch={lockedBranch ?? form.branch}
+                program="umrah"
               />
             </Field>
             <Field label={ct.docStatus} hint={ct.docStatusHint} className="sm:col-span-2">

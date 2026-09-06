@@ -26,7 +26,7 @@ export default async function EditPassengerPage({ params }: { params: { id: stri
 
   if (!passenger) notFound();
 
-  const [packages, affiliates] = await Promise.all([loadUmrahPackages(), loadActiveAffiliates()]);
+  const [packages, affiliates] = await Promise.all([loadUmrahPackages(), loadActiveAffiliates('umrah')]);
 
   return (
     <>

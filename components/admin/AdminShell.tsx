@@ -85,6 +85,7 @@ const NAV: NavGroup[] = [
     items: [
       { labelKey: 'hajjPilgrims', href: '/admin/hajj', icon: Users },
       { labelKey: 'hajjPackages', href: '/admin/hajj/packages', icon: Package },
+      { labelKey: 'hajjCareOf', href: '/admin/hajj/care-of', icon: Contact },
     ],
   },
   {
@@ -92,11 +93,8 @@ const NAV: NavGroup[] = [
     items: [
       { labelKey: 'umrahPassengers', href: '/admin/umrah', icon: Moon },
       { labelKey: 'umrahPackages', href: '/admin/umrah/packages', icon: Package },
+      { labelKey: 'umrahCareOf', href: '/admin/umrah/care-of', icon: Contact },
     ],
-  },
-  {
-    groupKey: 'careOf',
-    items: [{ labelKey: 'careOfList', href: '/admin/care-of', icon: Contact }],
   },
   {
     groupKey: 'reports',

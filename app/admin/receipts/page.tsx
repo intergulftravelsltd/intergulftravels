@@ -54,11 +54,21 @@ export default async function ReceiptsPage({
       phones.set(r.id, r.phone ?? '');
     }
   };
-  await Promise.all([fill('umrah_passengers'), fill('hajj_pilgrims')]);
+  await Promise.all([fill('umrah_passengers'), fill('hajj_pilgrims'), fill('affiliates')]);
 
   const nameOf = (p: Payment) => (p.party_id ? names.get(p.party_id) ?? '—' : '—');
   const progOf = (p: Payment) =>
-    p.party_table === 'hajj_pilgrims' ? (locale === 'bn' ? 'হজ' : 'Hajj') : locale === 'bn' ? 'উমরাহ' : 'Umrah';
+    p.party_table === 'hajj_pilgrims'
+      ? locale === 'bn'
+        ? 'হজ'
+        : 'Hajj'
+      : p.party_table === 'affiliates'
+        ? locale === 'bn'
+          ? 'গ্রুপ ফান্ড'
+          : 'Group Fund'
+        : locale === 'bn'
+          ? 'উমরাহ'
+          : 'Umrah';
 
   const methodMap: Record<string, string> =
     locale === 'bn' ? { cash: 'নগদ', bank: 'ব্যাংক' } : { cash: 'Cash', bank: 'Bank' };

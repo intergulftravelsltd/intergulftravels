@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireStaff } from '@/lib/management/guard';
 import { chargeParty, logActivity } from '@/lib/management/server';
-import { resolveReferenceableAffiliate } from '@/lib/management/affiliates';
+import { resolveReferenceableAffiliate, resolveChargeTarget } from '@/lib/management/affiliates';
 import { DOC_STATUS_KEYS } from '@/lib/management/doc-status';
 
 export const runtime = 'nodejs';
@@ -19,6 +19,7 @@ const patchSchema = z.object({
   passport_issue: z.preprocess(emptyToNull, z.string().trim().nullable().optional()),
   passport_expiry: z.preprocess(emptyToNull, z.string().trim().nullable().optional()),
   dob: z.preprocess(emptyToNull, z.string().trim().nullable().optional()),
+  gender: z.preprocess(emptyToNull, z.enum(['male', 'female']).nullable().optional()),
   phone: z.preprocess(emptyToNull, z.string().trim().max(40).nullable().optional()),
   address: z.preprocess(emptyToNull, z.string().trim().max(400).nullable().optional()),
   photo_url: z.preprocess(emptyToNull, z.string().trim().url().nullable().optional()),
@@ -63,7 +64,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     const { data: existing, error: loadErr } = await supabase
       .from('umrah_passengers')
-      .select('id, account_head_id, branch, package_id')
+      .select('id, name, account_head_id, branch, package_id, affiliate_id')
       .eq('id', params.id)
       .maybeSingle();
 
@@ -98,12 +99,20 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     // Care-of + document status written best-effort in a separate update so a
     // pre-migration schema never blocks the core profile edit.
+    let affiliateId: string | null | undefined = existing.affiliate_id ?? null;
     if (d.affiliate_id !== undefined || d.doc_status !== undefined) {
       const meta: Record<string, unknown> = {};
-      if (d.affiliate_id !== undefined) meta.affiliate_id = await resolveReferenceableAffiliate(d.affiliate_id);
+      if (d.affiliate_id !== undefined) {
+        affiliateId = await resolveReferenceableAffiliate(d.affiliate_id);
+        meta.affiliate_id = affiliateId;
+      }
       if (d.doc_status !== undefined) meta.doc_status = d.doc_status;
       const { error: metaErr } = await supabase.from('umrah_passengers').update(meta).eq('id', params.id);
       if (metaErr) console.error('[admin/umrah/:id] care-of/doc_status skipped:', metaErr.message);
+    }
+    if (d.gender !== undefined) {
+      const { error: gErr } = await supabase.from('umrah_passengers').update({ gender: d.gender }).eq('id', params.id);
+      if (gErr) console.error('[admin/umrah/:id] gender skipped (run migration 0012):', gErr.message);
     }
 
     // Charge the package price exactly once. Guard against a double charge by
@@ -125,12 +134,16 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           .limit(1);
 
         if (pkg && Number(pkg.price) > 0 && (!alreadyCharged || alreadyCharged.length === 0)) {
+          // Group Fund passengers: the charge is debited from the leader's fund head.
+          const target = await resolveChargeTarget(existing.account_head_id, affiliateId);
           await chargeParty({
-            customer_head_id: existing.account_head_id,
+            customer_head_id: target.headId ?? existing.account_head_id,
             packageType: 'umrah',
             amount: Number(pkg.price),
             branch: existing.branch,
-            narration: `Umrah package charge — ${pkg.name}`,
+            narration: target.groupFund
+              ? `Umrah package charge — ${pkg.name} · ${existing.name}`
+              : `Umrah package charge — ${pkg.name}`,
             ref_table: 'umrah_passengers',
             ref_id: params.id,
             created_by: guard.user.id,

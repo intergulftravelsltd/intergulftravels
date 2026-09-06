@@ -60,7 +60,10 @@ export type MgmtPackage = {
   created_at: string;
 };
 
-/** A "care of" — a marketer / introducer who brings pilgrims. */
+export type AffiliateProgram = 'hajj' | 'umrah' | 'both';
+export type AffiliateFundMode = 'individual' | 'group_fund';
+
+/** A "care of" — a marketer / introducer / group leader who brings pilgrims. */
 export type Affiliate = {
   id: string;
   code: string | null;
@@ -69,10 +72,19 @@ export type Affiliate = {
   address: string | null;
   note: string | null;
   type: 'agent' | 'family';
+  /** Section this care-of belongs to (0012). Missing column → treated as 'both'. */
+  program?: AffiliateProgram | null;
+  /** 'group_fund' = the leader pays in bulk into their own ledger head (0012). */
+  fund_mode?: AffiliateFundMode | null;
+  /** The Group Fund ledger head (0012); null in individual mode. */
+  account_head_id?: string | null;
   branch: string;
   active: boolean;
   created_at: string;
 };
+
+export const isGroupFund = (a?: Pick<Affiliate, 'fund_mode' | 'account_head_id'> | null): boolean =>
+  !!a && a.fund_mode === 'group_fund' && !!a.account_head_id;
 
 export type HajjPilgrim = {
   id: string;
@@ -114,6 +126,8 @@ export type UmrahPassenger = {
   passport_issue: string | null;
   passport_expiry: string | null;
   dob: string | null;
+  /** male | female (0012). */
+  gender?: string | null;
   phone: string | null;
   address: string | null;
   package_id: string | null;

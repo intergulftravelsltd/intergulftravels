@@ -254,6 +254,7 @@ export function PilgrimForm({
               value={affiliateId}
               onChange={setAffiliateId}
               branch={lockedBranch ?? branch}
+              program="hajj"
             />
           </Field>
           <Field label={ct.docStatus} hint={ct.docStatusHint} className="sm:col-span-2 lg:col-span-3">

@@ -25,8 +25,10 @@ import { AssignPackage } from '@/components/manage/umrah/AssignPackage';
 import { StatusControl } from '@/components/manage/umrah/StatusControl';
 import { PrintProfile } from '@/components/manage/umrah/PrintProfile';
 import { mgmtDb } from '@/lib/management/server';
-import { naturalBalance, type AccountHead, type UmrahPassenger, type Payment } from '@/lib/management/types';
+import { naturalBalance, isGroupFund, type AccountHead, type UmrahPassenger, type Payment } from '@/lib/management/types';
 import { loadUmrahPackages, loadBankAccounts, monthsUntil, isExpiringSoon } from '@/lib/management/umrah';
+import { loadAffiliate } from '@/lib/management/affiliates';
+import { getDict as getCareDict } from '@/lib/dictionaries/areas/careof';
 import { money } from '@/lib/management/format';
 import { branchLabel } from '@/lib/management/branches';
 import { getLocale } from '@/lib/i18n-server';
@@ -117,7 +119,12 @@ export default async function PassengerProfilePage({ params }: { params: { id: s
   if (!passenger) notFound();
 
   // Permanent family-group context (migration 0008; loaders are best-effort).
-  const groupHeadOptions = await loadGroupHeadOptions('umrah_passengers', passenger.id, passenger.branch);
+  const [groupHeadOptions, affiliate] = await Promise.all([
+    loadGroupHeadOptions('umrah_passengers', passenger.id, passenger.branch),
+    loadAffiliate(passenger.affiliate_id),
+  ]);
+  const ct = getCareDict(locale);
+  const viaFund = isGroupFund(affiliate);
   const isGroupMember = Boolean(passenger.group_head_id) && group !== null;
   const groupCurrentHead = isGroupMember && group ? { id: group.headId, name: group.headName } : null;
   const groupMemberCount = group && group.headId === passenger.id ? group.members.length - 1 : 0;
@@ -247,6 +254,11 @@ export default async function PassengerProfilePage({ params }: { params: { id: s
                     warn={!expired && expiring}
                   />
                   <Info icon={Cake} label={t.infoDob} value={fmtDate(passenger.dob)} />
+                  <Info
+                    icon={Cake}
+                    label={locale === 'bn' ? 'লিঙ্গ' : 'Gender'}
+                    value={passenger.gender === 'male' ? ct.male : passenger.gender === 'female' ? ct.female : '—'}
+                  />
                   <Info icon={Phone} label={t.infoPhone} value={passenger.phone ?? '—'} mono />
                   <Info icon={MapPin} label={t.infoAddress} value={passenger.address ?? '—'} />
                 </dl>
@@ -383,7 +395,20 @@ export default async function PassengerProfilePage({ params }: { params: { id: s
             <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-ink">
               <Receipt className="h-4 w-4 text-brand-600" /> {t.recordPaymentHeading}
             </h2>
-            <RecordPayment passengerId={passenger.id} bankAccounts={bankAccounts} due={due} />
+            {viaFund && affiliate ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <p className="font-semibold">{ct.fundBadge} · {affiliate.name}</p>
+                <p className="mt-1">{ct.fundNotice(affiliate.name)}</p>
+                <Link
+                  href={localizedPath(locale, `/admin/care-of/${affiliate.id}?from=umrah`)}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-600 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-700"
+                >
+                  {ct.openFund}
+                </Link>
+              </div>
+            ) : (
+              <RecordPayment passengerId={passenger.id} bankAccounts={bankAccounts} due={due} />
+            )}
           </Card>
 
           <Card className="space-y-4">

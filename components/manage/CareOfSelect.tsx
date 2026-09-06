@@ -20,11 +20,14 @@ export function CareOfSelect({
   value,
   onChange,
   branch,
+  program,
 }: {
   affiliates: AffiliateOption[];
   value: string | null;
   onChange: (id: string | null) => void;
   branch?: string | null;
+  /** Section a care-of created inline belongs to. */
+  program?: 'hajj' | 'umrah';
 }) {
   const t = getDict(useLocale());
   const boxRef = useRef<HTMLDivElement>(null);
@@ -113,6 +116,7 @@ export function CareOfSelect({
           phone: newPhone.trim(),
           address: newAddress.trim(),
           branch: branch ?? undefined,
+          program: program ?? 'both',
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -194,7 +198,14 @@ export function CareOfSelect({
                       className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-ink transition hover:bg-muted"
                     >
                       <span className="min-w-0">
-                        <span className="block truncate font-medium">{a.name}</span>
+                        <span className="block truncate font-medium">
+                          {a.name}
+                          {a.fund_mode === 'group_fund' && (
+                            <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[0.65rem] font-bold text-amber-700">
+                              {t.fundBadge}
+                            </span>
+                          )}
+                        </span>
                         <span className="block truncate text-xs text-ink-muted">
                           {[a.code, a.phone].filter(Boolean).join(' · ') || '—'}
                         </span>

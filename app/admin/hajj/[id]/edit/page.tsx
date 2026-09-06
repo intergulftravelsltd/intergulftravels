@@ -30,7 +30,7 @@ export default async function EditPilgrimPage({ params }: { params: { id: string
 
   if (!pilgrim) notFound();
 
-  const [packages, affiliates] = await Promise.all([loadHajjPackages(), loadActiveAffiliates()]);
+  const [packages, affiliates] = await Promise.all([loadHajjPackages(), loadActiveAffiliates('hajj')]);
   const options = packages.map((p) => ({ id: p.id, name: p.name, price: p.price, year: p.year }));
 
   return (

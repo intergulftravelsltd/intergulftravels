@@ -28,7 +28,18 @@ export default async function ReceiptPage({ params }: { params: { id: string } }
   if (scope.branch && payment.branch !== scope.branch) notFound();
 
   const isHajj = payment.party_table === 'hajj_pilgrims';
-  const program = isHajj ? (locale === 'bn' ? 'হজ' : 'Hajj') : locale === 'bn' ? 'উমরাহ' : 'Umrah';
+  const isFund = payment.party_table === 'affiliates';
+  const program = isHajj
+    ? locale === 'bn'
+      ? 'হজ'
+      : 'Hajj'
+    : isFund
+      ? locale === 'bn'
+        ? 'গ্রুপ ফান্ড'
+        : 'Group Fund'
+      : locale === 'bn'
+        ? 'উমরাহ'
+        : 'Umrah';
 
   let partyName = '—';
   let partyPhone = '';
@@ -37,7 +48,7 @@ export default async function ReceiptPage({ params }: { params: { id: string } }
   if (payment.party_table && payment.party_id) {
     const { data: party } = await db
       .from(payment.party_table)
-      .select('name, phone, address, package_id')
+      .select(isFund ? 'name, phone, address' : 'name, phone, address, package_id')
       .eq('id', payment.party_id)
       .maybeSingle();
     if (party) {

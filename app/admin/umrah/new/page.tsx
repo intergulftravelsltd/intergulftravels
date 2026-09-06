@@ -14,7 +14,7 @@ export const metadata = { title: 'New Umrah Passenger' };
 export default async function NewUmrahPassengerPage() {
   const locale = getLocale();
   const t = getDict(locale);
-  const [packages, affiliates] = await Promise.all([loadUmrahPackages(), loadActiveAffiliates()]);
+  const [packages, affiliates] = await Promise.all([loadUmrahPackages(), loadActiveAffiliates('umrah')]);
   const active = packages.filter((p) => p.active);
 
   return (

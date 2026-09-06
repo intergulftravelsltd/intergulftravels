@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { mgmtDb, nextCounter, chargeParty, recordPayment, logActivity } from '@/lib/management/server';
 import { requireStaff } from '@/lib/management/guard';
 import { enforceBranch } from '@/lib/management/scope';
-import { resolveReferenceableAffiliate } from '@/lib/management/affiliates';
+import { resolveReferenceableAffiliate, resolveChargeTarget } from '@/lib/management/affiliates';
 import { DOC_STATUS_KEYS } from '@/lib/management/doc-status';
 
 export const runtime = 'nodejs';
@@ -113,11 +113,12 @@ export async function POST(request: Request) {
 
     // Care-of + document status are optional add-ons written best-effort, so a
     // pre-migration schema (columns not yet added) never blocks pilgrim entry.
-    if (d.affiliate_id || (d.doc_status && d.doc_status.length)) {
+    const affiliateId = await resolveReferenceableAffiliate(d.affiliate_id);
+    if (affiliateId || (d.doc_status && d.doc_status.length)) {
       const { error: metaErr } = await db
         .from('hajj_pilgrims')
         .update({
-          affiliate_id: await resolveReferenceableAffiliate(d.affiliate_id),
+          affiliate_id: affiliateId,
           doc_status: d.doc_status ?? [],
         })
         .eq('id', pilgrim.id);
@@ -125,7 +126,10 @@ export async function POST(request: Request) {
     }
 
     // The DB trigger creates + links the customer account head on insert.
-    const headId: string | null = pilgrim.account_head_id;
+    // Under a Group Fund care-of the leader's fund head carries the money instead.
+    const ownHeadId: string | null = pilgrim.account_head_id;
+    const target = await resolveChargeTarget(ownHeadId, affiliateId);
+    const headId = target.headId;
 
     // Charge the package price once (creates the due) when a package is assigned.
     if (hasPackage && headId) {
@@ -141,7 +145,9 @@ export async function POST(request: Request) {
           packageType: 'hajj',
           amount: price,
           branch: pilgrim.branch,
-          narration: `Hajj package — ${pkg?.name ?? ''}`.trim(),
+          narration: target.groupFund
+            ? `Hajj package — ${pkg?.name ?? ''} · ${d.name} (${tracking_no})`.trim()
+            : `Hajj package — ${pkg?.name ?? ''}`.trim(),
           ref_table: 'hajj_pilgrims',
           ref_id: pilgrim.id,
           created_by: guard.user.id,
@@ -149,17 +155,18 @@ export async function POST(request: Request) {
       }
     }
 
-    // Token money received → record it as a payment against their head.
+    // Token money received → record it as a payment against their head (or the
+    // group leader's fund head when the pilgrim sits under a Group Fund).
     if (d.token_money > 0 && headId) {
       await recordPayment({
-        party_table: 'hajj_pilgrims',
-        party_id: pilgrim.id,
+        party_table: target.groupFund ? 'affiliates' : 'hajj_pilgrims',
+        party_id: target.groupFund ? target.groupFund.affiliateId : pilgrim.id,
         account_head_id: headId,
         amount: d.token_money,
         method: 'cash',
         type: 'token',
         branch: pilgrim.branch,
-        narration: 'Token money received',
+        narration: target.groupFund ? `Token money — ${d.name} (${tracking_no})` : 'Token money received',
         created_by: guard.user.id,
       });
     }

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { mgmtDb, chargeParty, getSystemHead, INCOME_HEAD, logActivity } from '@/lib/management/server';
 import { requireStaff } from '@/lib/management/guard';
-import { resolveReferenceableAffiliate } from '@/lib/management/affiliates';
+import { resolveReferenceableAffiliate, resolveChargeTarget } from '@/lib/management/affiliates';
 import { DOC_STATUS_KEYS } from '@/lib/management/doc-status';
 
 export const runtime = 'nodejs';
@@ -70,7 +70,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     const { data: pilgrim, error: loadErr } = await db
       .from('hajj_pilgrims')
-      .select('id, account_head_id, branch, package_id')
+      .select('id, name, tracking_no, account_head_id, branch, package_id, affiliate_id')
       .eq('id', params.id)
       .maybeSingle();
 
@@ -124,12 +124,16 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         }
 
         if (!alreadyCharged) {
+          // Group Fund pilgrims: the charge is debited from the leader's fund head.
+          const target = await resolveChargeTarget(pilgrim.account_head_id, pilgrim.affiliate_id ?? null);
           await chargeParty({
-            customer_head_id: pilgrim.account_head_id,
+            customer_head_id: target.headId ?? pilgrim.account_head_id,
             packageType: 'hajj',
             amount: price,
             branch: pilgrim.branch,
-            narration: `Hajj package — ${pkg.name}`,
+            narration: target.groupFund
+              ? `Hajj package — ${pkg.name} · ${pilgrim.name} (${pilgrim.tracking_no ?? ''})`.trim()
+              : `Hajj package — ${pkg.name}`,
             ref_table: 'hajj_pilgrims',
             ref_id: pilgrim.id,
             created_by: guard.user.id,

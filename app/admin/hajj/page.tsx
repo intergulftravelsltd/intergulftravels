@@ -11,6 +11,7 @@ import {
   tdClass,
 } from '@/components/manage/ui';
 import { ExportMenu } from '@/components/manage/ExportMenu';
+import { PilgrimFilters } from '@/components/manage/hajj/PilgrimFilters';
 import { RecordRowActions } from '@/components/manage/RecordRowActions';
 import { DocStatusViewer } from '@/components/manage/DocStatusViewer';
 import { sharePath } from '@/lib/management/share-token';
@@ -22,7 +23,7 @@ import { loadActiveAffiliates } from '@/lib/management/affiliates';
 import { docStatusDone, DOC_STATUS_TOTAL } from '@/lib/management/doc-status';
 import { branchShort } from '@/lib/management/branches';
 import { money } from '@/lib/management/format';
-import type { HajjPilgrim, MgmtPackage } from '@/lib/management/types';
+import { isGroupFund, type HajjPilgrim, type MgmtPackage } from '@/lib/management/types';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminhajj';
@@ -44,6 +45,7 @@ type Search = {
   q?: string;
   docs?: string;
   care_of?: string;
+  gender?: string;
 };
 
 async function loadPilgrims(): Promise<HajjPilgrim[]> {
@@ -71,7 +73,7 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
     loadPilgrims(),
     loadHajjPackages(),
     loadHeadMap(),
-    loadActiveAffiliates(),
+    loadActiveAffiliates('hajj'),
   ]);
 
   const pkgById = new Map<string, MgmtPackage>(packages.map((p) => [p.id, p]));
@@ -115,6 +117,7 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
   const statusFilter = searchParams.status ?? '';
   const docsFilter = searchParams.docs ?? '';
   const careOfFilter = searchParams.care_of ?? '';
+  const genderFilter = (searchParams.gender ?? '').toLowerCase();
   const q = (searchParams.q ?? '').trim().toLowerCase();
 
   // Year-scoped set drives the stat cards.
@@ -129,6 +132,7 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
     if (docsFilter === 'incomplete' && docStatusDone(p.doc_status) === DOC_STATUS_TOTAL) return false;
     if (careOfFilter === 'none' && p.affiliate_id) return false;
     if (careOfFilter && careOfFilter !== 'none' && p.affiliate_id !== careOfFilter) return false;
+    if (genderFilter && (p.gender ?? '').toLowerCase() !== genderFilter) return false;
     if (q) {
       const hay = `${p.name} ${p.tracking_no ?? ''} ${p.phone ?? ''} ${p.passport_no ?? ''} ${p.nid ?? ''}`.toLowerCase();
       if (!hay.includes(q)) return false;
@@ -163,10 +167,12 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
     };
   });
 
+  const genderLabel = (g?: string | null) => (g === 'male' ? ct.male : g === 'female' ? ct.female : '');
   const exportRows = rows.map((r) => [
     r.p.tracking_no ?? '',
     r.p.name,
     r.p.phone ?? '',
+    genderLabel(r.p.gender),
     r.p.year,
     r.p.reg_type === 'registered' ? t.exTypeRegistered : t.exTypePreRegistration,
     r.pkgName,
@@ -191,7 +197,7 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
 
   const qs = (patch: Partial<Search>) => {
     const sp = new URLSearchParams();
-    const merged = { year: String(selectedYear), reg_type: regType, package: pkgFilter, branch: branchFilter, status: statusFilter, docs: docsFilter, care_of: careOfFilter, q: searchParams.q ?? '', ...patch };
+    const merged = { year: String(selectedYear), reg_type: regType, package: pkgFilter, branch: branchFilter, status: statusFilter, docs: docsFilter, care_of: careOfFilter, gender: genderFilter, q: searchParams.q ?? '', ...patch };
     for (const [k, v] of Object.entries(merged)) if (v) sp.set(k, String(v));
     const s = sp.toString();
     return localizedPath(locale, s ? `/admin/hajj?${s}` : '/admin/hajj');
@@ -213,7 +219,7 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                   filename: `hajj-pilgrims-${selectedYear}`,
                   title: `${t.pilgrimsTitle} — ${selectedYear}`,
                   subtitle: `${filtered.length} ${filtered.length === 1 ? t.recordSingular : t.recordPlural}`,
-                  headers: [t.exTracking, t.exName, t.exPhone, t.exYear, t.exType, t.exPackage, t.exPaid, t.exDue, t.exBranch, t.exStatus],
+                  headers: [t.exTracking, t.exName, t.exPhone, t.gender, t.exYear, t.exType, t.exPackage, t.exPaid, t.exDue, t.exBranch, t.exStatus],
                   rows: exportRows,
                   orientation: 'l',
                 },
@@ -284,61 +290,12 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
         })}
       </div>
 
-      {/* Filters */}
-      <form method="get" className="mb-5 grid gap-3 rounded-2xl border border-border bg-card p-4 shadow-soft sm:grid-cols-2 lg:grid-cols-6">
-        <input type="hidden" name="year" value={selectedYear} />
-        <input
-          name="q"
-          defaultValue={searchParams.q ?? ''}
-          placeholder={t.searchPlaceholder}
-          className="rounded-xl border border-border bg-card px-3.5 py-2 text-sm text-ink outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20 lg:col-span-2"
-        />
-        <select name="reg_type" defaultValue={regType} className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-ink">
-          <option value="">{t.allTypes}</option>
-          <option value="pre-registration">{t.optPreRegistration}</option>
-          <option value="registered">{t.optRegistered}</option>
-        </select>
-        <select name="package" defaultValue={pkgFilter} className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-ink">
-          <option value="">{t.allPackages}</option>
-          {packages.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        <select name="status" defaultValue={statusFilter} className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-ink">
-          <option value="">{t.allStatuses}</option>
-          <option value="active">{t.optActive}</option>
-          <option value="completed">{t.optCompleted}</option>
-          <option value="cancelled">{t.optCancelled}</option>
-        </select>
-        <select name="care_of" defaultValue={careOfFilter} className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-ink">
-          <option value="">{ct.filterAllCare}</option>
-          <option value="none">{ct.filterNoCare}</option>
-          {affiliates.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-              {a.code ? ` · ${a.code}` : ''}
-            </option>
-          ))}
-        </select>
-        <select name="docs" defaultValue={docsFilter} className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-ink">
-          <option value="">{ct.filterAllDocs}</option>
-          <option value="complete">{ct.filterDocsComplete}</option>
-          <option value="incomplete">{ct.filterDocsIncomplete}</option>
-        </select>
-        <div className="flex gap-2 sm:col-span-2 lg:col-span-6">
-          <Button type="submit" size="sm" variant="outline">
-            {t.applyFilters}
-          </Button>
-          <Link
-            href={localizedPath(locale, `/admin/hajj?year=${selectedYear}`)}
-            className="inline-flex items-center rounded-full px-4 py-1.5 text-sm font-medium text-ink-muted hover:text-brand-700"
-          >
-            {t.reset}
-          </Link>
-        </div>
-      </form>
+      {/* Filters — one row, apply on change */}
+      <PilgrimFilters
+        year={selectedYear}
+        packages={packages.map((p) => ({ id: p.id, name: p.name }))}
+        careOfs={affiliates.map((a) => ({ id: a.id, name: a.name, code: a.code }))}
+      />
 
       {rows.length === 0 ? (
         <EmptyState
@@ -374,8 +331,18 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
             {rows.map(({ p, pkgName, paid, due }) => {
               const done = docStatusDone(p.doc_status);
               const careOf = p.affiliate_id ? affMap.get(p.affiliate_id) : undefined;
+              const viaFund = isGroupFund(careOf);
               const groupHeadName = p.group_head_id ? nameById.get(p.group_head_id) : undefined;
               const isGroupHead = groupMembersByHead.has(p.id);
+              const fundCell = careOf ? (
+                <Link
+                  href={localizedPath(locale, `/admin/care-of/${careOf.id}?from=hajj`)}
+                  className="inline-block max-w-[10rem] truncate text-xs font-semibold text-amber-600 hover:underline"
+                  title={careOf.name}
+                >
+                  {ct.fundBadge}
+                </Link>
+              ) : null;
               return (
               <tr key={p.id} className="transition hover:bg-muted/40">
                 <td className={tdClass}>
@@ -392,7 +359,10 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                     <span className="block text-xs text-ink-muted">{[p.phone, p.district].filter(Boolean).join(' · ')}</span>
                   )}
                   {careOf && (
-                    <span className="block text-xs font-medium text-brand-700">{ct.careOf}: {careOf.name}</span>
+                    <span className="block text-xs font-medium text-brand-700">
+                      {ct.careOf}: {careOf.name}
+                      {viaFund && <span className="ml-1 text-amber-600">· {ct.fundBadge}</span>}
+                    </span>
                   )}
                   {p.group_head_id && nameById.has(p.group_head_id) && (
                     <span className="block text-xs font-medium text-amber-600">
@@ -417,7 +387,9 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                 </td>
                 <td className={tdClass}>{pkgName}</td>
                 <td className={`${tdClass} text-right`}>
-                  {groupHeadName ? (
+                  {viaFund ? (
+                    fundCell
+                  ) : groupHeadName ? (
                     paid > 0 ? (
                       <Money value={paid} />
                     ) : (
@@ -435,7 +407,9 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                   )}
                 </td>
                 <td className={`${tdClass} text-right`}>
-                  {groupHeadName ? (
+                  {viaFund ? (
+                    fundCell
+                  ) : groupHeadName ? (
                     <span
                       className="inline-block max-w-[10rem] truncate text-xs font-semibold text-amber-600"
                       title={groupHeadName}

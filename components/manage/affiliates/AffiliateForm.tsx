@@ -7,12 +7,14 @@ import { Loader2, Plus, X } from 'lucide-react';
 import { Card, Field, inputClass } from '@/components/manage/ui';
 import { Button } from '@/components/ui/Button';
 import { BRANCHES } from '@/lib/management/branches';
+import type { AffiliateFundMode, AffiliateProgram } from '@/lib/management/types';
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { useLockedBranch } from '@/components/providers/BranchScope';
 import { getDict } from '@/lib/dictionaries/areas/careof';
 
-/** Collapsible creator for a care-of / affiliate. Mirrors HeadForm. */
-export function AffiliateForm() {
+/** Collapsible creator for a care-of / affiliate. `program` = the section the
+ *  list belongs to (Hajj or Umrah) and becomes the default for new records. */
+export function AffiliateForm({ program: defaultProgram = 'both' }: { program?: AffiliateProgram }) {
   const router = useRouter();
   const t = getDict(useLocale());
   const lockedBranch = useLockedBranch();
@@ -23,6 +25,8 @@ export function AffiliateForm() {
   const [address, setAddress] = useState('');
   const [code, setCode] = useState('');
   const [type, setType] = useState<'agent' | 'family'>('agent');
+  const [program, setProgram] = useState<AffiliateProgram>(defaultProgram);
+  const [fundMode, setFundMode] = useState<AffiliateFundMode>('individual');
   const [branch, setBranch] = useState<string>(BRANCHES[0].value);
 
   function reset() {
@@ -31,6 +35,8 @@ export function AffiliateForm() {
     setAddress('');
     setCode('');
     setType('agent');
+    setProgram(defaultProgram);
+    setFundMode('individual');
     setBranch(BRANCHES[0].value);
   }
 
@@ -50,6 +56,8 @@ export function AffiliateForm() {
           address: address.trim(),
           code: code.trim(),
           type,
+          program,
+          fund_mode: fundMode,
           branch: lockedBranch ?? branch,
         }),
       });
@@ -104,8 +112,34 @@ export function AffiliateForm() {
             <option value="family">{t.typeFamily}</option>
           </select>
         </Field>
+        <Field label={t.program}>
+          <select className={inputClass} value={program} onChange={(e) => setProgram(e.target.value as AffiliateProgram)}>
+            <option value="hajj">{t.programHajj}</option>
+            <option value="umrah">{t.programUmrah}</option>
+            <option value="both">{t.programBoth}</option>
+          </select>
+        </Field>
         <Field label={t.code} hint={t.codeHint}>
           <input className={inputClass} value={code} placeholder="CO-0001" onChange={(e) => setCode(e.target.value)} />
+        </Field>
+        <Field label={t.fundMode} hint={t.fundModeHint} className="sm:col-span-2">
+          <div className="grid gap-2 sm:grid-cols-2">
+            {(['individual', 'group_fund'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setFundMode(m)}
+                className={
+                  'rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition ' +
+                  (fundMode === m
+                    ? 'border-brand-600 bg-brand-50 text-brand-700'
+                    : 'border-border bg-card text-ink-muted hover:border-brand-600/40 hover:text-brand-700')
+                }
+              >
+                {m === 'individual' ? t.fundIndividual : t.fundGroup}
+              </button>
+            ))}
+          </div>
         </Field>
         <Field label={t.address} className="sm:col-span-2">
           <textarea className={inputClass} rows={2} value={address} placeholder={t.addressPlaceholder} onChange={(e) => setAddress(e.target.value)} />

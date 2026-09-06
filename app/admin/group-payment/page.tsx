@@ -4,7 +4,14 @@ import { mgmtDb } from '@/lib/management/server';
 import { getStaffScope } from '@/lib/management/scope';
 import { loadHeadMap, dueForHead, loadBankAccounts } from '@/lib/management/hajj';
 import { loadPassengers } from '@/lib/management/umrah';
-import type { HajjPilgrim } from '@/lib/management/types';
+import { loadActiveAffiliates } from '@/lib/management/affiliates';
+import { isGroupFund, type HajjPilgrim } from '@/lib/management/types';
+
+/** Ids of Group Fund care-ofs — their pilgrims pay through the leader, not individually. */
+async function groupFundIds(program: 'hajj' | 'umrah'): Promise<Set<string>> {
+  const affiliates = await loadActiveAffiliates(program);
+  return new Set(affiliates.filter((a) => isGroupFund(a)).map((a) => a.id));
+}
 import { getLocale } from '@/lib/i18n-server';
 import { getDict } from '@/lib/dictionaries/areas/adminhajj';
 
@@ -18,19 +25,21 @@ async function loadHajjMembers(): Promise<GroupMember[]> {
     const scope = await getStaffScope();
     let q = mgmtDb()
       .from('hajj_pilgrims')
-      .select('id, name, tracking_no, phone, branch, account_head_id, status')
+      .select('id, name, tracking_no, phone, branch, account_head_id, status, affiliate_id')
       .neq('status', 'cancelled');
     if (scope.branch) q = q.eq('branch', scope.branch);
     // The pilgrim list and the head map are independent — one round-trip.
-    const [{ data }, heads] = await Promise.all([
+    const [{ data }, heads, fundIds] = await Promise.all([
       q.order('created_at', { ascending: false }),
       loadHeadMap(),
+      groupFundIds('hajj'),
     ]);
     const rows = (data ?? []) as Pick<
       HajjPilgrim,
-      'id' | 'name' | 'tracking_no' | 'phone' | 'branch' | 'account_head_id' | 'status'
+      'id' | 'name' | 'tracking_no' | 'phone' | 'branch' | 'account_head_id' | 'status' | 'affiliate_id'
     >[];
     return rows
+      .filter((p) => !(p.affiliate_id && fundIds.has(p.affiliate_id)))
       .map((p) => ({
         id: p.id,
         name: p.name,
@@ -45,9 +54,10 @@ async function loadHajjMembers(): Promise<GroupMember[]> {
 }
 
 async function loadUmrahMembers(): Promise<GroupMember[]> {
-  const passengers = await loadPassengers();
+  const [passengers, fundIds] = await Promise.all([loadPassengers(), groupFundIds('umrah')]);
   return passengers
     .filter((p) => p.status !== 'cancelled')
+    .filter((p) => !(p.affiliate_id && fundIds.has(p.affiliate_id)))
     .map((p) => ({
       id: p.id,
       name: p.name,
