@@ -296,9 +296,9 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
                           <td className="py-2" colSpan={3}>
                             {t.grandTotal}
                           </td>
-                          <td className="py-2 text-right">৳ {data.totalCharge}</td>
-                          <td className="py-2 text-right">৳ {data.paid}</td>
-                          <td className="py-2 text-right">৳ {data.due}</td>
+                          <td className="whitespace-nowrap py-2 text-right">৳ {data.totalCharge}</td>
+                          <td className="whitespace-nowrap py-2 text-right">৳ {data.paid}</td>
+                          <td className="whitespace-nowrap py-2 text-right">৳ {data.due}</td>
                         </tr>
                       </tfoot>
                     </table>

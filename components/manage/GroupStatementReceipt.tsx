@@ -198,9 +198,9 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
                       <span className="block text-xs font-medium text-gray-500">{data.perHeadLine}</span>
                     )}
                   </td>
-                  <td className="py-2 text-right">৳ {data.totalCharged}</td>
-                  <td className="py-2 text-right">৳ {data.totalPaid}</td>
-                  <td className="py-2 text-right">৳ {data.totalDue}</td>
+                  <td className="whitespace-nowrap py-2 text-right">৳ {data.totalCharged}</td>
+                  <td className="whitespace-nowrap py-2 text-right">৳ {data.totalPaid}</td>
+                  <td className="whitespace-nowrap py-2 text-right">৳ {data.totalDue}</td>
                 </tr>
               </tfoot>
             </table>
