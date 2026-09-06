@@ -31,6 +31,8 @@ export type AccountHead = {
 export type Transaction = {
   id: string;
   voucher_no: string | null;
+  /** Hand-written voucher / receipt number from the physical paper (0011). */
+  manual_ref?: string | null;
   date: string;
   type: 'receipt' | 'payment' | 'contra' | 'journal' | 'expense' | 'income';
   debit_account_id: string;
@@ -131,6 +133,8 @@ export type UmrahPassenger = {
 export type Payment = {
   id: string;
   voucher_no: string | null;
+  /** Hand-written money-receipt number from the physical paper (0011). */
+  manual_ref?: string | null;
   date: string;
   party_table: string | null;
   party_id: string | null;

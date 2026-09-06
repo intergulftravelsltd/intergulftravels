@@ -7,6 +7,7 @@ import { loadActiveHeads, loadTransactions, headMap, headName } from '@/lib/mana
 import { getStaffScope } from '@/lib/management/scope';
 import { BRANCHES, branchShort } from '@/lib/management/branches';
 import { money } from '@/lib/management/format';
+import { resolvePeriod } from '@/lib/period';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminaccounting';
@@ -62,14 +63,16 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
 
   const exportRows = txns.map((t) => [
     t.voucher_no ?? '',
+    t.manual_ref ?? '',
     t.date,
-    t.type,
+    tt.typeLabels[TYPE_LABEL_KEY[t.type]] ?? t.type,
     headName(map, t.debit_account_id),
     headName(map, t.credit_account_id),
     money(t.amount, false),
     branchShort(t.branch),
     t.narration ?? '',
   ]);
+  const period = resolvePeriod({ from: filters.from, to: filters.to }, txns.map((t) => t.date));
 
   return (
     <>
@@ -82,8 +85,19 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
               filename="vouchers"
               title={tt.vouchers.exportTitle}
               subtitle={filterSubtitle(searchParams, tt)}
+              period={period}
               orientation="l"
-              headers={[tt.vouchers.exHVoucher, tt.vouchers.exHDate, tt.vouchers.exHType, tt.vouchers.exHDebit, tt.vouchers.exHCredit, tt.vouchers.exHAmount, tt.vouchers.exHBranch, tt.vouchers.exHNarration]}
+              headers={[
+                tt.vouchers.exHVoucher,
+                tt.vouchers.exHManualRef,
+                tt.vouchers.exHDate,
+                tt.vouchers.exHType,
+                tt.vouchers.exHDebit,
+                tt.vouchers.exHCredit,
+                tt.vouchers.exHAmount,
+                tt.vouchers.exHBranch,
+                tt.vouchers.exHNarration,
+              ]}
               rows={exportRows}
             />
           ) : undefined
@@ -162,6 +176,7 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
             <thead>
               <tr>
                 <th className={thClass}>{tt.vouchers.thVoucher}</th>
+                <th className={thClass}>{tt.vouchers.thManualRef}</th>
                 <th className={thClass}>{tt.vouchers.thDate}</th>
                 <th className={thClass}>{tt.vouchers.thType}</th>
                 <th className={thClass}>{tt.vouchers.thDebitHead}</th>
@@ -176,6 +191,7 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
               {txns.map((t) => (
                 <tr key={t.id}>
                   <td className={`${tdClass} whitespace-nowrap font-mono text-xs`}>{t.voucher_no ?? '—'}</td>
+                  <td className={`${tdClass} whitespace-nowrap font-mono text-xs`}>{t.manual_ref || '—'}</td>
                   <td className={`${tdClass} whitespace-nowrap`}>{t.date}</td>
                   <td className={tdClass}>
                     <Badge tone={TYPE_TONE[t.type] ?? 'slate'}>{tt.typeLabels[TYPE_LABEL_KEY[t.type]] ?? t.type}</Badge>
@@ -202,6 +218,7 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
                         voucher={{
                           id: t.id,
                           voucher_no: t.voucher_no,
+                          manual_ref: t.manual_ref ?? null,
                           date: t.date,
                           type: t.type,
                           debit_account_id: t.debit_account_id,

@@ -6,6 +6,9 @@ import { PrintPageButton } from '@/components/manage/PrintPageButton';
 import { mgmtDb } from '@/lib/management/server';
 import { getStaffScope } from '@/lib/management/scope';
 import { presetRange, type RangeKey } from '@/lib/date-range';
+import { resolvePeriod, formatPeriodLine } from '@/lib/period';
+import { loadScopedCompanyProfile } from '@/lib/management/company';
+import { PrintLetterhead, PrintSignatures } from '@/components/manage/PrintLetterhead';
 import { money } from '@/lib/management/format';
 import { branchShort } from '@/lib/management/branches';
 import { netDebit, type AccountHead, type Transaction } from '@/lib/management/types';
@@ -93,7 +96,7 @@ export default async function CashBookPage({
   else if (rangeKey === 'lifetime') ({ from, to } = { from: '', to: '' });
   else if (!from && !to && !rangeKey) ({ from, to } = presetRange('this-month'));
 
-  const scope = await getStaffScope();
+  const [scope, company] = await Promise.all([getStaffScope(), loadScopedCompanyProfile()]);
   const db = mgmtDb();
 
   let hq = db.from('account_heads').select('*').in('subtype', ['cash', 'bank']);
@@ -176,7 +179,9 @@ export default async function CashBookPage({
       date: fmtDate(tx.date),
       account: scope.branch ? account : `${account} · ${branchShort(tx.branch)}`,
       particulars: tx.narration || counterpart || '—',
+      against: counterpart ?? '',
       voucher: tx.voucher_no ?? '',
+      manualRef: tx.manual_ref ?? '',
       deposit,
       withdrawal,
       balance: running,
@@ -184,23 +189,27 @@ export default async function CashBookPage({
   });
   const closing = running;
 
+  const voucherLabel = locale === 'bn' ? 'ভাউচার / ম্যানুয়াল নং' : 'Voucher / Manual No';
   const exportRows = [
-    ['', '', t.openingRow, '', '', money(opening, false)],
+    ['', '', '', t.openingRow, '', '', money(opening, false)],
     ...lines.map((l) => [
       l.date,
       l.account,
-      `${l.particulars}${l.voucher ? ` (${l.voucher})` : ''}`,
+      [l.voucher, l.manualRef].filter(Boolean).join(' / '),
+      l.particulars,
       l.deposit ? money(l.deposit, false) : '',
       l.withdrawal ? money(l.withdrawal, false) : '',
       money(l.balance, false),
     ]),
-    ['', '', t.closingRow, money(totalDeposit, false), money(totalWithdrawal, false), money(closing, false)],
+    ['', '', '', t.closingRow, money(totalDeposit, false), money(totalWithdrawal, false), money(closing, false)],
   ];
 
   const rangeLabel = [from || '…', to || '…'].join(' → ');
+  const period = resolvePeriod({ from, to }, inRange.map((tx) => tx.date));
 
   return (
     <div id="doc-report">
+      <PrintLetterhead company={company} locale={locale} title={t.title} period={formatPeriodLine(period, locale)} />
       <style>{`
         @media print {
           body * { visibility: hidden !important; }
@@ -218,9 +227,10 @@ export default async function CashBookPage({
           <div className="no-print flex flex-wrap items-center gap-2">
             <ExportBar
               filename={`${t.exportName}-${from || 'start'}-${to || 'now'}`}
-              title={`${t.title} — ${rangeLabel}`}
+              title={t.title}
               subtitle={`${t.opening}: ${money(opening)} · ${t.closing}: ${money(closing)}`}
-              headers={[t.thDate, t.thAccount, t.thParticulars, t.thDeposit, t.thWithdrawal, t.thBalance]}
+              period={period}
+              headers={[t.thDate, t.thAccount, voucherLabel, t.thParticulars, t.thDeposit, t.thWithdrawal, t.thBalance]}
               rows={exportRows}
               orientation="l"
             />
@@ -299,6 +309,7 @@ export default async function CashBookPage({
           </tbody>
         </TableWrap>
       )}
+      <PrintSignatures locale={locale} />
     </div>
   );
 }

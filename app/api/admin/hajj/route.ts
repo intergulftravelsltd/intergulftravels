@@ -71,9 +71,11 @@ export async function POST(request: Request) {
     const counter = await nextCounter(`hajj_${d.year}`);
     const tracking_no = `H${d.year}-${String(counter).padStart(4, '0')}`;
 
-    // If a package is chosen the pilgrim is effectively registered.
+    // Every new pilgrim starts as PRE-registered (the form default) — staff
+    // switch to "Registered" by hand once the government registration is done.
+    // Choosing a package no longer promotes the type automatically.
+    const reg_type = d.reg_type;
     const hasPackage = Boolean(d.package_id);
-    const reg_type = hasPackage ? 'registered' : d.reg_type;
 
     const { data: pilgrim, error } = await db
       .from('hajj_pilgrims')

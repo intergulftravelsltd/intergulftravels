@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/manage/ui';
 import { DocMatrixReport } from '@/components/manage/DocMatrixReport';
 import { PrintPageButton } from '@/components/manage/PrintPageButton';
 import { loadPassengers, loadUmrahPackages } from '@/lib/management/umrah';
+import { loadScopedCompanyProfile } from '@/lib/management/company';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 
@@ -20,7 +21,7 @@ export default async function UmrahDocReportPage({
   searchParams: { package?: string };
 }) {
   const locale = getLocale();
-  const [all, packages] = await Promise.all([loadPassengers(), loadUmrahPackages()]);
+  const [all, packages, company] = await Promise.all([loadPassengers(), loadUmrahPackages(), loadScopedCompanyProfile()]);
 
   let passengers = all.filter((p) => p.status !== 'cancelled');
   if (searchParams.package) passengers = passengers.filter((p) => p.package_id === searchParams.package);
@@ -49,6 +50,9 @@ export default async function UmrahDocReportPage({
       <DocMatrixReport
         program="umrah"
         locale={locale}
+        company={company}
+        title={locale === 'bn' ? 'ডকুমেন্ট চেকলিস্ট রিপোর্ট — উমরাহ' : 'Document Checklist Report — Umrah'}
+        subtitle={subtitleParts.join(' · ')}
         people={passengers.map((p) => ({
           name: p.name,
           ref: [p.passport_no, p.phone].filter(Boolean).join(' · '),

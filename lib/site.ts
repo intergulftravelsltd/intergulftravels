@@ -194,11 +194,16 @@ export const branches: Branch[] = [
     offices: [
       {
         label: 'Head Office',
-        address: '31, K.R. Plaza, 5th Floor, Purana Paltan, Dhaka-1000',
-        phones: ['01711 358939', '01716 529232'],
+        address: '31, K.R. Plaza (5th Floor), Purana Paltan, Dhaka',
+        phones: ['01325699588', '01675431118'],
+      },
+      {
+        label: 'Branch Office',
+        address: 'Dowlashwar Masjid Market, Sanarpar, Demra, Dhaka',
+        phones: [],
       },
     ],
-    email: 'intergulf71@gmail.com',
+    email: 'mokbuloverseas@gmail.com',
   },
   {
     slug: 'inter-gulf-air-travels',

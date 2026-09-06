@@ -3,7 +3,8 @@ import { getStaffScope } from '@/lib/management/scope';
 import { loadGroupLedger, type GroupTable } from '@/lib/management/group';
 import { money } from '@/lib/management/format';
 import { branchLabel } from '@/lib/management/branches';
-import { branchCompany } from '@/lib/site';
+import { loadCompanyProfile } from '@/lib/management/company';
+import { formatPeriodLine, resolvePeriod } from '@/lib/period';
 import { getLocale } from '@/lib/i18n-server';
 import { GroupStatementReceipt } from '@/components/manage/GroupStatementReceipt';
 
@@ -34,15 +35,23 @@ export default async function GroupStatementPage({ params }: { params: { table: 
       ? `${money(uniform)} × ${group.members.length} ${locale === 'bn' ? 'জন' : 'persons'}`
       : '';
 
+  // Ledger dates are pre-formatted ("06 Sept 2026"); parse them back for the period line.
+  const ledgerDates = group.ledger.map((l) => {
+    const d = new Date(l.date);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+  });
+  const period = group.ledger.length ? formatPeriodLine(resolvePeriod(null, ledgerDates), locale) : null;
+
   return (
     <GroupStatementReceipt
       locale={locale}
       data={{
-        company: branchCompany(group.branch),
+        company: await loadCompanyProfile(group.branch),
         program,
         date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         branch: branchLabel(group.branch),
         headName: group.headName,
+        period,
         rows: group.members.map((m) => ({
           name: m.name,
           ref: m.ref,
@@ -56,6 +65,7 @@ export default async function GroupStatementPage({ params }: { params: { table: 
           member: line.member,
           particulars: line.particulars,
           voucher: line.voucher,
+          manualRef: line.manualRef,
           charge: line.charge ? money(line.charge, false) : '',
           paid: line.paid ? money(line.paid, false) : '',
           balance: money(line.balance, false),

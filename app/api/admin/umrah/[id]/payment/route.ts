@@ -16,6 +16,7 @@ const paymentSchema = z.object({
   type: z.enum(['advance', 'installment', 'token', 'full', 'refund']).default('installment'),
   date: z.preprocess(emptyToNull, z.string().trim().nullable().optional()),
   narration: z.preprocess(emptyToNull, z.string().trim().max(500).nullable().optional()),
+  manual_ref: z.preprocess(emptyToNull, z.string().trim().max(60).nullable().optional()),
 });
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
@@ -81,6 +82,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       narration: d.narration ?? 'Payment received',
       branch: passenger.branch,
       created_by: guard.user.id,
+      manual_ref: d.manual_ref ?? null,
     });
 
     await logActivity({

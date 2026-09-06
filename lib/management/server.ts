@@ -123,30 +123,59 @@ type PostTx = {
   ref_id?: string | null;
   created_by?: string | null;
   voucher_no?: string;
+  /** Hand-written voucher / receipt number from the physical paper. */
+  manual_ref?: string | null;
 };
+
+/** Trim + cap a manual voucher/receipt number; empty → null. */
+export function cleanManualRef(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const s = v.trim().slice(0, 60);
+  return s || null;
+}
+
+/** True when a PostgREST error means the 0011 `manual_ref` column is missing. */
+function missingManualRefColumn(message: string | undefined): boolean {
+  return !!message && /manual_ref/i.test(message) && /column|schema cache/i.test(message);
+}
+
+/**
+ * Insert into a table with the optional `manual_ref` column. If the 0011
+ * migration has not been applied yet the insert is retried without it so a
+ * posting never fails — the number is simply not stored until the column exists.
+ */
+export async function insertWithManualRef<T extends Record<string, unknown>>(
+  table: 'transactions' | 'payments',
+  row: T & { manual_ref?: string | null },
+) {
+  const db = mgmtDb();
+  let { data, error } = await db.from(table).insert(row).select('*').single();
+  if (error && row.manual_ref !== undefined && missingManualRefColumn(error.message)) {
+    console.warn(`[${table}] manual_ref column missing — run supabase/migrations/0011_manual_ref.sql`);
+    const { manual_ref: _omit, ...rest } = row;
+    ({ data, error } = await db.from(table).insert(rest).select('*').single());
+  }
+  return { data, error };
+}
 
 /** Post a balanced double-entry voucher. Account balances update via DB trigger. */
 export async function postTransaction(tx: PostTx) {
-  const db = mgmtDb();
   const voucher_no = tx.voucher_no ?? (await nextVoucherNo());
-  const { data, error } = await db
-    .from('transactions')
-    .insert({
-      voucher_no,
-      date: tx.date ?? new Date().toISOString().slice(0, 10),
-      type: tx.type ?? 'journal',
-      debit_account_id: tx.debit_account_id,
-      credit_account_id: tx.credit_account_id,
-      amount: tx.amount,
-      narration: tx.narration ?? null,
-      branch: tx.branch ?? 'general',
-      method: tx.method ?? null,
-      ref_table: tx.ref_table ?? null,
-      ref_id: tx.ref_id ?? null,
-      created_by: tx.created_by ?? null,
-    })
-    .select('*')
-    .single();
+  const { data, error } = await insertWithManualRef('transactions', {
+    voucher_no,
+    manual_ref: cleanManualRef(tx.manual_ref),
+    date: tx.date ?? new Date().toISOString().slice(0, 10),
+    type: tx.type ?? 'journal',
+    debit_account_id: tx.debit_account_id,
+    credit_account_id: tx.credit_account_id,
+    amount: tx.amount,
+    narration: tx.narration ?? null,
+    branch: tx.branch ?? 'general',
+    method: tx.method ?? null,
+    ref_table: tx.ref_table ?? null,
+    ref_id: tx.ref_id ?? null,
+    created_by: tx.created_by ?? null,
+  });
   if (error) throw new Error(error.message);
   return data;
 }
@@ -164,6 +193,8 @@ export async function recordPayment(p: {
   narration?: string | null;
   branch?: string;
   created_by?: string | null;
+  /** Hand-written money-receipt number from the physical paper. */
+  manual_ref?: string | null;
 }) {
   const db = mgmtDb();
 
@@ -175,6 +206,7 @@ export async function recordPayment(p: {
   if (!debitId) throw new Error('No cash/bank account available for this payment.');
 
   const voucher_no = await nextVoucherNo('RV');
+  const manual_ref = cleanManualRef(p.manual_ref);
   const tx = await postTransaction({
     date: p.date,
     type: 'receipt',
@@ -187,27 +219,25 @@ export async function recordPayment(p: {
     ref_table: 'payments',
     created_by: p.created_by,
     voucher_no,
+    manual_ref,
   });
 
-  const { data, error } = await db
-    .from('payments')
-    .insert({
-      voucher_no,
-      date: p.date ?? new Date().toISOString().slice(0, 10),
-      party_table: p.party_table,
-      party_id: p.party_id,
-      account_head_id: p.account_head_id,
-      amount: p.amount,
-      method: p.method,
-      bank_account_id: p.method === 'bank' ? p.bank_account_id ?? null : null,
-      type: p.type ?? 'installment',
-      narration: p.narration ?? null,
-      branch: p.branch ?? 'general',
-      transaction_id: tx.id,
-      created_by: p.created_by ?? null,
-    })
-    .select('*')
-    .single();
+  const { data, error } = await insertWithManualRef('payments', {
+    voucher_no,
+    manual_ref,
+    date: p.date ?? new Date().toISOString().slice(0, 10),
+    party_table: p.party_table,
+    party_id: p.party_id,
+    account_head_id: p.account_head_id,
+    amount: p.amount,
+    method: p.method,
+    bank_account_id: p.method === 'bank' ? p.bank_account_id ?? null : null,
+    type: p.type ?? 'installment',
+    narration: p.narration ?? null,
+    branch: p.branch ?? 'general',
+    transaction_id: tx.id,
+    created_by: p.created_by ?? null,
+  });
   if (error) throw new Error(error.message);
 
   await db.from('transactions').update({ ref_id: data.id }).eq('id', tx.id);

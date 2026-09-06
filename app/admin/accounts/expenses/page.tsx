@@ -7,6 +7,7 @@ import type { HeadOption } from '@/components/manage/accounts/VoucherForm';
 import { loadActiveHeads, loadTransactions, headMap, headName } from '@/lib/management/accounts-data';
 import { branchShort } from '@/lib/management/branches';
 import { money } from '@/lib/management/format';
+import { resolvePeriod } from '@/lib/period';
 import { getLocale } from '@/lib/i18n-server';
 import { getDict } from '@/lib/dictionaries/areas/adminaccounting';
 
@@ -53,12 +54,17 @@ export default async function ExpensesPage({
   const exportRows = expenseTxns.map((t) => [
     t.date,
     t.voucher_no ?? '',
+    t.manual_ref ?? '',
     headName(map, t.debit_account_id),
     headName(map, t.credit_account_id),
     money(t.amount, false),
     branchShort(t.branch),
     t.narration ?? '',
   ]);
+  const period = resolvePeriod(
+    { from: searchParams.from, to: searchParams.to },
+    expenseTxns.map((t) => t.date),
+  );
 
   return (
     <>
@@ -71,8 +77,18 @@ export default async function ExpensesPage({
               filename="expenses"
               title={tt.expenses.exportTitle}
               subtitle={`${tt.expenses.totalSpent}: ${money(total)}`}
+              period={period}
               orientation="l"
-              headers={[tt.expenses.exHDate, tt.expenses.exHVoucher, tt.expenses.exHExpenseHead, tt.expenses.exHPaidFrom, tt.expenses.exHAmount, tt.expenses.exHBranch, tt.expenses.exHNarration]}
+              headers={[
+                tt.expenses.exHDate,
+                tt.expenses.exHVoucher,
+                tt.expenses.exHManualRef,
+                tt.expenses.exHExpenseHead,
+                tt.expenses.exHPaidFrom,
+                tt.expenses.exHAmount,
+                tt.expenses.exHBranch,
+                tt.expenses.exHNarration,
+              ]}
               rows={exportRows}
             />
           ) : undefined
@@ -118,6 +134,7 @@ export default async function ExpensesPage({
             <tr>
               <th className={thClass}>{tt.expenses.thDate}</th>
               <th className={thClass}>{tt.expenses.thVoucher}</th>
+              <th className={thClass}>{tt.vouchers.thManualRef}</th>
               <th className={thClass}>{tt.expenses.thExpenseHead}</th>
               <th className={thClass}>{tt.expenses.thPaidFrom}</th>
               <th className={`${thClass} text-right`}>{tt.expenses.thAmount}</th>
@@ -130,6 +147,7 @@ export default async function ExpensesPage({
               <tr key={t.id}>
                 <td className={`${tdClass} whitespace-nowrap`}>{t.date}</td>
                 <td className={`${tdClass} whitespace-nowrap font-mono text-xs`}>{t.voucher_no ?? '—'}</td>
+                <td className={`${tdClass} whitespace-nowrap font-mono text-xs`}>{t.manual_ref || '—'}</td>
                 <td className={tdClass}>{headName(map, t.debit_account_id)}</td>
                 <td className={tdClass}>{headName(map, t.credit_account_id)}</td>
                 <td className={`${tdClass} text-right font-semibold tabular-nums`}>{money(t.amount)}</td>

@@ -25,6 +25,7 @@ const createSchema = z.object({
   bank_account_id: z.string().uuid().optional().nullable(),
   branch: z.string().trim().max(60).optional().default('general'),
   narration: z.string().trim().max(400).optional().nullable(),
+  manual_ref: z.string().trim().max(60).optional().nullable(),
 });
 
 export async function POST(request: Request) {
@@ -87,6 +88,7 @@ export async function POST(request: Request) {
       ref_table: 'loans',
       created_by: guard.user.id,
       voucher_no,
+      manual_ref: d.manual_ref || null,
     });
 
     const db = createAdminClient();

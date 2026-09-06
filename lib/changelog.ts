@@ -14,6 +14,32 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.4.0',
+    date: '2026-09-06',
+    items: [
+      {
+        en: 'Multi-tenant letterhead: every ledger, statement, receipt and Excel/PDF/Print export now carries the signed-in agency’s own name, logo, Head Office, Branch Office, mobile and email — editable under Company Profile.',
+        bn: 'মাল্টি-টেন্যান্ট লেটারহেড: প্রতিটি লেজার, বিবরণী, রসিদ ও Excel/PDF/Print এক্সপোর্টে এখন লগইন করা এজেন্সির নিজের নাম, লোগো, প্রধান কার্যালয়, শাখা কার্যালয়, মোবাইল ও ইমেইল — কোম্পানি প্রোফাইল থেকে সম্পাদনযোগ্য।',
+      },
+      {
+        en: 'Logo watermark (~16 %) centred on every printed page, "Statement for the period" line, and a Prepared by / Authorized Signature footer on all statements.',
+        bn: 'প্রতিটি প্রিন্ট পৃষ্ঠার মাঝখানে লোগো জলছাপ (~১৬%), “বিবরণীর সময়কাল” লাইন এবং সব বিবরণীতে প্রস্তুতকারী / অনুমোদিত স্বাক্ষর ফুটার।',
+      },
+      {
+        en: 'Manual Voucher / Receipt No. field on every entry form (daily entry, expense, loan, payments, group payment) — stored separately (migration 0011) and printed in ledgers, the voucher register and statements.',
+        bn: 'প্রতিটি এন্ট্রি ফর্মে ম্যানুয়াল ভাউচার / রসিদ নং ফিল্ড — আলাদা কলামে সংরক্ষিত (মাইগ্রেশন 0011) এবং লেজার, ভাউচার রেজিস্টার ও বিবরণীতে প্রিন্ট হয়।',
+      },
+      {
+        en: 'Account-head ledger got a date filter, a full Narration column next to "Against", and a brought-forward opening for the chosen period.',
+        bn: 'হিসাব খাতের লেজারে তারিখ ফিল্টার, “বিপরীতে”-র পাশে পূর্ণ বিবরণ কলাম এবং নির্বাচিত সময়কালের পূর্বের জের।',
+      },
+      {
+        en: 'Hajj pilgrims now stay Pre-registered until staff change them; Hajj/Umrah list exports moved into one compact Export menu.',
+        bn: 'হজ হাজী এখন স্টাফ পরিবর্তন না করা পর্যন্ত প্রাক-নিবন্ধিত থাকে; হজ/উমরাহ তালিকার এক্সপোর্ট একটি সংক্ষিপ্ত এক্সপোর্ট মেনুতে।',
+      },
+    ],
+  },
+  {
     version: '1.3.3',
     date: '2026-08-20',
     items: [

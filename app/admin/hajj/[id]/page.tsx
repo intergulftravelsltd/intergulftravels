@@ -140,11 +140,15 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
   const paymentRows = payments.map((p) => [
     fmtDate(p.date),
     p.voucher_no ?? '',
+    p.manual_ref ?? '',
     p.type,
     p.method,
     money(p.amount, false),
     p.narration ?? '',
   ]);
+  const paymentDates = payments.map((p) => p.date).sort();
+  const paymentPeriod = paymentDates.length ? { from: paymentDates[0], to: paymentDates[paymentDates.length - 1] } : null;
+  const manualNoLabel = locale === 'bn' ? 'ম্যানুয়াল রসিদ নং' : 'Manual Receipt No';
 
   return (
     <>
@@ -174,7 +178,8 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
               subtitle={`${t.infoTrackingNo} ${pilgrim.tracking_no ?? '—'} · ${t.charged} ${money(charged)} · ${t.paid} ${money(
                 paid,
               )} · ${t.dueShort} ${money(due)}`}
-              headers={[t.exDate, t.exVoucher, t.exType, t.exMethod, t.exAmount, t.exNarration]}
+              period={paymentPeriod}
+              headers={[t.exDate, t.exVoucher, manualNoLabel, t.exType, t.exMethod, t.exAmount, t.exNarration]}
               rows={paymentRows}
             />
           </div>

@@ -5,6 +5,7 @@ import { DocMatrixReport } from '@/components/manage/DocMatrixReport';
 import { PrintPageButton } from '@/components/manage/PrintPageButton';
 import { mgmtDb } from '@/lib/management/server';
 import { getStaffScope } from '@/lib/management/scope';
+import { loadScopedCompanyProfile } from '@/lib/management/company';
 import { loadHajjPackages } from '@/lib/management/hajj';
 import type { HajjPilgrim } from '@/lib/management/types';
 import { getLocale } from '@/lib/i18n-server';
@@ -36,9 +37,10 @@ export default async function HajjDocReportPage({
   if (year) q = q.eq('year', year);
   if (searchParams.package) q = q.eq('package_id', searchParams.package);
 
-  const [{ data }, packages] = await Promise.all([
+  const [{ data }, packages, company] = await Promise.all([
     q.order('created_at', { ascending: false }),
     loadHajjPackages(),
+    loadScopedCompanyProfile(),
   ]);
   const pilgrims = (data ?? []) as HajjPilgrim[];
   const pkgName = searchParams.package ? packages.find((p) => p.id === searchParams.package)?.name : null;
@@ -67,6 +69,9 @@ export default async function HajjDocReportPage({
       <DocMatrixReport
         program="hajj"
         locale={locale}
+        company={company}
+        title={locale === 'bn' ? 'ডকুমেন্ট চেকলিস্ট রিপোর্ট — হজ' : 'Document Checklist Report — Hajj'}
+        subtitle={subtitleParts.join(' · ')}
         people={pilgrims.map((p) => ({
           name: p.name,
           ref: [p.tracking_no, p.phone].filter(Boolean).join(' · '),

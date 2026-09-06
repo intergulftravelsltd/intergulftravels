@@ -3,7 +3,7 @@ import { mgmtDb } from '@/lib/management/server';
 import { getStaffScope } from '@/lib/management/scope';
 import { money, amountInWords } from '@/lib/management/format';
 import { branchLabel } from '@/lib/management/branches';
-import { branchCompany } from '@/lib/site';
+import { loadCompanyProfile } from '@/lib/management/company';
 import type { Payment } from '@/lib/management/types';
 import { getLocale } from '@/lib/i18n-server';
 import { GroupReceipt } from '@/components/manage/GroupReceipt';
@@ -73,9 +73,10 @@ export default async function GroupReceiptPage({
     <GroupReceipt
       locale={locale}
       data={{
-        company: branchCompany(first.branch),
+        company: await loadCompanyProfile(first.branch),
         program,
         receiptNo: first.voucher_no ? `${first.voucher_no}${payments.length > 1 ? ` +${payments.length - 1}` : ''}` : '—',
+        manualRef: first.manual_ref ?? null,
         date: fmtDate(first.date),
         branch: branchLabel(first.branch),
         payerName: searchParams.payer || names.get(first.party_id ?? '') || '—',
@@ -86,6 +87,7 @@ export default async function GroupReceiptPage({
         rows: payments.map((p) => ({
           name: names.get(p.party_id ?? '') ?? '—',
           voucher: p.voucher_no ?? '',
+          manualRef: p.manual_ref ?? '',
           amount: money(p.amount, false),
         })),
         total: money(total, false),

@@ -32,6 +32,8 @@ export type GroupLedgerLine = {
   member: string;
   particulars: string;
   voucher: string;
+  /** Hand-written voucher / receipt number (0011). */
+  manualRef: string;
   charge: number;
   paid: number;
   balance: number; // running group balance
@@ -170,7 +172,7 @@ async function loadCombinedLedger(rows: Row[]): Promise<GroupLedgerLine[]> {
     const ors = accountIds.map((id) => `debit_account_id.eq.${id},credit_account_id.eq.${id}`).join(',');
     const { data } = await db
       .from('transactions')
-      .select('date, created_at, voucher_no, narration, method, amount, debit_account_id, credit_account_id')
+      .select('*')
       .or(ors)
       .order('date', { ascending: true })
       .order('created_at', { ascending: true });
@@ -220,6 +222,7 @@ async function loadCombinedLedger(rows: Row[]): Promise<GroupLedgerLine[]> {
         member: label,
         particulars,
         voucher: t.voucher_no || '',
+        manualRef: t.manual_ref || '',
         charge: charge ? amount : 0,
         paid: charge ? 0 : amount,
         balance: running,

@@ -38,6 +38,7 @@ import {
   Contact,
   BookOpen,
   Rocket,
+  Building2,
   type LucideIcon,
 } from 'lucide-react';
 import { LogoMark } from '@/components/brand/Logo';
@@ -45,6 +46,8 @@ import { APP_VERSION } from '@/lib/changelog';
 import { ConfirmHost } from '@/components/admin/confirm';
 import { LangToggle } from '@/components/layout/LangToggle';
 import { BranchScopeProvider } from '@/components/providers/BranchScope';
+import { CompanyProfileProvider } from '@/components/providers/CompanyProfile';
+import { defaultCompanyProfile, type CompanyProfile } from '@/lib/company-profile';
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { getDict } from '@/lib/dictionaries/areas/adminshell';
 import { localizedPath, stripLocale, type Locale } from '@/lib/i18n';
@@ -57,7 +60,10 @@ type NavGroup = { groupKey: keyof AdminDict['groups']; items: NavLink[]; adminOn
 const NAV: NavGroup[] = [
   {
     groupKey: 'overview',
-    items: [{ labelKey: 'dashboard', href: '/admin', icon: LayoutDashboard }],
+    items: [
+      { labelKey: 'dashboard', href: '/admin', icon: LayoutDashboard },
+      { labelKey: 'companyProfile', href: '/admin/company', icon: Building2 },
+    ],
   },
   {
     groupKey: 'accounting',
@@ -129,12 +135,15 @@ export function AdminShell({
   user,
   isAdmin,
   lockedBranch = null,
+  company: companyProp,
   signOutAction,
   children,
 }: {
   user: { email: string; name: string | null; avatarUrl: string | null; role?: string };
   isAdmin: boolean;
   lockedBranch?: string | null;
+  /** The signed-in agency's letterhead (name, offices, logo). */
+  company?: CompanyProfile;
   signOutAction: () => void;
   children: React.ReactNode;
 }) {
@@ -142,13 +151,14 @@ export function AdminShell({
   const pathname = usePathname();
   const locale = useLocale();
   const t = getDict(locale);
+  const company = companyProp ?? defaultCompanyProfile(lockedBranch);
 
   return (
     <div className="min-h-screen bg-sand-soft text-ink">
       <ConfirmHost />
       {/* ---------- Desktop sidebar ---------- */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-border bg-card text-ink lg:flex">
-        <SidebarContent pathname={pathname} isAdmin={isAdmin} locale={locale} />
+        <SidebarContent pathname={pathname} isAdmin={isAdmin} locale={locale} company={company} />
       </aside>
 
       {/* ---------- Mobile drawer ---------- */}
@@ -167,7 +177,13 @@ export function AdminShell({
             >
               <X className="h-5 w-5" />
             </button>
-            <SidebarContent pathname={pathname} isAdmin={isAdmin} locale={locale} onNavigate={() => setDrawerOpen(false)} />
+            <SidebarContent
+              pathname={pathname}
+              isAdmin={isAdmin}
+              locale={locale}
+              company={company}
+              onNavigate={() => setDrawerOpen(false)}
+            />
           </aside>
         </div>
       )}
@@ -184,8 +200,9 @@ export function AdminShell({
             <MenuIcon className="h-5 w-5" />
           </button>
 
-          <div className="hidden text-sm font-medium text-ink-muted sm:block">
-            {t.adminConsole}
+          <div className="hidden min-w-0 sm:block">
+            <p className="truncate text-sm font-semibold text-ink">{company.name}</p>
+            <p className="truncate text-xs text-ink-muted">{t.adminConsole}</p>
           </div>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
@@ -228,7 +245,9 @@ export function AdminShell({
 
         {/* Page content */}
         <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <BranchScopeProvider branch={lockedBranch}>{children}</BranchScopeProvider>
+          <BranchScopeProvider branch={lockedBranch}>
+            <CompanyProfileProvider company={company}>{children}</CompanyProfileProvider>
+          </BranchScopeProvider>
         </main>
       </div>
     </div>
@@ -239,13 +258,17 @@ function SidebarContent({
   pathname,
   isAdmin,
   locale,
+  company,
   onNavigate,
 }: {
   pathname: string;
   isAdmin: boolean;
   locale: Locale;
+  company: CompanyProfile;
   onNavigate?: () => void;
 }) {
+  // Head office keeps the designed Inter Gulf mark; a branch shows its own logo.
+  const ownLogo = company.slug !== 'general' && company.slug !== 'inter-gulf-travels' && company.logo;
   const t = getDict(locale);
   const visibleGroups = NAV.filter((section) => !section.adminOnly || isAdmin);
   // Only the single best (longest) matching link is active, so e.g.
@@ -271,11 +294,18 @@ function SidebarContent({
 
   return (
     <>
-      <div className="flex h-16 items-center gap-3 border-b border-border px-5">
-        <LogoMark className="h-9 w-9" />
-        <div className="leading-none">
-          <p className="font-display text-lg font-semibold tracking-tight text-ink">Inter Gulf</p>
-          <p className="mt-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.3em] text-gold-600">
+      <div className="flex min-h-16 items-center gap-3 border-b border-border px-5 py-2">
+        {ownLogo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={company.logo} alt="" className="h-10 w-10 shrink-0 object-contain" />
+        ) : (
+          <LogoMark className="h-9 w-9 shrink-0" />
+        )}
+        <div className="min-w-0 leading-none">
+          <p className="line-clamp-2 font-display text-[0.95rem] font-semibold leading-tight tracking-tight text-ink">
+            {company.name}
+          </p>
+          <p className="mt-1 text-[0.62rem] font-semibold uppercase tracking-[0.3em] text-gold-600">
             {t.adminPanel}
           </p>
         </div>
@@ -381,9 +411,9 @@ function SidebarContent({
           </Link>
         </div>
         <p className="mt-2.5 text-[0.7rem] leading-relaxed text-ink-muted/70">
-          {t.footerTagline}
+          {company.name} · {locale === 'bn' ? 'হজ ও উমরাহ' : 'Hajj & Umrah'}
           <br />
-          {t.footerLicense}
+          {company.license || t.footerLicense}
         </p>
       </div>
     </>

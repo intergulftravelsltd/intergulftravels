@@ -10,7 +10,7 @@ import {
   thClass,
   tdClass,
 } from '@/components/manage/ui';
-import { ExportBar } from '@/components/manage/ExportBar';
+import { ExportMenu } from '@/components/manage/ExportMenu';
 import { RecordRowActions } from '@/components/manage/RecordRowActions';
 import { DocStatusViewer } from '@/components/manage/DocStatusViewer';
 import { sharePath } from '@/lib/management/share-token';
@@ -204,34 +204,38 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
         subtitle={t.pilgrimsSubtitle}
         actions={
           <>
-            <div className="flex flex-col gap-2">
-              <ExportBar
-                label={locale === 'bn' ? 'বকেয়া তালিকা' : 'Due list'}
-                filename={`hajj-pilgrims-${selectedYear}`}
-                title={`${t.pilgrimsTitle} — ${selectedYear}`}
-                subtitle={`${filtered.length} ${filtered.length === 1 ? t.recordSingular : t.recordPlural}`}
-                headers={[t.exTracking, t.exName, t.exPhone, t.exYear, t.exType, t.exPackage, t.exPaid, t.exDue, t.exBranch, t.exStatus]}
-                rows={exportRows}
-                orientation="l"
-              />
-              <ExportBar
-                label={locale === 'bn' ? 'এয়ারলাইনস / ভিসা' : 'Airlines / Visa'}
-                filename={`hajj-airlines-visa-list-${selectedYear}`}
-                title={
-                  locale === 'bn'
-                    ? `হজ হাজী তালিকা — এয়ারলাইনস / ভিসা — ${selectedYear}`
-                    : `Hajj Pilgrim List — Airlines / Visa — ${selectedYear}`
-                }
-                subtitle={`${filtered.length} ${filtered.length === 1 ? t.recordSingular : t.recordPlural}`}
-                headers={
-                  locale === 'bn'
-                    ? ['ক্রমিক', 'নাম', 'পাসপোর্ট নং', 'জন্ম তারিখ', 'এনআইডি', 'নোট']
-                    : ['Serial', 'Name', 'Passport No', 'Date of Birth', 'NID', 'Note']
-                }
-                rows={airlinesRows}
-                orientation="l"
-              />
-            </div>
+            <ExportMenu
+              sets={[
+                {
+                  key: 'due',
+                  label: locale === 'bn' ? 'বকেয়া তালিকা' : 'Due list',
+                  hint: locale === 'bn' ? 'নাম, ফোন, প্যাকেজ, পরিশোধ ও বকেয়া' : 'Name, phone, package, paid and due',
+                  filename: `hajj-pilgrims-${selectedYear}`,
+                  title: `${t.pilgrimsTitle} — ${selectedYear}`,
+                  subtitle: `${filtered.length} ${filtered.length === 1 ? t.recordSingular : t.recordPlural}`,
+                  headers: [t.exTracking, t.exName, t.exPhone, t.exYear, t.exType, t.exPackage, t.exPaid, t.exDue, t.exBranch, t.exStatus],
+                  rows: exportRows,
+                  orientation: 'l',
+                },
+                {
+                  key: 'airlines',
+                  label: locale === 'bn' ? 'এয়ারলাইনস / ভিসা' : 'Airlines / Visa',
+                  hint: locale === 'bn' ? 'শুধু পরিচয় — টাকা বা ফোন নম্বর ছাড়া' : 'Identity only — no money or phone numbers',
+                  filename: `hajj-airlines-visa-list-${selectedYear}`,
+                  title:
+                    locale === 'bn'
+                      ? `হজ হাজী তালিকা — এয়ারলাইনস / ভিসা — ${selectedYear}`
+                      : `Hajj Pilgrim List — Airlines / Visa — ${selectedYear}`,
+                  subtitle: `${filtered.length} ${filtered.length === 1 ? t.recordSingular : t.recordPlural}`,
+                  headers:
+                    locale === 'bn'
+                      ? ['ক্রমিক', 'নাম', 'পাসপোর্ট নং', 'জন্ম তারিখ', 'এনআইডি', 'নোট']
+                      : ['Serial', 'Name', 'Passport No', 'Date of Birth', 'NID', 'Note'],
+                  rows: airlinesRows,
+                  orientation: 'l',
+                },
+              ]}
+            />
             <Button
               href={localizedPath(
                 locale,

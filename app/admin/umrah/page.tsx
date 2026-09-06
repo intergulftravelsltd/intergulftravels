@@ -10,7 +10,7 @@ import {
   thClass,
   tdClass,
 } from '@/components/manage/ui';
-import { ExportBar } from '@/components/manage/ExportBar';
+import { ExportMenu } from '@/components/manage/ExportMenu';
 import { RecordRowActions } from '@/components/manage/RecordRowActions';
 import { DocStatusViewer } from '@/components/manage/DocStatusViewer';
 import { sharePath } from '@/lib/management/share-token';
@@ -131,30 +131,35 @@ export default async function UmrahPassengersPage({
         subtitle={t.passengersSubtitle}
         actions={
           <>
-            <div className="flex flex-col gap-2">
-              <ExportBar
-                label={locale === 'bn' ? 'বকেয়া তালিকা' : 'Due list'}
-                filename="umrah-passengers"
-                title={t.passengersTitle}
-                subtitle={`${rows.length} ${rows.length === 1 ? t.recordSingular : t.recordPlural}`}
-                headers={[t.exName, t.exPassport, t.exExpiry, t.exPhone, t.exPackage, t.exPaid, t.exDue]}
-                rows={exportRows}
-                orientation="l"
-              />
-              <ExportBar
-                label={locale === 'bn' ? 'এয়ারলাইনস / ভিসা' : 'Airlines / Visa'}
-                filename="umrah-airlines-visa-list"
-                title={locale === 'bn' ? 'উমরাহ যাত্রী তালিকা — এয়ারলাইনস / ভিসা' : 'Umrah Passenger List — Airlines / Visa'}
-                subtitle={`${rows.length} ${rows.length === 1 ? t.recordSingular : t.recordPlural}`}
-                headers={
-                  locale === 'bn'
-                    ? ['ক্রমিক', 'নাম', 'পাসপোর্ট নং', 'জন্ম তারিখ', 'পাসপোর্ট মেয়াদ', 'নোট']
-                    : ['Serial', 'Name', 'Passport No', 'Date of Birth', 'Passport Expiry', 'Note']
-                }
-                rows={airlinesRows}
-                orientation="l"
-              />
-            </div>
+            <ExportMenu
+              sets={[
+                {
+                  key: 'due',
+                  label: locale === 'bn' ? 'বকেয়া তালিকা' : 'Due list',
+                  hint: locale === 'bn' ? 'নাম, পাসপোর্ট, ফোন, প্যাকেজ, পরিশোধ ও বকেয়া' : 'Name, passport, phone, package, paid and due',
+                  filename: 'umrah-passengers',
+                  title: t.passengersTitle,
+                  subtitle: `${rows.length} ${rows.length === 1 ? t.recordSingular : t.recordPlural}`,
+                  headers: [t.exName, t.exPassport, t.exExpiry, t.exPhone, t.exPackage, t.exPaid, t.exDue],
+                  rows: exportRows,
+                  orientation: 'l',
+                },
+                {
+                  key: 'airlines',
+                  label: locale === 'bn' ? 'এয়ারলাইনস / ভিসা' : 'Airlines / Visa',
+                  hint: locale === 'bn' ? 'শুধু পরিচয় — টাকা বা ফোন নম্বর ছাড়া' : 'Identity only — no money or phone numbers',
+                  filename: 'umrah-airlines-visa-list',
+                  title: locale === 'bn' ? 'উমরাহ যাত্রী তালিকা — এয়ারলাইনস / ভিসা' : 'Umrah Passenger List — Airlines / Visa',
+                  subtitle: `${rows.length} ${rows.length === 1 ? t.recordSingular : t.recordPlural}`,
+                  headers:
+                    locale === 'bn'
+                      ? ['ক্রমিক', 'নাম', 'পাসপোর্ট নং', 'জন্ম তারিখ', 'পাসপোর্ট মেয়াদ', 'নোট']
+                      : ['Serial', 'Name', 'Passport No', 'Date of Birth', 'Passport Expiry', 'Note'],
+                  rows: airlinesRows,
+                  orientation: 'l',
+                },
+              ]}
+            />
             <Button
               href={localizedPath(
                 locale,

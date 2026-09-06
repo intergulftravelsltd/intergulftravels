@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { mgmtDb, postTransaction, logActivity } from '@/lib/management/server';
+import { mgmtDb, postTransaction, logActivity, cleanManualRef } from '@/lib/management/server';
 import { requireStaff } from '@/lib/management/guard';
 import type { Transaction } from '@/lib/management/types';
 
@@ -13,6 +13,7 @@ const patchSchema = z.object({
   id: z.string().uuid(),
   date: z.string().trim().min(1).max(10).optional(),
   narration: z.string().trim().max(400).optional().nullable(),
+  manual_ref: z.string().trim().max(60).optional().nullable(),
   type: z.enum(TX_TYPES).optional(),
   debit_account_id: z.string().uuid().optional(),
   credit_account_id: z.string().uuid().optional(),
@@ -85,16 +86,29 @@ export async function PATCH(request: Request) {
         branch: tx.branch,
         method: tx.method,
         created_by: tx.created_by,
+        manual_ref: d.manual_ref !== undefined ? cleanManualRef(d.manual_ref) : tx.manual_ref ?? null,
       });
     } else {
       const update: Record<string, unknown> = {};
       if (d.date !== undefined) update.date = d.date;
       if (d.narration !== undefined) update.narration = d.narration || null;
+      if (d.manual_ref !== undefined) update.manual_ref = cleanManualRef(d.manual_ref);
       if (Object.keys(update).length === 0) return bad('Nothing to update.');
-      const { error: upErr } = await db.from('transactions').update(update).eq('id', tx.id);
+      let { error: upErr } = await db.from('transactions').update(update).eq('id', tx.id);
+      if (upErr && 'manual_ref' in update && /manual_ref/i.test(upErr.message)) {
+        // 0011 not applied yet — save the rest and keep the console usable.
+        console.warn('[accounts/transactions] manual_ref column missing — run supabase/migrations/0011_manual_ref.sql');
+        delete update.manual_ref;
+        if (Object.keys(update).length === 0) return bad('Run migration 0011 to store manual voucher numbers.');
+        ({ error: upErr } = await db.from('transactions').update(update).eq('id', tx.id));
+      }
       if (upErr) {
         console.error('[accounts/transactions] update failed:', upErr.message);
         return fail('Could not update the voucher.');
+      }
+      // Keep the linked payment's receipt number in step with the voucher.
+      if (d.manual_ref !== undefined && tx.ref_table === 'payments' && tx.ref_id) {
+        await db.from('payments').update({ manual_ref: cleanManualRef(d.manual_ref) }).eq('id', tx.ref_id);
       }
     }
 

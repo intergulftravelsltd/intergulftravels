@@ -61,6 +61,7 @@ export function VoucherForm({ heads }: { heads: HeadOption[] }) {
   const [branch, setBranch] = useState<string>(BRANCHES[0].value);
   const [method, setMethod] = useState<'cash' | 'bank'>('cash');
   const [narration, setNarration] = useState('');
+  const [manualRef, setManualRef] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   // mode-specific selections
@@ -80,6 +81,7 @@ export function VoucherForm({ heads }: { heads: HeadOption[] }) {
   function reset() {
     setAmount('');
     setNarration('');
+    setManualRef('');
     setIncomeId('');
     setExpenseId('');
     setBankId('');
@@ -96,7 +98,15 @@ export function VoucherForm({ heads }: { heads: HeadOption[] }) {
       return;
     }
 
-    const body: Record<string, unknown> = { mode, amount: value, date, branch, method, narration };
+    const body: Record<string, unknown> = {
+      mode,
+      amount: value,
+      date,
+      branch,
+      method,
+      narration,
+      manual_ref: manualRef.trim() || null,
+    };
 
     if (mode === 'income') {
       if (!incomeId) return toast.error(t.voucherForm.errIncomeHead);
@@ -293,6 +303,16 @@ export function VoucherForm({ heads }: { heads: HeadOption[] }) {
               </select>
             </Field>
           )}
+
+          <Field label={t.voucherForm.manualRef} hint={t.voucherForm.manualRefHint}>
+            <input
+              className={inputClass}
+              value={manualRef}
+              maxLength={60}
+              placeholder={t.voucherForm.manualRefPlaceholder}
+              onChange={(e) => setManualRef(e.target.value)}
+            />
+          </Field>
 
           <Field label={t.voucherForm.narration} className="sm:col-span-2">
             <input

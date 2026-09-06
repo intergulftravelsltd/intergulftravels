@@ -5,7 +5,7 @@ import { buildStatementReceipt } from '@/lib/management/statement';
 import type { Transaction } from '@/lib/management/types';
 import { money } from '@/lib/management/format';
 import { branchLabel } from '@/lib/management/branches';
-import { branchCompany } from '@/lib/site';
+import { loadCompanyProfile } from '@/lib/management/company';
 import { getLocale } from '@/lib/i18n-server';
 import { Receipt, type ReceiptData } from '@/components/manage/Receipt';
 
@@ -94,15 +94,17 @@ export default async function VoucherReceiptPage({ params }: { params: { id: str
       party: { name, phone, address, passportNo, branch: customer.branch },
       program,
       packageName,
+      locale,
     });
     return <Receipt data={data} locale={locale} />;
   }
 
   // Otherwise: a plain voucher (Dr/Cr) receipt.
   const data: ReceiptData = {
-    company: branchCompany(tx.branch),
+    company: await loadCompanyProfile(tx.branch),
     program: locale === 'bn' ? 'ভাউচার' : 'Voucher',
     receiptNo: tx.voucher_no ?? tx.id.slice(0, 8).toUpperCase(),
+    manualRef: tx.manual_ref ?? null,
     date: fmt(tx.date),
     branch: branchLabel(tx.branch),
     partyName: '',

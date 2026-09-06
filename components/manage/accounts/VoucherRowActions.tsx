@@ -24,6 +24,7 @@ export type VoucherHead = { id: string; name: string };
 export type VoucherLite = {
   id: string;
   voucher_no: string | null;
+  manual_ref?: string | null;
   date: string;
   type: string;
   debit_account_id: string;
@@ -53,6 +54,7 @@ export function VoucherRowActions({ voucher, heads }: { voucher: VoucherLite; he
       id: voucher.id,
       date: String(fd.get('date') ?? voucher.date),
       narration: String(fd.get('narration') ?? '').trim(),
+      manual_ref: String(fd.get('manual_ref') ?? '').trim() || null,
     };
     // Ledger-affecting fields can only change on manual vouchers.
     if (!linked) {
@@ -190,6 +192,9 @@ export function VoucherRowActions({ voucher, heads }: { voucher: VoucherLite; he
               </Field>
               <Field label={tt.voucherRowActions.amount}>
                 <input name="amount" type="number" min={0} step="any" defaultValue={voucher.amount} className={inputClass} disabled={linked} />
+              </Field>
+              <Field label={tt.voucherRowActions.manualRef}>
+                <input name="manual_ref" maxLength={60} defaultValue={voucher.manual_ref ?? ''} className={inputClass} />
               </Field>
               <Field label={tt.voucherRowActions.narration} className="sm:col-span-2">
                 <textarea name="narration" rows={2} defaultValue={voucher.narration ?? ''} className={inputClass} />

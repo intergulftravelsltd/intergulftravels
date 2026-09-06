@@ -138,6 +138,7 @@ export function GroupPaymentForm({
   const [method, setMethod] = useState<'cash' | 'bank'>('cash');
   const [bankId, setBankId] = useState('');
   const [payType, setPayType] = useState('installment');
+  const [manualRef, setManualRef] = useState('');
   const today = new Date().toISOString().slice(0, 10);
   const [date, setDate] = useState(today);
   const [note, setNote] = useState('');
@@ -201,6 +202,7 @@ export function GroupPaymentForm({
           type: payType,
           date,
           narration: note.trim() || null,
+          manual_ref: manualRef.trim() || null,
           items: selectedMembers.map((m) => ({ id: m.id, amount: Number(amounts[m.id]) })),
         }),
       });
@@ -385,7 +387,16 @@ export function GroupPaymentForm({
             <Field label={t.date}>
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
             </Field>
-            <Field label={t.note} className="sm:col-span-2">
+            <Field label={locale === 'bn' ? 'ম্যানুয়াল রসিদ নং' : 'Manual Receipt No.'}>
+              <input
+                value={manualRef}
+                maxLength={60}
+                onChange={(e) => setManualRef(e.target.value)}
+                className={inputClass}
+                placeholder={locale === 'bn' ? 'কাগজের মানি রিসিটের নম্বর (ঐচ্ছিক)' : 'Number on the paper money receipt (optional)'}
+              />
+            </Field>
+            <Field label={t.note}>
               <input value={note} onChange={(e) => setNote(e.target.value)} className={inputClass} placeholder={t.notePlaceholder} />
             </Field>
           </div>

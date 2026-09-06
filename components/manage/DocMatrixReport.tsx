@@ -1,5 +1,7 @@
 import { Check, X } from 'lucide-react';
 import { docStatusKeysFor, docStatusLabel, normalizeDocStatus, type DocProgram } from '@/lib/management/doc-status';
+import { PrintLetterhead, PrintSignatures } from '@/components/manage/PrintLetterhead';
+import type { CompanyProfile } from '@/lib/company-profile';
 import type { Locale } from '@/lib/i18n';
 
 export type DocReportPerson = { name: string; ref: string; doc_status: unknown };
@@ -33,10 +35,17 @@ export function DocMatrixReport({
   program,
   people,
   locale,
+  company,
+  title,
+  subtitle,
 }: {
   program: DocProgram;
   people: DocReportPerson[];
   locale: Locale;
+  /** Agency letterhead printed at the top of the paper report (+ watermark). */
+  company?: CompanyProfile;
+  title?: string;
+  subtitle?: string;
 }) {
   const t = L[locale];
   const keys = docStatusKeysFor(program);
@@ -56,6 +65,7 @@ export function DocMatrixReport({
           @page { size: A4 landscape; margin: 10mm; }
         }
       `}</style>
+      {company && <PrintLetterhead company={company} locale={locale} title={title} subtitle={subtitle} />}
 
       {/* Per-step summary */}
       <div className="mb-6 rounded-2xl border border-border bg-card p-5 shadow-soft">
@@ -132,6 +142,7 @@ export function DocMatrixReport({
           {keys.map((k, i) => `${i + 1} = ${docStatusLabel(k, locale)}`).join(' · ')}
         </p>
       </div>
+      {company && <PrintSignatures locale={locale} />}
     </div>
   );
 }

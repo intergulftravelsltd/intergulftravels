@@ -17,6 +17,7 @@ const schema = z.object({
   type: z.enum(['advance', 'installment', 'token', 'full']).default('installment'),
   date: z.string().trim().optional().nullable(),
   narration: z.string().trim().optional().nullable(),
+  manual_ref: z.string().trim().max(60).optional().nullable(),
   items: z
     .array(
       z.object({
@@ -107,6 +108,7 @@ export async function POST(request: Request) {
         narration: baseNarration,
         branch: party.branch,
         created_by: guard.user.id,
+        manual_ref: d.manual_ref ?? null,
       });
       paymentIds.push(payment.id as string);
     }

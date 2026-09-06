@@ -8,6 +8,7 @@ import { AuthForm } from '@/components/auth/AuthForm';
 import { getLocale } from '@/lib/i18n-server';
 import { getDict } from '@/lib/dictionaries/areas/auth';
 import { getStaffScope } from '@/lib/management/scope';
+import { loadCompanyProfile } from '@/lib/management/company';
 import { signOut } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -64,12 +65,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   // Branch this user is locked to (null = super admin, sees every branch).
   const { branch } = await getStaffScope();
+  // The signed-in agency's letterhead — drives the sidebar brand and every
+  // ledger / statement / receipt export (multi-tenant: each branch sees its own).
+  const company = await loadCompanyProfile(branch);
 
   return (
     <AdminShell
       user={{ email: user.email ?? '', name: fullName, avatarUrl, role }}
       isAdmin={isAdmin}
       lockedBranch={branch}
+      company={company}
       signOutAction={signOut}
     >
       {children}

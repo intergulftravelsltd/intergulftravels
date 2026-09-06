@@ -88,15 +88,19 @@ export default async function ReceiptsPage({
           showing: 'Showing', payWord: 'payments',
         };
 
+  const manualNoLabel = locale === 'bn' ? 'ম্যানুয়াল রসিদ নং' : 'Manual Receipt No';
+  const narrationLabel = locale === 'bn' ? 'বিবরণ' : 'Narration';
   const exportRows = payments.map((p) => [
     fmt(p.date),
     p.voucher_no ?? '',
+    p.manual_ref ?? '',
     nameOf(p),
     progOf(p),
     typeMap[p.type] ?? p.type,
     methodMap[p.method] ?? p.method,
     money(p.amount, false),
     branchShort(p.branch),
+    p.narration ?? '',
   ]);
 
   return (
@@ -109,8 +113,9 @@ export default async function ReceiptsPage({
             <ExportBar
               filename="receipts"
               title={L.title}
-              subtitle={`${range.from || '—'} — ${range.to || '—'} · ${L.total} ${money(total)}`}
-              headers={[L.date, L.no, L.name, L.program, L.type, L.method, L.amount, L.branch]}
+              subtitle={`${L.total} ${money(total)}`}
+              period={{ from: range.from || null, to: range.to || null }}
+              headers={[L.date, L.no, manualNoLabel, L.name, L.program, L.type, L.method, L.amount, L.branch, narrationLabel]}
               rows={exportRows}
               orientation="l"
             />
@@ -135,6 +140,7 @@ export default async function ReceiptsPage({
               <tr>
                 <th className={thClass}>{L.date}</th>
                 <th className={thClass}>{L.no}</th>
+                <th className={thClass}>{manualNoLabel}</th>
                 <th className={thClass}>{L.name}</th>
                 <th className={thClass}>{L.program}</th>
                 <th className={thClass}>{L.type}</th>
@@ -149,6 +155,7 @@ export default async function ReceiptsPage({
                 <tr key={p.id} className="transition hover:bg-muted/40">
                   <td className={`${tdClass} whitespace-nowrap`}>{fmt(p.date)}</td>
                   <td className={`${tdClass} tabular-nums`}>{p.voucher_no ?? '—'}</td>
+                  <td className={`${tdClass} tabular-nums`}>{p.manual_ref || '—'}</td>
                   <td className={tdClass}>
                     <span className="font-medium text-ink">{nameOf(p)}</span>
                     {p.party_id && phones.get(p.party_id) && (

@@ -16,6 +16,8 @@ const schema = z.object({
   branch: z.string().trim().max(60).optional().default('general'),
   method: z.enum(['cash', 'bank']).optional().default('cash'),
   narration: z.string().trim().max(400).optional().nullable(),
+  /** Hand-written voucher / receipt number from the physical paper. */
+  manual_ref: z.string().trim().max(60).optional().nullable(),
   // mode-specific account selections (all optional at the schema level, validated below)
   income_account_id: z.string().uuid().optional(),
   expense_account_id: z.string().uuid().optional(),
@@ -106,6 +108,7 @@ export async function POST(request: Request) {
       branch,
       method,
       created_by: guard.user.id,
+      manual_ref: d.manual_ref || null,
     });
 
     await logActivity({
@@ -114,7 +117,7 @@ export async function POST(request: Request) {
       action: 'post_voucher',
       entity: 'transaction',
       entity_id: tx.id,
-      detail: { mode: d.mode, amount: d.amount, voucher_no: tx.voucher_no },
+      detail: { mode: d.mode, amount: d.amount, voucher_no: tx.voucher_no, manual_ref: d.manual_ref || null },
       branch: d.branch,
     });
 

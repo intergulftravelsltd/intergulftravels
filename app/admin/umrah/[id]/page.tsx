@@ -165,7 +165,7 @@ export default async function PassengerProfilePage({ params }: { params: { id: s
   ];
   const printPayments = payments.map((p) => ({
     date: fmtDate(p.date),
-    voucher: p.voucher_no ?? '—',
+    voucher: [p.voucher_no ?? '—', p.manual_ref].filter(Boolean).join(' / '),
     type: typeLabel(p.type),
     method: methodLabel(p.method),
     amount: money(p.amount, false),
@@ -287,7 +287,10 @@ export default async function PassengerProfilePage({ params }: { params: { id: s
                   {payments.map((p) => (
                     <tr key={p.id} className="transition hover:bg-muted/40">
                       <td className={tdClass}>{fmtDate(p.date)}</td>
-                      <td className={`${tdClass} tabular-nums`}>{p.voucher_no ?? '—'}</td>
+                      <td className={`${tdClass} tabular-nums`}>
+                        {p.voucher_no ?? '—'}
+                        {p.manual_ref && <span className="block text-xs text-ink-muted">{p.manual_ref}</span>}
+                      </td>
                       <td className={tdClass}>
                         <Badge tone={p.type === 'refund' ? 'red' : 'gold'}>{typeLabel(p.type)}</Badge>
                       </td>

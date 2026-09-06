@@ -59,6 +59,7 @@ export default async function PassengerReceiptPage({ params }: { params: { table
     },
     program,
     packageName,
+    locale,
   });
 
   return <Receipt data={data} locale={locale} />;

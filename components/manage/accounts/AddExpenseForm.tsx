@@ -35,6 +35,7 @@ export function AddExpenseForm({
   const [bankId, setBankId] = useState('');
   const [branch, setBranch] = useState<string>(BRANCHES[0].value);
   const [narration, setNarration] = useState('');
+  const [manualRef, setManualRef] = useState('');
 
   function reset() {
     setExpenseId('');
@@ -66,6 +67,7 @@ export function AddExpenseForm({
           bank_account_id: method === 'bank' ? bankId : undefined,
           branch,
           narration: narration.trim() || null,
+          manual_ref: manualRef.trim() || null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -73,6 +75,7 @@ export function AddExpenseForm({
         toast.error(data?.error ?? t.addExpense.errRecord);
         return;
       }
+      setManualRef('');
       toast.success(t.addExpense.posted(String(data.voucher_no)));
       reset();
       setOpen(false);
@@ -177,6 +180,16 @@ export function AddExpenseForm({
             </select>
           </Field>
         )}
+
+        <Field label={t.addExpense.manualRef}>
+          <input
+            className={inputClass}
+            value={manualRef}
+            maxLength={60}
+            placeholder={t.addExpense.manualRefPlaceholder}
+            onChange={(e) => setManualRef(e.target.value)}
+          />
+        </Field>
 
         <Field label={t.addExpense.narration} className="sm:col-span-2">
           <input

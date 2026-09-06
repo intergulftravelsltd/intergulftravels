@@ -31,6 +31,7 @@ export function LoanForm({ bankHeads }: { bankHeads: HeadOption[] }) {
   const [bankId, setBankId] = useState('');
   const [branch, setBranch] = useState<string>(BRANCHES[0].value);
   const [narration, setNarration] = useState('');
+  const [manualRef, setManualRef] = useState('');
 
   function reset() {
     setPartyName('');
@@ -67,6 +68,7 @@ export function LoanForm({ bankHeads }: { bankHeads: HeadOption[] }) {
           bank_account_id: method === 'bank' ? bankId : null,
           branch,
           narration: narration.trim() || null,
+          manual_ref: manualRef.trim() || null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -218,6 +220,16 @@ export function LoanForm({ bankHeads }: { bankHeads: HeadOption[] }) {
             </select>
           </Field>
         )}
+
+        <Field label={t.loanForm.manualRef}>
+          <input
+            className={inputClass}
+            value={manualRef}
+            maxLength={60}
+            placeholder={t.loanForm.manualRefPlaceholder}
+            onChange={(e) => setManualRef(e.target.value)}
+          />
+        </Field>
 
         <Field label={t.loanForm.narration} className="sm:col-span-2">
           <input

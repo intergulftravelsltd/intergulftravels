@@ -2,11 +2,20 @@
 
 import { useEffect } from 'react';
 import { Printer, ArrowLeft } from 'lucide-react';
+import type { CompanyProfile } from '@/lib/company-profile';
+import {
+  RECEIPT_PRINT_CSS,
+  ReceiptLetterhead,
+  ReceiptSignatures,
+  ReceiptWatermark,
+} from '@/components/manage/ReceiptChrome';
 
 export type GroupReceiptData = {
-  company: { name: string; address: string; phone: string; email: string; license: string; logo?: string };
+  company: CompanyProfile;
   program: string; // "Hajj" / "Umrah" (already localized)
   receiptNo: string;
+  /** Hand-written money-receipt number from the physical paper. */
+  manualRef?: string | null;
   date: string;
   branch: string;
   payerName: string;
@@ -14,7 +23,7 @@ export type GroupReceiptData = {
   method: string;
   type: string;
   narration: string;
-  rows: { name: string; voucher: string; amount: string }[];
+  rows: { name: string; voucher: string; manualRef?: string; amount: string }[];
   total: string;
   totalWords: string;
 };
@@ -23,6 +32,7 @@ const L = {
   en: {
     title: 'Group Payment Receipt',
     no: 'Receipt No',
+    manualNo: 'Manual No',
     date: 'Date',
     branch: 'Branch',
     receivedFrom: 'Received with thanks from',
@@ -37,7 +47,6 @@ const L = {
     method: 'Payment method',
     type: 'Payment type',
     note: 'Note',
-    signature: 'Authorised signature',
     thanks: 'Thank you for choosing us.',
     print: 'Print / Save PDF',
     back: 'Back',
@@ -47,6 +56,7 @@ const L = {
   bn: {
     title: 'গ্রুপ পেমেন্ট রসিদ',
     no: 'রসিদ নং',
+    manualNo: 'ম্যানুয়াল নং',
     date: 'তারিখ',
     branch: 'শাখা',
     receivedFrom: 'ধন্যবাদসহ গ্রহণ করা হলো',
@@ -61,7 +71,6 @@ const L = {
     method: 'পেমেন্ট মাধ্যম',
     type: 'পেমেন্টের ধরন',
     note: 'নোট',
-    signature: 'অনুমোদিত স্বাক্ষর',
     thanks: 'আমাদের বেছে নেওয়ার জন্য ধন্যবাদ।',
     print: 'প্রিন্ট / PDF সেভ',
     back: 'ফিরুন',
@@ -88,30 +97,7 @@ export function GroupReceipt({ data, locale }: { data: GroupReceiptData; locale:
 
   return (
     <div id="print-root" className="fixed inset-0 z-[100] overflow-auto bg-neutral-100 p-4 text-black sm:p-8">
-      <style>{`
-        @media print {
-          body * { visibility: hidden !important; }
-          #receipt, #receipt * { visibility: visible !important; }
-          /* The screen wrapper is position:fixed — printed fixed elements repeat
-             on EVERY page, which duplicated multi-page receipts. Flatten both
-             wrappers to normal flow for print. */
-          #print-root { position: static !important; inset: auto !important; overflow: visible !important; padding: 0 !important; background: #fff !important; }
-          #receipt { position: static !important; width: 100%; max-width: none !important; box-shadow: none !important; border: 0 !important; overflow: visible !important; }
-          .no-print { display: none !important; }
-          /* Pin the watermark to the centre of the printed page so it can never
-             be clipped by the receipt box or a fragment boundary. */
-          #receipt-watermark {
-            position: fixed !important;
-            left: 50% !important;
-            top: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            width: 62% !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          @page { margin: 14mm; }
-        }
-      `}</style>
+      <style>{RECEIPT_PRINT_CSS}</style>
 
       <div className="no-print mx-auto mb-4 flex max-w-2xl items-center justify-between">
         <button
@@ -134,29 +120,9 @@ export function GroupReceipt({ data, locale }: { data: GroupReceiptData; locale:
       </div>
 
       <div id="receipt" className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-        {data.company.logo && (
-          <img
-            id="receipt-watermark"
-            src={data.company.logo}
-            alt=""
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-1/2 w-[62%] -translate-x-1/2 -translate-y-1/2 select-none"
-            // Uniform grey stamp: without the grayscale+brightness filter the
-            // light-coloured parts of the logos fade into the white paper and
-            // the watermark looks "half printed".
-            style={{ opacity: 0.16, filter: 'grayscale(1) brightness(0.45)' }}
-          />
-        )}
+        <ReceiptWatermark logo={data.company.logo} />
         <div className="relative">
-          {/* Company header */}
-          <div className="border-b-2 border-emerald-700 pb-4 text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-emerald-800">{data.company.name}</h1>
-            <p className="mt-1 text-sm text-gray-600">{data.company.address}</p>
-            <p className="text-sm text-gray-600">
-              {data.company.phone} · {data.company.email}
-            </p>
-            <p className="mt-0.5 text-xs font-semibold text-gray-500">{data.company.license}</p>
-          </div>
+          <ReceiptLetterhead company={data.company} locale={locale} />
 
           {/* Title */}
           <div className="my-5 text-center">
@@ -166,11 +132,17 @@ export function GroupReceipt({ data, locale }: { data: GroupReceiptData; locale:
           </div>
 
           {/* Meta */}
-          <div className="mb-4 flex flex-wrap justify-between gap-2 text-sm">
+          <div className="mb-4 flex flex-wrap justify-between gap-x-4 gap-y-1 text-sm">
             <span>
               <span className="text-gray-500">{t.no}:</span>{' '}
               <span className="font-semibold text-gray-900">{data.receiptNo}</span>
             </span>
+            {data.manualRef && (
+              <span>
+                <span className="text-gray-500">{t.manualNo}:</span>{' '}
+                <span className="font-semibold text-gray-900">{data.manualRef}</span>
+              </span>
+            )}
             <span>
               <span className="text-gray-500">{t.branch}:</span>{' '}
               <span className="font-semibold text-gray-900">{data.branch}</span>
@@ -206,7 +178,10 @@ export function GroupReceipt({ data, locale }: { data: GroupReceiptData; locale:
                   <tr key={i} className="border-b border-gray-200 align-top">
                     <td className="py-2 text-gray-500">{i + 1}</td>
                     <td className="py-2 font-medium text-gray-900">{r.name}</td>
-                    <td className="py-2 text-gray-600">{r.voucher}</td>
+                    <td className="py-2 text-gray-600">
+                      {r.voucher}
+                      {r.manualRef && <span className="block text-xs font-semibold text-gray-800">{r.manualRef}</span>}
+                    </td>
                     <td className="py-2 text-right text-gray-900">৳ {r.amount}</td>
                   </tr>
                 ))}
@@ -233,13 +208,7 @@ export function GroupReceipt({ data, locale }: { data: GroupReceiptData; locale:
           </div>
           {data.narration && <Row label={t.note} value={data.narration} />}
 
-          {/* Footer */}
-          <div className="mt-10 flex items-end justify-between">
-            <p className="text-xs text-gray-400">{t.thanks}</p>
-            <div className="text-center">
-              <div className="w-48 border-t border-gray-400 pt-1 text-sm font-medium text-gray-700">{t.signature}</div>
-            </div>
-          </div>
+          <ReceiptSignatures locale={locale} note={t.thanks} />
         </div>
       </div>
     </div>

@@ -57,7 +57,10 @@ it is never pushed to GitHub). Open it and paste the values below.
    5. `supabase/migrations/0005…0008` — feature migrations (secure vault & branches, doc checklists, head unlock, family groups). Run in numeric order.
    6. `supabase/migrations/0009_dashboard_perf.sql` — **performance**: the whole admin dashboard as one SQL call + missing indexes. The dashboard still works without it (slower per-table fallback), but apply it for the fast path.
    7. `supabase/migrations/0010_dashboard_charts.sql` — **dashboard charts**: 12-month cash-flow trend RPC + voucher types in the recent feed. Charts fall back to slower queries without it.
-   8. `supabase/seed.sql` — blog posts, site settings, menus, gallery (optional but recommended)
+   8. `supabase/migrations/0011_manual_ref.sql` — **manual voucher / receipt number**: adds the `manual_ref` column to `transactions` and `payments` so the hand-written paper number is stored next to the auto voucher number and printed on ledgers, the voucher register and statements. Entries still post without it (the number is simply not stored), so apply it before staff start typing manual numbers.
+   9. `supabase/seed.sql` — blog posts, site settings, menus, gallery (optional but recommended)
+
+   **Company Profile (letterhead):** each agency edits its own name, Head Office, Branch Office, mobile, email and logo under **Admin → Company Profile**. No migration needed — it is stored in `site_settings` under `company_profile:<branch>`; until saved, the built-in defaults from `lib/site.ts` are used.
 
    *(Prefer the CLI? `supabase db push` works too — see `supabase/README.md`.)*
 4. **Storage buckets** `media` (public) and `vault` (private) are created by the

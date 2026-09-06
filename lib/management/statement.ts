@@ -1,9 +1,11 @@
 import { mgmtDb } from '@/lib/management/server';
 import { money } from '@/lib/management/format';
 import { branchLabel } from '@/lib/management/branches';
-import { branchCompany } from '@/lib/site';
+import { loadCompanyProfile } from '@/lib/management/company';
+import { formatPeriodLine, resolvePeriod } from '@/lib/period';
 import type { Transaction } from '@/lib/management/types';
 import type { ReceiptData } from '@/components/manage/Receipt';
+import type { Locale } from '@/lib/i18n';
 
 function fmtDate(d: string): string {
   const dt = new Date(d);
@@ -25,24 +27,30 @@ export type StatementParty = {
 /**
  * Build an in-depth "account statement" receipt for a customer/passenger head:
  * every ledger transaction that touched the head (package charges + all payments,
- * however they were recorded) in date order, with a running balance — so one
- * click shows the pilgrim's full history from start to finish.
+ * however they were recorded) in date order, with the counter account, the full
+ * narration, both voucher numbers and a running balance — so one click shows
+ * the pilgrim's full history from start to finish under the agency letterhead.
  */
 export async function buildStatementReceipt(opts: {
   headId: string;
   party: StatementParty;
   program: string;
   packageName: string;
+  locale?: Locale;
 }): Promise<ReceiptData> {
   const db = mgmtDb();
   const { headId } = opts;
+  const locale = opts.locale ?? 'en';
 
-  const { data: txData } = await db
-    .from('transactions')
-    .select('*')
-    .or(`debit_account_id.eq.${headId},credit_account_id.eq.${headId}`)
-    .order('date', { ascending: true })
-    .order('created_at', { ascending: true });
+  const [{ data: txData }, company] = await Promise.all([
+    db
+      .from('transactions')
+      .select('*')
+      .or(`debit_account_id.eq.${headId},credit_account_id.eq.${headId}`)
+      .order('date', { ascending: true })
+      .order('created_at', { ascending: true }),
+    loadCompanyProfile(opts.party.branch),
+  ]);
   const txs = (txData ?? []) as Transaction[];
 
   // Names of the counterpart heads (the other side of each entry) for particulars.
@@ -71,14 +79,17 @@ export async function buildStatementReceipt(opts: {
     totalCharge += charge;
     totalPaid += paid;
     const otherId = isCharge ? t.credit_account_id : t.debit_account_id;
-    const raw = t.narration || names.get(otherId) || '—';
+    const against = names.get(otherId) || '';
+    const raw = t.narration || against || '—';
     // The package name is already in the receipt header — trim it off the
     // standard charge narrations ("Hajj/Umrah package charge — <package>").
     const particulars = /^(hajj|umrah) package charge/i.test(raw) ? raw.replace(/\s+—.*$/, '') : raw;
     return {
       date: fmtDate(t.date),
       particulars,
+      against,
       voucher: t.voucher_no || '',
+      manualRef: t.manual_ref || '',
       charge: charge ? money(charge, false) : '',
       paid: paid ? money(paid, false) : '',
       balance: money(running, false),
@@ -87,12 +98,14 @@ export async function buildStatementReceipt(opts: {
 
   // Receipt No = the latest auto voucher number in the ledger (JV/RV/DV-xxxxx),
   // not the passport — the passport already has its own labelled row.
-  const lastVoucher = [...txs].reverse().find((t) => t.voucher_no)?.voucher_no;
+  const last = [...txs].reverse().find((t) => t.voucher_no);
+  const period = txs.length ? formatPeriodLine(resolvePeriod(null, txs.map((t) => t.date)), locale) : null;
 
   return {
-    company: branchCompany(opts.party.branch),
+    company,
     program: opts.program,
-    receiptNo: lastVoucher || headId.slice(0, 8).toUpperCase(),
+    receiptNo: last?.voucher_no || headId.slice(0, 8).toUpperCase(),
+    manualRef: last?.manual_ref || null,
     date: fmtDate(new Date().toISOString()),
     branch: branchLabel(opts.party.branch),
     partyName: opts.party.name,
@@ -111,5 +124,6 @@ export async function buildStatementReceipt(opts: {
     isRefund: false,
     ledger,
     totalCharge: money(totalCharge, false),
+    period,
   };
 }

@@ -94,9 +94,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         return NextResponse.json({ ok: false, error: 'Package not found.' }, { status: 404 });
       }
 
+      // Assigning a package only links the package + posts the charge; the
+      // registration type stays as staff set it (pre-registered by default).
       const { error: upErr } = await db
         .from('hajj_pilgrims')
-        .update({ package_id: pkg.id, reg_type: 'registered' })
+        .update({ package_id: pkg.id })
         .eq('id', pilgrim.id);
 
       if (upErr) {

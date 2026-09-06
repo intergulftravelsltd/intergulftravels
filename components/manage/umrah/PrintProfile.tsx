@@ -3,6 +3,7 @@
 import { Printer } from 'lucide-react';
 import { printTable } from '@/lib/export';
 import { useLocale } from '@/components/providers/LocaleProvider';
+import { useCompanyProfile } from '@/components/providers/CompanyProfile';
 import { getDict } from '@/lib/dictionaries/areas/adminumrah';
 
 type PaymentLine = { date: string; voucher: string; type: string; method: string; amount: string };
@@ -18,7 +19,9 @@ export function PrintProfile({
   info: [string, string][];
   payments: PaymentLine[];
 }) {
-  const t = getDict(useLocale());
+  const locale = useLocale();
+  const t = getDict(locale);
+  const company = useCompanyProfile();
 
   function print() {
     const infoRows = info.map(([k, v]) => [k, v]);
@@ -33,6 +36,8 @@ export function PrintProfile({
       subtitle,
       headers: [t.printFieldHeader, t.printDetailHeader],
       rows,
+      company,
+      locale,
     });
   }
 

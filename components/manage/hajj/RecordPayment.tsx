@@ -19,7 +19,10 @@ export function RecordPayment({
   bankAccounts: BankOption[];
 }) {
   const router = useRouter();
-  const t = getDict(useLocale());
+  const locale = useLocale();
+  const t = getDict(locale);
+  const manualRefLabel = locale === 'bn' ? 'ম্যানুয়াল রসিদ নং' : 'Manual Receipt No.';
+  const manualRefPlaceholder = locale === 'bn' ? 'কাগজের মানি রিসিটের নম্বর (ঐচ্ছিক)' : 'Number on the paper money receipt (optional)';
   const [saving, setSaving] = useState(false);
   const [method, setMethod] = useState<'cash' | 'bank'>('cash');
 
@@ -48,6 +51,7 @@ export function RecordPayment({
       type: String(fd.get('type') ?? 'installment'),
       date: String(fd.get('date') ?? today),
       narration: String(fd.get('narration') ?? ''),
+      manual_ref: String(fd.get('manual_ref') ?? '').trim() || null,
     };
 
     setSaving(true);
@@ -116,7 +120,10 @@ export function RecordPayment({
           <option value="refund">{t.typeRefund}</option>
         </select>
       </Field>
-      <Field label={t.narration} className="sm:col-span-2">
+      <Field label={manualRefLabel}>
+        <input name="manual_ref" maxLength={60} className={inputClass} placeholder={manualRefPlaceholder} />
+      </Field>
+      <Field label={t.narration}>
         <input name="narration" className={inputClass} placeholder={t.narrationPlaceholder} />
       </Field>
       <div className="sm:col-span-2">

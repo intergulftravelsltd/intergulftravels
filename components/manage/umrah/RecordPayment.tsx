@@ -21,6 +21,7 @@ export function RecordPayment({
   due: number;
 }) {
   const t = getDict(useLocale());
+  // (locale is read again below next to the manual-ref labels)
   const PAYMENT_TYPES: { value: string; label: string }[] = [
     { value: 'advance', label: t.ptAdvance },
     { value: 'installment', label: t.ptInstallment },
@@ -36,7 +37,11 @@ export function RecordPayment({
     type: 'installment',
     date: new Date().toISOString().slice(0, 10),
     narration: '',
+    manual_ref: '',
   });
+  const locale = useLocale();
+  const manualRefLabel = locale === 'bn' ? 'ম্যানুয়াল রসিদ নং' : 'Manual Receipt No.';
+  const manualRefPlaceholder = locale === 'bn' ? 'কাগজের মানি রিসিটের নম্বর (ঐচ্ছিক)' : 'Number on the paper money receipt (optional)';
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -64,6 +69,7 @@ export function RecordPayment({
           type: form.type,
           date: form.date,
           narration: form.narration,
+          manual_ref: form.manual_ref.trim() || null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -72,7 +78,7 @@ export function RecordPayment({
         return;
       }
       toast.success(`${t.toastPaymentRecorded}${data.voucher_no ? ` · ${data.voucher_no}` : ''}.`);
-      setForm((f) => ({ ...f, amount: '', narration: '' }));
+      setForm((f) => ({ ...f, amount: '', narration: '', manual_ref: '' }));
       router.refresh();
     } catch {
       toast.error(t.toastNetwork);
@@ -121,7 +127,16 @@ export function RecordPayment({
             ))}
           </select>
         </Field>
-        <Field label={t.narration} className="sm:col-span-2">
+        <Field label={manualRefLabel}>
+          <input
+            className={inputClass}
+            value={form.manual_ref}
+            maxLength={60}
+            onChange={set('manual_ref')}
+            placeholder={manualRefPlaceholder}
+          />
+        </Field>
+        <Field label={t.narration}>
           <input
             className={inputClass}
             value={form.narration}

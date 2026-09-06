@@ -16,6 +16,7 @@ const dict = {
     // ---- Sidebar nav items ----
     nav: {
       dashboard: 'Dashboard',
+      companyProfile: 'Company Profile',
       myAccount: 'My Account',
       accountsHome: 'Accounts Home',
       dailyEntry: 'Daily Entry',
@@ -215,6 +216,7 @@ const dict = {
     // ---- Sidebar nav items ----
     nav: {
       dashboard: 'ড্যাশবোর্ড',
+      companyProfile: 'কোম্পানি প্রোফাইল',
       myAccount: 'আমার অ্যাকাউন্ট',
       accountsHome: 'হিসাব হোম',
       dailyEntry: 'দৈনিক এন্ট্রি',

@@ -263,6 +263,7 @@ async function TrialBalanceView({
           filename={`trial-balance-${today()}`}
           title={t.tbExportTitle}
           subtitle={`${branchTag} · ${t.asOf} ${formatDate(today())}`}
+          period={{ to: today() }}
           headers={headers}
           rows={rows}
         />
@@ -357,6 +358,7 @@ async function DayBookView({
           filename={`day-book-${date}`}
           title={t.dbExportTitle}
           subtitle={`${branchTag} · ${formatDate(date)}`}
+          period={{ from: date, to: date }}
           headers={headers}
           rows={rows}
           orientation="l"
@@ -444,7 +446,8 @@ async function IncomeExpenseView({
         <ExportBar
           filename={`income-expense-${from}_${to}`}
           title={t.ieExportTitle}
-          subtitle={`${branchTag} · ${formatDate(from)} — ${formatDate(to)}`}
+          subtitle={branchTag}
+          period={{ from, to }}
           headers={headers}
           rows={rows}
         />
@@ -570,6 +573,7 @@ async function BalanceSheetView({
           filename={`balance-sheet-${asOf}`}
           title={t.bsExportTitle}
           subtitle={`${branchTag} · ${t.asOf} ${formatDate(asOf)}`}
+          period={{ to: asOf }}
           headers={headers}
           rows={rows}
         />
@@ -678,6 +682,7 @@ async function DueView({ branch, branchTag, t }: { branch: string; branchTag: st
           filename={`customer-dues-${today()}`}
           title={t.dueExportTitle}
           subtitle={`${branchTag} · ${t.asOf} ${formatDate(today())}`}
+          period={{ to: today() }}
           headers={headers}
           rows={rows}
         />
