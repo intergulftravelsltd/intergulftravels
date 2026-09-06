@@ -248,7 +248,7 @@ const dict = {
     selectPackage: 'Select a package…',
     assignWillCharge: "Assigning will charge {amount} to this passenger's account.",
     alreadyChargedHint:
-      'The package charge has already been posted — changing the package will not charge again.',
+      'The package charge is already posted. Choosing a different package reverses it and posts the new price; Remove package reverses it.',
     assigningEllipsis: 'Assigning…',
     updatePackage: 'Update package',
     assignPackage: 'Assign package',
@@ -544,7 +544,7 @@ const dict = {
     selectPackage: 'একটি প্যাকেজ বাছুন…',
     assignWillCharge: 'নিয়োগ করলে এই যাত্রীর হিসাবে {amount} ধার্য করা হবে।',
     alreadyChargedHint:
-      'প্যাকেজ চার্জ ইতিমধ্যে পোস্ট করা হয়েছে — প্যাকেজ পরিবর্তন করলে আবার চার্জ হবে না।',
+      'প্যাকেজ খরচ ইতিমধ্যে পোস্ট হয়েছে। অন্য প্যাকেজ দিলে আগেরটা reverse হয়ে নতুন দাম বসবে; প্যাকেজ বাদ দিলে খরচ reverse হবে।',
     assigningEllipsis: 'নিয়োগ হচ্ছে…',
     updatePackage: 'প্যাকেজ পরিবর্তন করুন',
     assignPackage: 'প্যাকেজ নিয়োগ করুন',
