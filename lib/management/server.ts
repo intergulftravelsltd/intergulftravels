@@ -340,6 +340,42 @@ export async function recordDiscount(p: {
   });
 }
 
+/**
+ * Reverse the package-charge journal(s) posted for a pilgrim/passenger
+ * (ref_table/ref_id + credit = the branch's package income head). Used when a
+ * package is removed or swapped. Works for Group Fund pilgrims too — the charge
+ * sits on the leader's head but is still tagged with the pilgrim's id. Returns
+ * the total amount reversed. The delete trigger restores both balances.
+ */
+export async function reversePackageCharge(opts: {
+  table: 'hajj_pilgrims' | 'umrah_passengers';
+  partyId: string;
+  packageType: 'hajj' | 'umrah';
+  branch: string;
+}): Promise<number> {
+  const db = mgmtDb();
+  const income = await getSystemHead(INCOME_HEAD[opts.packageType], opts.branch);
+  if (!income) return 0;
+  const { data } = await db
+    .from('transactions')
+    .select('id, amount')
+    .eq('ref_table', opts.table)
+    .eq('ref_id', opts.partyId)
+    .eq('type', 'journal')
+    .eq('credit_account_id', income.id);
+  const rows = (data ?? []) as { id: string; amount: number }[];
+  if (!rows.length) return 0;
+  const { error } = await db
+    .from('transactions')
+    .delete()
+    .in(
+      'id',
+      rows.map((r) => r.id),
+    );
+  if (error) throw new Error(error.message);
+  return rows.reduce((s, r) => s + Number(r.amount), 0);
+}
+
 /** Charge a package price to a party: Dr Customer, Cr Package Income (creates the due). */
 export async function chargeParty(opts: {
   customer_head_id: string;

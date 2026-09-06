@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { mgmtDb, chargeParty, getSystemHead, INCOME_HEAD, logActivity } from '@/lib/management/server';
+import {
+  mgmtDb,
+  chargeParty,
+  getSystemHead,
+  INCOME_HEAD,
+  logActivity,
+  reversePackageCharge,
+} from '@/lib/management/server';
 import { requireStaff } from '@/lib/management/guard';
 import { resolveReferenceableAffiliate, resolveChargeTarget } from '@/lib/management/affiliates';
 import { DOC_STATUS_KEYS } from '@/lib/management/doc-status';
@@ -9,7 +16,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const schema = z.object({
-  action: z.enum(['assign-package', 'status', 'edit']),
+  action: z.enum(['assign-package', 'unassign-package', 'status', 'edit']),
   // assign-package
   package_id: z.string().uuid().optional().nullable(),
   // status
@@ -78,6 +85,36 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ ok: false, error: 'Pilgrim not found.' }, { status: 404 });
     }
 
+    // ------------------------------------------------------ unassign package
+    // Clears the package and reverses its charge (the due disappears; for a
+    // Group Fund pilgrim the leader's balance is restored). Payments stay.
+    if (d.action === 'unassign-package') {
+      if (!pilgrim.package_id) {
+        return NextResponse.json({ ok: false, error: 'No package is assigned.' }, { status: 400 });
+      }
+      const { error: upErr } = await db.from('hajj_pilgrims').update({ package_id: null }).eq('id', pilgrim.id);
+      if (upErr) {
+        console.error('[admin/hajj/:id] unassign failed:', upErr.message);
+        return NextResponse.json({ ok: false, error: 'Could not remove the package.' }, { status: 500 });
+      }
+      const reversed = await reversePackageCharge({
+        table: 'hajj_pilgrims',
+        partyId: pilgrim.id,
+        packageType: 'hajj',
+        branch: pilgrim.branch,
+      });
+      await logActivity({
+        user_id: guard.user.id,
+        user_email: guard.user.email,
+        action: 'unassign-package',
+        entity: 'hajj_pilgrim',
+        entity_id: pilgrim.id,
+        detail: { previous_package_id: pilgrim.package_id, reversed },
+        branch: pilgrim.branch,
+      });
+      return NextResponse.json({ ok: true, reversed });
+    }
+
     // -------------------------------------------------------- assign package
     if (d.action === 'assign-package') {
       if (!d.package_id) {
@@ -107,7 +144,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       }
 
       // Charge the price once. Guard against a double-charge: only charge when
-      // no package-income journal already exists for this pilgrim.
+      // no package-income journal already exists for this pilgrim. Switching to
+      // a DIFFERENT package reverses the old charge first so the ledger carries
+      // the new price, not both.
       const price = Number(pkg.price ?? 0);
       if (price > 0 && pilgrim.account_head_id) {
         const incomeHead = await getSystemHead(INCOME_HEAD.hajj, pilgrim.branch);
@@ -121,6 +160,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
             .eq('credit_account_id', incomeHead.id)
             .limit(1);
           alreadyCharged = (existing?.length ?? 0) > 0;
+        }
+        if (alreadyCharged && pilgrim.package_id && pilgrim.package_id !== pkg.id) {
+          await reversePackageCharge({
+            table: 'hajj_pilgrims',
+            partyId: pilgrim.id,
+            packageType: 'hajj',
+            branch: pilgrim.branch,
+          });
+          alreadyCharged = false;
         }
 
         if (!alreadyCharged) {

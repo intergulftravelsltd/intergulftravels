@@ -14,6 +14,20 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.5.1',
+    date: '2026-09-06',
+    items: [
+      {
+        en: 'Packages can be removed again: "Remove package" on a Hajj or Umrah profile clears the package and reverses its charge in the ledger (payments stay). Changing to a different package reverses the old charge and posts the new price.',
+        bn: 'প্যাকেজ বাদ দেওয়া যায়: হজ বা উমরাহ প্রোফাইলে "প্যাকেজ বাদ দিন" দিলে প্যাকেজ সরে যায় এবং লেজার থেকে তার খরচ reverse হয় (পেমেন্ট থাকে)। অন্য প্যাকেজ দিলে আগের খরচ reverse হয়ে নতুন দাম বসে।',
+      },
+      {
+        en: 'Registration type is never changed automatically — assigning a package keeps the pilgrim Pre-registered until staff change it.',
+        bn: 'নিবন্ধনের ধরন কখনো নিজে থেকে বদলায় না — প্যাকেজ দিলেও হাজী প্রাক-নিবন্ধিত থাকে, স্টাফ বদলালে তবেই বদলায়।',
+      },
+    ],
+  },
+  {
     version: '1.5.0',
     date: '2026-09-06',
     items: [

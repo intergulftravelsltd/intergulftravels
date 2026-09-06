@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireStaff } from '@/lib/management/guard';
-import { chargeParty, logActivity } from '@/lib/management/server';
+import { chargeParty, logActivity, reversePackageCharge } from '@/lib/management/server';
 import { resolveReferenceableAffiliate, resolveChargeTarget } from '@/lib/management/affiliates';
 import { DOC_STATUS_KEYS } from '@/lib/management/doc-status';
 
@@ -32,6 +32,8 @@ const patchSchema = z.object({
   status: z.enum(['active', 'cancelled', 'completed']).optional(),
   // Package assignment.
   package_id: z.preprocess(emptyToNull, z.string().uuid().nullable().optional()),
+  /** Remove the current package and reverse its charge. */
+  unassign_package: z.boolean().optional(),
 });
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
@@ -70,6 +72,36 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     if (loadErr || !existing) {
       return NextResponse.json({ ok: false, error: 'Passenger not found.' }, { status: 404 });
+    }
+
+    // ------------------------------------------------------ unassign package
+    // Clears the package and reverses its charge (the due disappears; for a
+    // Group Fund passenger the leader's balance is restored). Payments stay.
+    if (d.unassign_package) {
+      if (!existing.package_id) {
+        return NextResponse.json({ ok: false, error: 'No package is assigned.' }, { status: 400 });
+      }
+      const { error: upErr } = await supabase.from('umrah_passengers').update({ package_id: null }).eq('id', params.id);
+      if (upErr) {
+        console.error('[admin/umrah/:id] unassign failed:', upErr.message);
+        return NextResponse.json({ ok: false, error: 'Could not remove the package.' }, { status: 500 });
+      }
+      const reversed = await reversePackageCharge({
+        table: 'umrah_passengers',
+        partyId: params.id,
+        packageType: 'umrah',
+        branch: existing.branch,
+      });
+      await logActivity({
+        user_id: guard.user.id,
+        user_email: guard.user.email,
+        action: 'umrah.passenger.unassign',
+        entity: 'umrah_passengers',
+        entity_id: params.id,
+        detail: { previous_package_id: existing.package_id, reversed },
+        branch: existing.branch,
+      });
+      return NextResponse.json({ ok: true, id: params.id, reversed });
     }
 
     // Build the update payload from whichever editable fields were supplied.
@@ -125,13 +157,25 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           .eq('id', d.package_id)
           .maybeSingle();
 
-        const { data: alreadyCharged } = await supabase
+        let { data: alreadyCharged } = await supabase
           .from('transactions')
           .select('id')
           .eq('ref_table', 'umrah_passengers')
           .eq('ref_id', params.id)
           .eq('type', 'journal')
           .limit(1);
+
+        // Switching to a DIFFERENT package: reverse the old charge first so the
+        // ledger carries the new price, not both.
+        if (alreadyCharged && alreadyCharged.length > 0 && existing.package_id && existing.package_id !== d.package_id) {
+          await reversePackageCharge({
+            table: 'umrah_passengers',
+            partyId: params.id,
+            packageType: 'umrah',
+            branch: existing.branch,
+          });
+          alreadyCharged = [];
+        }
 
         if (pkg && Number(pkg.price) > 0 && (!alreadyCharged || alreadyCharged.length === 0)) {
           // Group Fund passengers: the charge is debited from the leader's fund head.
