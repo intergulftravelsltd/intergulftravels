@@ -120,10 +120,14 @@ export async function exportToExcel(
 
 type LogoBitmap = { dataUrl: string; stamp: string; w: number; h: number };
 
+/** Longest logo edge embedded in the PDF — plenty for print, tiny on disk. */
+const PDF_LOGO_MAX_PX = 640;
+
 /**
- * Load the logo into PNG data URLs jsPDF can embed: the original for the
- * letterhead and a uniform grey "stamp" for the watermark (light logo parts
- * would otherwise vanish against the white page).
+ * Load the logo into data URLs jsPDF can embed: the original (on white) for
+ * the letterhead and a uniform grey "stamp" for the watermark (light logo
+ * parts would otherwise vanish against the white page). Both are downscaled
+ * and JPEG-encoded so a multi-page ledger stays a few hundred KB, not MBs.
  */
 async function loadLogo(src: string): Promise<LogoBitmap | null> {
   try {
@@ -135,31 +139,48 @@ async function loadLogo(src: string): Promise<LogoBitmap | null> {
       img.onerror = () => reject(new Error('logo failed to load'));
       img.src = url;
     });
-    const w = img.naturalWidth;
-    const h = img.naturalHeight;
-    if (!w || !h) return null;
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+    if (!nw || !nh) return null;
+    const scale = Math.min(1, PDF_LOGO_MAX_PX / Math.max(nw, nh));
+    const w = Math.max(1, Math.round(nw * scale));
+    const h = Math.max(1, Math.round(nh * scale));
 
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
-    ctx.drawImage(img, 0, 0);
-    const dataUrl = canvas.toDataURL('image/png');
+    // Flatten onto white: the page is white anyway and JPEG has no alpha.
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
 
-    // Grey stamp variant for the watermark.
+    // Grey stamp variant for the watermark (white stays white → invisible at 15 %).
     const px = ctx.getImageData(0, 0, w, h);
     const d = px.data;
     for (let i = 0; i < d.length; i += 4) {
-      const grey = (0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]) * 0.45;
-      d[i] = d[i + 1] = d[i + 2] = grey;
+      const grey = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
+      // Darken the artwork, keep near-white background white.
+      const v = grey > 245 ? 255 : grey * 0.45;
+      d[i] = d[i + 1] = d[i + 2] = v;
     }
     ctx.putImageData(px, 0, 0);
-    const stamp = canvas.toDataURL('image/png');
+    const stamp = canvas.toDataURL('image/jpeg', 0.85);
     return { dataUrl, stamp, w, h };
   } catch {
     return null;
   }
+}
+
+/**
+ * jsPDF's built-in Helvetica has no Taka glyph — "৳" comes out as a stray
+ * accented letter and switches the whole line to spaced-out rendering.
+ * Spell it "Tk" in PDFs instead.
+ */
+function pdfText(s: string): string {
+  return s.replace(/৳\s?/g, 'Tk ');
 }
 
 /** Export a titled table to PDF (jsPDF + autotable, loaded on demand). */
@@ -182,7 +203,7 @@ export async function exportToPDF(
   const company = opts.company ?? null;
   const logo = company?.logo ? await loadLogo(company.logo) : null;
 
-  const doc = new jsPDF({ orientation: opts.orientation ?? 'p', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: opts.orientation ?? 'p', unit: 'mm', format: 'a4', compress: true });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const M = 14;
@@ -196,7 +217,7 @@ export async function exportToPDF(
       const targetH = (targetW * logo.h) / logo.w;
       anyDoc.saveGraphicsState();
       anyDoc.setGState(new anyDoc.GState({ opacity: 0.15 }));
-      doc.addImage(logo.stamp, 'PNG', (pageW - targetW) / 2, (pageH - targetH) / 2, targetW, targetH);
+      doc.addImage(logo.stamp, 'JPEG', (pageW - targetW) / 2, (pageH - targetH) / 2, targetW, targetH, 'wm-logo');
       anyDoc.restoreGraphicsState();
     } catch {
       // watermark is decorative — never block the export
@@ -211,7 +232,7 @@ export async function exportToPDF(
   if (logo) {
     const lh = 22;
     const lw = (lh * logo.w) / logo.h;
-    doc.addImage(logo.dataUrl, 'PNG', M, y - 2, lw, lh);
+    doc.addImage(logo.dataUrl, 'JPEG', M, y - 2, lw, lh, 'lh-logo');
     textX = M + lw + 5;
   }
   const maxW = pageW - textX - M;
@@ -220,17 +241,17 @@ export async function exportToPDF(
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
     doc.setTextColor(6, 64, 43);
-    doc.text(company.name, textX, ly, { maxWidth: maxW });
+    doc.text(pdfText(company.name), textX, ly, { maxWidth: maxW });
     ly += 6;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(70);
     if (company.license) {
-      doc.text(company.license, textX, ly, { maxWidth: maxW });
+      doc.text(pdfText(company.license), textX, ly, { maxWidth: maxW });
       ly += 4;
     }
     for (const line of letterheadLines(company, L)) {
-      const wrapped = doc.splitTextToSize(line, maxW) as string[];
+      const wrapped = doc.splitTextToSize(pdfText(line), maxW) as string[];
       doc.text(wrapped, textX, ly);
       ly += 4 * wrapped.length;
     }
@@ -245,7 +266,7 @@ export async function exportToPDF(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(20);
-  doc.text(opts.title, M, ty, { maxWidth: pageW - 2 * M });
+  doc.text(pdfText(opts.title), M, ty, { maxWidth: pageW - 2 * M });
   ty += 5.5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
@@ -254,14 +275,14 @@ export async function exportToPDF(
   ty += 4.5;
   if (opts.subtitle) {
     doc.setTextColor(110);
-    doc.text(opts.subtitle, M, ty, { maxWidth: pageW - 2 * M });
+    doc.text(pdfText(opts.subtitle), M, ty, { maxWidth: pageW - 2 * M });
     ty += 4.5;
   }
 
   // ---- Table --------------------------------------------------------------
   autoTable(doc, {
-    head: [opts.headers],
-    body: opts.rows.map((r) => r.map(cellText)),
+    head: [opts.headers.map(pdfText)],
+    body: opts.rows.map((r) => r.map((c) => pdfText(cellText(c)))),
     startY: ty + 1,
     margin: { left: M, right: M, top: 14, bottom: 16 },
     styles: { fontSize: 8, cellPadding: 2 },
@@ -274,7 +295,7 @@ export async function exportToPDF(
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.5);
       doc.setTextColor(140);
-      doc.text(`${company?.name ?? ''}${company ? ' · ' : ''}${L.page} ${data.pageNumber}`, M, pageH - 7);
+      doc.text(pdfText(`${company?.name ?? ''}${company ? ' - ' : ''}${L.page} ${data.pageNumber}`), M, pageH - 7);
     },
   });
 
