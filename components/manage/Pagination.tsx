@@ -65,8 +65,14 @@ export function Pagination({ paged, className }: { paged: Pick<Paged<unknown>, '
         </span>
         <label className="inline-flex items-center gap-1.5">
           <select
+            // Remount per route + size so a stale <select> value can never carry
+            // over between pages (browsers/extensions sometimes restore it).
+            key={`${pathname}:${paged.per}`}
             value={paged.per}
-            onChange={(e) => go({ per: Number(e.target.value) })}
+            onChange={(e) => {
+              const per = Number(e.target.value);
+              if (per !== paged.per) go({ per });
+            }}
             className="h-9 rounded-lg border border-border bg-card px-2 text-sm text-ink outline-none focus:border-brand-600"
             aria-label={t.perPage}
           >
