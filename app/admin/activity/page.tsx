@@ -8,6 +8,8 @@ import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminsystem';
 import { PageHeader, Card, EmptyState, TableWrap, thClass, tdClass, Badge, inputClass } from '@/components/manage/ui';
 import { ExportBar } from '@/components/manage/ExportBar';
+import { Pagination } from '@/components/manage/Pagination';
+import { paginate, parsePaging } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Activity Log' };
@@ -73,7 +75,7 @@ async function loadActions(): Promise<string[]> {
 export default async function ActivityPage({
   searchParams,
 }: {
-  searchParams: { date?: string; user?: string; action?: string };
+  searchParams: { date?: string; user?: string; action?: string; page?: string; per?: string };
 }) {
   const filters = {
     date: searchParams.date || '',
@@ -83,6 +85,7 @@ export default async function ActivityPage({
   const locale = getLocale();
   const t = getDict(locale);
   const [{ rows }, actions] = await Promise.all([loadActivity(filters), loadActions()]);
+  const paged = paginate(rows, parsePaging(searchParams, 50));
 
   const exportHeaders = [t.exportTime, t.exportUser, t.exportAction, t.exportEntity, t.exportBranch, t.exportDetail];
   const exportRows = rows.map((r) => [
@@ -183,7 +186,7 @@ export default async function ActivityPage({
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {paged.items.map((r) => (
               <tr key={r.id}>
                 <td className={`${tdClass} whitespace-nowrap text-ink-muted`}>
                   {formatDate(r.created_at, {
@@ -210,6 +213,7 @@ export default async function ActivityPage({
           </tbody>
         </TableWrap>
       )}
+      <Pagination paged={paged} />
     </>
   );
 }

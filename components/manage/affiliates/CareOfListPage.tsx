@@ -5,6 +5,8 @@ import { AffiliateRowActions } from '@/components/manage/affiliates/AffiliateRow
 import { loadActiveAffiliates } from '@/lib/management/affiliates';
 import { branchShort } from '@/lib/management/branches';
 import { isGroupFund } from '@/lib/management/types';
+import { Pagination } from '@/components/manage/Pagination';
+import { paginate, parsePaging } from '@/lib/pagination';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/careof';
@@ -14,10 +16,17 @@ import { getDict } from '@/lib/dictionaries/areas/careof';
  * page (sidebar → Hajj → Care of (Hajj), Umrah → Care of (Umrah)); records
  * tagged "Hajj & Umrah" appear in both.
  */
-export async function CareOfListPage({ program }: { program?: 'hajj' | 'umrah' }) {
+export async function CareOfListPage({
+  program,
+  searchParams,
+}: {
+  program?: 'hajj' | 'umrah';
+  searchParams?: { page?: string; per?: string };
+}) {
   const locale = getLocale();
   const t = getDict(locale);
   const affiliates = await loadActiveAffiliates(program);
+  const paged = paginate(affiliates, parsePaging(searchParams));
   const from = program ?? '';
 
   const title = program === 'hajj' ? t.pageTitleHajj : program === 'umrah' ? t.pageTitleUmrah : t.pageTitle;
@@ -47,7 +56,7 @@ export async function CareOfListPage({ program }: { program?: 'hajj' | 'umrah' }
               </tr>
             </thead>
             <tbody>
-              {affiliates.map((a) => (
+              {paged.items.map((a) => (
                 <tr key={a.id} className="transition hover:bg-muted/40">
                   <td className={`${tdClass} whitespace-nowrap font-mono text-xs text-ink-muted`}>{a.code ?? '—'}</td>
                   <td className={`${tdClass} font-semibold`}>
@@ -89,6 +98,7 @@ export async function CareOfListPage({ program }: { program?: 'hajj' | 'umrah' }
               ))}
             </tbody>
           </TableWrap>
+          <Pagination paged={paged} />
         </>
       )}
     </>

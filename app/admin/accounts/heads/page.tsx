@@ -5,6 +5,8 @@ import { HeadRowActions } from '@/components/manage/accounts/HeadRowActions';
 import { loadActiveHeads } from '@/lib/management/accounts-data';
 import { naturalBalance, type AccountHead, type AccountType } from '@/lib/management/types';
 import { branchShort } from '@/lib/management/branches';
+import { Pagination } from '@/components/manage/Pagination';
+import { paginate, parsePaging } from '@/lib/pagination';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath, type Locale } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminaccounting';
@@ -21,10 +23,16 @@ const TYPE_LABEL_KEY: Record<AccountType, keyof ReturnType<typeof getDict>['head
   equity: 'equity',
 };
 
-export default async function HeadsPage() {
+export default async function HeadsPage({ searchParams }: { searchParams: { page?: string; per?: string } }) {
   const locale = getLocale();
   const t = getDict(locale);
   const heads = await loadActiveHeads();
+  // The customer-ledger section is the long one (one head per pilgrim) — it is
+  // paged; the chart-of-accounts sections stay whole.
+  const customerPaged = paginate(
+    heads.filter((h) => h.subtype === 'customer'),
+    parsePaging(searchParams),
+  );
 
   // Customer / passenger ledgers (auto-created per pilgrim) are shown as their
   // own section rather than lumped under Assets — a pilgrim's balance swings
@@ -73,11 +81,12 @@ export default async function HeadsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {g.rows.map((h) => (
+                  {(g.key === 'customer' ? customerPaged.items : g.rows).map((h) => (
                     <HeadRow key={h.id} head={h} locale={locale} t={t} />
                   ))}
                 </tbody>
               </TableWrap>
+              {g.key === 'customer' && <Pagination paged={customerPaged} />}
             </section>
           ))}
         </div>

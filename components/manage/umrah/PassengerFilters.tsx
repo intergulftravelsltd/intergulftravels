@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { Search, X } from 'lucide-react';
+import { Search, X, ArrowUpDown } from 'lucide-react';
 import { BRANCHES } from '@/lib/management/branches';
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { getDict } from '@/lib/dictionaries/areas/adminumrah';
@@ -15,7 +15,15 @@ type CareOfOpt = { id: string; name: string; code: string | null };
 const ctrl =
   'h-10 rounded-xl border border-border bg-card px-3 text-sm text-ink outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20';
 
-/** One-row filter bar for the Umrah passenger list — every control applies on change. */
+export const UMRAH_SORTS = ['newest', 'name', 'due', 'paid', 'expiry'] as const;
+export type UmrahSort = (typeof UMRAH_SORTS)[number];
+
+const SORT_LABELS: Record<'en' | 'bn', Record<UmrahSort, string>> = {
+  en: { newest: 'Newest first', name: 'Name A–Z', due: 'Due (high → low)', paid: 'Paid (high → low)', expiry: 'Passport expiry (soonest)' },
+  bn: { newest: 'নতুন আগে', name: 'নাম (A–Z)', due: 'বকেয়া (বেশি → কম)', paid: 'পরিশোধ (বেশি → কম)', expiry: 'পাসপোর্ট মেয়াদ (আগে শেষ)' },
+};
+
+/** One-row filter bar for the Umrah passenger list — every control applies on change and resets to page 1. */
 export function PassengerFilters({ packages, careOfs = [] }: { packages: PackageOpt[]; careOfs?: CareOfOpt[] }) {
   const locale = useLocale();
   const t = getDict(locale);
@@ -34,15 +42,16 @@ export function PassengerFilters({ packages, careOfs = [] }: { packages: Package
     const next = new URLSearchParams(params.toString());
     if (value) next.set(key, value);
     else next.delete(key);
+    next.delete('page');
     router.replace(`${pathname}?${next.toString()}`);
   }
 
-  const hasFilters = ['q', 'package', 'branch', 'status', 'expiring', 'docs', 'care_of', 'gender'].some((k) => params.get(k));
+  const hasFilters = ['q', 'package', 'branch', 'status', 'expiring', 'docs', 'care_of', 'gender', 'sort'].some((k) => params.get(k));
   const sel = (key: string) => params.get(key) ?? '';
 
   return (
     <div className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card p-3 shadow-soft">
-      <div className="relative w-56">
+      <div className="relative w-52">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
         <input
           className={`${ctrl} w-full pl-9`}
@@ -107,6 +116,17 @@ export function PassengerFilters({ packages, careOfs = [] }: { packages: Package
         <option value="">{t.anyPassport}</option>
         <option value="1">{t.expiringSixMonths}</option>
       </select>
+
+      <label className="inline-flex items-center gap-1">
+        <ArrowUpDown className="h-4 w-4 text-ink-muted" />
+        <select className={`${ctrl} w-44`} value={sel('sort') || 'newest'} onChange={(e) => update('sort', e.target.value === 'newest' ? '' : e.target.value)}>
+          {UMRAH_SORTS.map((s) => (
+            <option key={s} value={s}>
+              {SORT_LABELS[locale][s]}
+            </option>
+          ))}
+        </select>
+      </label>
 
       {hasFilters && (
         <button

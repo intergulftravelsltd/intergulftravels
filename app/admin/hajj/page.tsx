@@ -11,7 +11,9 @@ import {
   tdClass,
 } from '@/components/manage/ui';
 import { ExportMenu } from '@/components/manage/ExportMenu';
-import { PilgrimFilters } from '@/components/manage/hajj/PilgrimFilters';
+import { PilgrimFilters, type HajjSort } from '@/components/manage/hajj/PilgrimFilters';
+import { Pagination } from '@/components/manage/Pagination';
+import { paginate, parsePaging } from '@/lib/pagination';
 import { RecordRowActions } from '@/components/manage/RecordRowActions';
 import { DocStatusViewer } from '@/components/manage/DocStatusViewer';
 import { sharePath } from '@/lib/management/share-token';
@@ -46,6 +48,9 @@ type Search = {
   docs?: string;
   care_of?: string;
   gender?: string;
+  sort?: string;
+  page?: string;
+  per?: string;
 };
 
 async function loadPilgrims(): Promise<HajjPilgrim[]> {
@@ -168,7 +173,25 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
   });
 
   const genderLabel = (g?: string | null) => (g === 'male' ? ct.male : g === 'female' ? ct.female : '');
-  const exportRows = rows.map((r) => [
+  // Sort (newest first by default — the load order) then slice the page.
+  const sort = (searchParams.sort ?? 'newest') as HajjSort;
+  const sorted = [...rows].sort((a, b) => {
+    switch (sort) {
+      case 'name':
+        return a.p.name.localeCompare(b.p.name);
+      case 'tracking':
+        return (a.p.tracking_no ?? '').localeCompare(b.p.tracking_no ?? '');
+      case 'due':
+        return Math.max(0, b.due) - Math.max(0, a.due);
+      case 'paid':
+        return b.paid - a.paid;
+      default:
+        return 0;
+    }
+  });
+  const paged = paginate(sorted, parsePaging(searchParams));
+
+  const exportRows = sorted.map((r) => [
     r.p.tracking_no ?? '',
     r.p.name,
     r.p.phone ?? '',
@@ -194,14 +217,6 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
     r.p.nid ?? '',
     r.p.note ?? '',
   ]);
-
-  const qs = (patch: Partial<Search>) => {
-    const sp = new URLSearchParams();
-    const merged = { year: String(selectedYear), reg_type: regType, package: pkgFilter, branch: branchFilter, status: statusFilter, docs: docsFilter, care_of: careOfFilter, gender: genderFilter, q: searchParams.q ?? '', ...patch };
-    for (const [k, v] of Object.entries(merged)) if (v) sp.set(k, String(v));
-    const s = sp.toString();
-    return localizedPath(locale, s ? `/admin/hajj?${s}` : '/admin/hajj');
-  };
 
   return (
     <>
@@ -270,29 +285,10 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
         <StatCard label={t.statTotalDue} value={<Money value={totalDue} />} icon={Wallet} accent="red" />
       </div>
 
-      {/* Year tabs */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        {years.map((y) => {
-          const active = y === selectedYear;
-          return (
-            <Link
-              key={y}
-              href={qs({ year: String(y) })}
-              className={
-                active
-                  ? 'rounded-full bg-brand-600 px-4 py-1.5 text-sm font-semibold text-white'
-                  : 'rounded-full border border-border bg-card px-4 py-1.5 text-sm font-medium text-ink-muted hover:border-brand-600/40 hover:text-brand-700'
-              }
-            >
-              {y}
-            </Link>
-          );
-        })}
-      </div>
-
-      {/* Filters — one row, apply on change */}
+      {/* Filters — one row (year dropdown first), apply on change */}
       <PilgrimFilters
         year={selectedYear}
+        years={years}
         packages={packages.map((p) => ({ id: p.id, name: p.name }))}
         careOfs={affiliates.map((a) => ({ id: a.id, name: a.name, code: a.code }))}
       />
@@ -328,7 +324,7 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ p, pkgName, paid, due }) => {
+            {paged.items.map(({ p, pkgName, paid, due }) => {
               const done = docStatusDone(p.doc_status);
               const careOf = p.affiliate_id ? affMap.get(p.affiliate_id) : undefined;
               const viaFund = isGroupFund(careOf);
@@ -479,6 +475,7 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
           </tbody>
         </TableWrap>
       )}
+      <Pagination paged={paged} />
     </>
   );
 }

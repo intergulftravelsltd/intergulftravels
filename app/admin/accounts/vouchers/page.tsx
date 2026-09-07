@@ -8,6 +8,8 @@ import { getStaffScope } from '@/lib/management/scope';
 import { BRANCHES, branchShort } from '@/lib/management/branches';
 import { money } from '@/lib/management/format';
 import { resolvePeriod } from '@/lib/period';
+import { Pagination } from '@/components/manage/Pagination';
+import { paginate, parsePaging } from '@/lib/pagination';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminaccounting';
@@ -34,7 +36,7 @@ const TYPE_TONE: Record<string, 'emerald' | 'gold' | 'red' | 'blue' | 'slate'> =
   journal: 'slate',
 };
 
-type SP = { from?: string; to?: string; branch?: string; type?: string; range?: string };
+type SP = { from?: string; to?: string; branch?: string; type?: string; range?: string; page?: string; per?: string };
 
 const labelStyle = 'mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted';
 const ctrl =
@@ -79,6 +81,7 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
     t.narration ?? '',
   ]);
   const period = resolvePeriod({ from: filters.from, to: filters.to }, txns.map((t) => t.date));
+  const paged = paginate(txns, parsePaging(searchParams));
 
   return (
     <>
@@ -194,7 +197,7 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
               </tr>
             </thead>
             <tbody>
-              {txns.map((t) => (
+              {paged.items.map((t) => (
                 <tr key={t.id}>
                   <td className={`${tdClass} whitespace-nowrap font-mono text-xs`}>{t.voucher_no ?? '—'}</td>
                   <td className={`${tdClass} whitespace-nowrap font-mono text-xs`}>{t.manual_ref || '—'}</td>
@@ -241,6 +244,7 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
               ))}
             </tbody>
           </TableWrap>
+          <Pagination paged={paged} />
         </>
       )}
     </>

@@ -6,6 +6,6 @@ export function generateMetadata() {
   return { title: getLocale() === 'bn' ? 'কেয়ার অফ — হজ' : 'Care of — Hajj' };
 }
 
-export default function HajjCareOfPage() {
-  return <CareOfListPage program="hajj" />;
+export default function HajjCareOfPage({ searchParams }: { searchParams: { page?: string; per?: string } }) {
+  return <CareOfListPage program="hajj" searchParams={searchParams} />;
 }

@@ -6,6 +6,6 @@ export function generateMetadata() {
   return { title: getLocale() === 'bn' ? 'কেয়ার অফ — উমরাহ' : 'Care of — Umrah' };
 }
 
-export default function UmrahCareOfPage() {
-  return <CareOfListPage program="umrah" />;
+export default function UmrahCareOfPage({ searchParams }: { searchParams: { page?: string; per?: string } }) {
+  return <CareOfListPage program="umrah" searchParams={searchParams} />;
 }

@@ -10,6 +10,8 @@ import { branchShort } from '@/lib/management/branches';
 import { money } from '@/lib/management/format';
 import { presetRange, type RangeKey } from '@/lib/date-range';
 import { formatPeriodLine, resolvePeriod } from '@/lib/period';
+import { Pagination } from '@/components/manage/Pagination';
+import { paginate, parsePaging } from '@/lib/pagination';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminaccounting';
@@ -25,7 +27,7 @@ const TYPE_LABEL_KEY: Record<string, keyof ReturnType<typeof getDict>['typeLabel
   journal: 'journal',
 };
 
-type SP = { from?: string; to?: string; range?: string };
+type SP = { from?: string; to?: string; range?: string; page?: string; per?: string };
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const head = await loadHead(params.id);
@@ -133,6 +135,8 @@ export default async function AccountLedgerPage({
 
   const period = resolvePeriod({ from, to }, ordered.map((x) => x.date));
   const periodText = formatPeriodLine(period, locale);
+  // Screen shows one page at a time (the export always carries every row).
+  const paged = paginate(rows, parsePaging(searchParams, 50));
 
   const typeLabel = (type: string) => t.typeLabels[TYPE_LABEL_KEY[type]] ?? type;
 
@@ -238,17 +242,19 @@ export default async function AccountLedgerPage({
             </tr>
           </thead>
           <tbody>
-            <tr className="bg-muted/40">
-              <td className={tdClass} colSpan={6}>
-                <span className="font-semibold text-ink">{openingLabel}</span>
-              </td>
-              <td className={tdClass} />
-              <td className={tdClass} />
-              <td className={`${tdClass} text-right font-semibold tabular-nums`}>
-                {money(Math.abs(openingNatural))}
-              </td>
-            </tr>
-            {rows.map((r) => (
+            {paged.isFirst && (
+              <tr className="bg-muted/40">
+                <td className={tdClass} colSpan={6}>
+                  <span className="font-semibold text-ink">{openingLabel}</span>
+                </td>
+                <td className={tdClass} />
+                <td className={tdClass} />
+                <td className={`${tdClass} text-right font-semibold tabular-nums`}>
+                  {money(Math.abs(openingNatural))}
+                </td>
+              </tr>
+            )}
+            {paged.items.map((r) => (
               <tr key={r.id}>
                 <td className={`${tdClass} whitespace-nowrap`}>{r.date}</td>
                 <td className={`${tdClass} whitespace-nowrap font-mono text-xs`}>{r.voucher}</td>
@@ -263,19 +269,22 @@ export default async function AccountLedgerPage({
                 <td className={`${tdClass} text-right font-semibold tabular-nums`}>{money(Math.abs(r.balance))}</td>
               </tr>
             ))}
-            <tr className="bg-muted/60">
-              <td className={`${tdClass} font-semibold`} colSpan={6}>
-                {t.ledger.totals}
-              </td>
-              <td className={`${tdClass} text-right font-semibold tabular-nums`}>{money(totalDebit)}</td>
-              <td className={`${tdClass} text-right font-semibold tabular-nums`}>{money(totalCredit)}</td>
-              <td className={`${tdClass} text-right font-bold tabular-nums`}>
-                {money(Math.abs(closingNatural))} {sideLabel}
-              </td>
-            </tr>
+            {paged.isLast && (
+              <tr className="bg-muted/60">
+                <td className={`${tdClass} font-semibold`} colSpan={6}>
+                  {t.ledger.totals}
+                </td>
+                <td className={`${tdClass} text-right font-semibold tabular-nums`}>{money(totalDebit)}</td>
+                <td className={`${tdClass} text-right font-semibold tabular-nums`}>{money(totalCredit)}</td>
+                <td className={`${tdClass} text-right font-bold tabular-nums`}>
+                  {money(Math.abs(closingNatural))} {sideLabel}
+                </td>
+              </tr>
+            )}
           </tbody>
         </TableWrap>
       )}
+      <Pagination paged={paged} />
     </>
   );
 }

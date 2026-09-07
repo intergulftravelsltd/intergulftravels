@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { Search, X } from 'lucide-react';
+import { Search, X, ArrowUpDown } from 'lucide-react';
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { getDict } from '@/lib/dictionaries/areas/adminhajj';
 import { getDict as getCareDict } from '@/lib/dictionaries/areas/careof';
@@ -13,17 +13,27 @@ type CareOfOpt = { id: string; name: string; code: string | null };
 const ctrl =
   'h-10 rounded-xl border border-border bg-card px-3 text-sm text-ink outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20';
 
+export const HAJJ_SORTS = ['newest', 'name', 'tracking', 'due', 'paid'] as const;
+export type HajjSort = (typeof HAJJ_SORTS)[number];
+
+const SORT_LABELS: Record<'en' | 'bn', Record<HajjSort, string>> = {
+  en: { newest: 'Newest first', name: 'Name A–Z', tracking: 'Tracking no.', due: 'Due (high → low)', paid: 'Paid (high → low)' },
+  bn: { newest: 'নতুন আগে', name: 'নাম (A–Z)', tracking: 'ট্র্যাকিং নং', due: 'বকেয়া (বেশি → কম)', paid: 'পরিশোধ (বেশি → কম)' },
+};
+
 /**
- * One-row filter bar for the Hajj pilgrim list. Every control applies on
- * change (no Apply button) and lives in the URL, so the page re-renders
- * server-side with the chosen filters and the year tab is preserved.
+ * One-row filter bar for the Hajj pilgrim list: year, search, type, package,
+ * gender, status, care-of, documents and sort. Every control applies on
+ * change, lives in the URL and resets pagination to page 1.
  */
 export function PilgrimFilters({
   year,
+  years,
   packages,
   careOfs,
 }: {
   year: number;
+  years: number[];
   packages: PackageOpt[];
   careOfs: CareOfOpt[];
 }) {
@@ -41,19 +51,34 @@ export function PilgrimFilters({
 
   function update(key: string, value: string) {
     const next = new URLSearchParams(params.toString());
-    next.set('year', String(year));
+    if (!next.get('year')) next.set('year', String(year));
     if (value) next.set(key, value);
     else next.delete(key);
+    next.delete('page');
     router.replace(`${pathname}?${next.toString()}`);
   }
 
-  const KEYS = ['q', 'reg_type', 'package', 'status', 'care_of', 'docs', 'gender'];
+  const KEYS = ['q', 'reg_type', 'package', 'status', 'care_of', 'docs', 'gender', 'sort'];
   const hasFilters = KEYS.some((k) => params.get(k));
   const sel = (key: string) => params.get(key) ?? '';
+  const yearLabel = locale === 'bn' ? 'সাল' : 'Year';
 
   return (
     <div className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card p-3 shadow-soft">
-      <div className="relative w-56">
+      <select
+        className={`${ctrl} w-28 font-semibold text-brand-700`}
+        value={String(year)}
+        onChange={(e) => update('year', e.target.value)}
+        aria-label={yearLabel}
+        title={yearLabel}
+      >
+        {years.map((y) => (
+          <option key={y} value={y}>
+            {y}
+          </option>
+        ))}
+      </select>
+      <div className="relative w-52">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
         <input
           className={`${ctrl} w-full pl-9`}
@@ -105,6 +130,16 @@ export function PilgrimFilters({
         <option value="complete">{ct.filterDocsComplete}</option>
         <option value="incomplete">{ct.filterDocsIncomplete}</option>
       </select>
+      <label className="inline-flex items-center gap-1">
+        <ArrowUpDown className="h-4 w-4 text-ink-muted" />
+        <select className={`${ctrl} w-40`} value={sel('sort') || 'newest'} onChange={(e) => update('sort', e.target.value === 'newest' ? '' : e.target.value)}>
+          {HAJJ_SORTS.map((s) => (
+            <option key={s} value={s}>
+              {SORT_LABELS[locale][s]}
+            </option>
+          ))}
+        </select>
+      </label>
       {hasFilters && (
         <button
           type="button"

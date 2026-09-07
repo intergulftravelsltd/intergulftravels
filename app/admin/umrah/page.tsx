@@ -15,7 +15,9 @@ import { RecordRowActions } from '@/components/manage/RecordRowActions';
 import { DocStatusViewer } from '@/components/manage/DocStatusViewer';
 import { sharePath } from '@/lib/management/share-token';
 import { Button } from '@/components/ui/Button';
-import { PassengerFilters } from '@/components/manage/umrah/PassengerFilters';
+import { PassengerFilters, type UmrahSort } from '@/components/manage/umrah/PassengerFilters';
+import { Pagination } from '@/components/manage/Pagination';
+import { paginate, parsePaging } from '@/lib/pagination';
 import { loadPassengers, loadUmrahPackages, isExpiringSoon, monthsUntil, type PassengerRow } from '@/lib/management/umrah';
 import { loadActiveAffiliates } from '@/lib/management/affiliates';
 import { docStatusDoneFor, docStatusTotalFor } from '@/lib/management/doc-status';
@@ -73,7 +75,23 @@ export default async function UmrahPassengersPage({
     loadActiveAffiliates('umrah'),
   ]);
   const affMap = new Map(affiliates.map((a) => [a.id, a]));
-  const rows = applyFilters(all, searchParams);
+  const filteredRows = applyFilters(all, searchParams);
+  const sort = (searchParams.sort ?? 'newest') as UmrahSort;
+  const rows = [...filteredRows].sort((a, b) => {
+    switch (sort) {
+      case 'name':
+        return a.name.localeCompare(b.name);
+      case 'due':
+        return b.due - a.due;
+      case 'paid':
+        return b.paid - a.paid;
+      case 'expiry':
+        return (a.passport_expiry ?? '9999').localeCompare(b.passport_expiry ?? '9999');
+      default:
+        return 0;
+    }
+  });
+  const paged = paginate(rows, parsePaging(searchParams));
   const genderLabel = (g?: string | null) => (g === 'male' ? ct.male : g === 'female' ? ct.female : '');
 
   // Permanent family groups (migration 0008; harmless when absent). Members'
@@ -236,7 +254,7 @@ export default async function UmrahPassengersPage({
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
+            {paged.items.map((r) => {
               const months = monthsUntil(r.passport_expiry);
               const expiring = isExpiringSoon(r.passport_expiry);
               const expired = months !== null && months < 0;
@@ -402,6 +420,7 @@ export default async function UmrahPassengersPage({
           </tbody>
         </TableWrap>
       )}
+      <Pagination paged={paged} />
 
       {total === 0 && (
         <p className="mt-6 flex items-center justify-center gap-2 text-xs text-ink-muted">

@@ -9,6 +9,8 @@ import type { Payment } from '@/lib/management/types';
 import { money } from '@/lib/management/format';
 import { branchShort } from '@/lib/management/branches';
 import { presetRange, type RangeKey } from '@/lib/date-range';
+import { Pagination } from '@/components/manage/Pagination';
+import { paginate, parsePaging } from '@/lib/pagination';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 
@@ -23,7 +25,7 @@ function fmt(d: string) {
 export default async function ReceiptsPage({
   searchParams,
 }: {
-  searchParams: { from?: string; to?: string; range?: string };
+  searchParams: { from?: string; to?: string; range?: string; page?: string; per?: string };
 }) {
   const locale = getLocale();
   const from = searchParams.from ?? '';
@@ -98,6 +100,7 @@ export default async function ReceiptsPage({
           showing: 'Showing', payWord: 'payments',
         };
 
+  const paged = paginate(payments, parsePaging(searchParams));
   const manualNoLabel = locale === 'bn' ? 'ম্যানুয়াল রসিদ নং' : 'Manual Receipt No';
   const narrationLabel = locale === 'bn' ? 'বিবরণ' : 'Narration';
   const exportRows = payments.map((p) => [
@@ -161,7 +164,7 @@ export default async function ReceiptsPage({
               </tr>
             </thead>
             <tbody>
-              {payments.map((p) => (
+              {paged.items.map((p) => (
                 <tr key={p.id} className="transition hover:bg-muted/40">
                   <td className={`${tdClass} whitespace-nowrap`}>{fmt(p.date)}</td>
                   <td className={`${tdClass} tabular-nums`}>{p.voucher_no ?? '—'}</td>
@@ -195,6 +198,7 @@ export default async function ReceiptsPage({
               ))}
             </tbody>
           </TableWrap>
+          <Pagination paged={paged} />
         </>
       )}
     </>

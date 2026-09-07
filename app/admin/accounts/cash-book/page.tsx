@@ -7,6 +7,8 @@ import { mgmtDb } from '@/lib/management/server';
 import { getStaffScope } from '@/lib/management/scope';
 import { presetRange, type RangeKey } from '@/lib/date-range';
 import { resolvePeriod, formatPeriodLine } from '@/lib/period';
+import { Pagination } from '@/components/manage/Pagination';
+import { paginate, parsePaging } from '@/lib/pagination';
 import { loadScopedCompanyProfile } from '@/lib/management/company';
 import { PrintLetterhead, PrintSignatures } from '@/components/manage/PrintLetterhead';
 import { money } from '@/lib/management/format';
@@ -83,7 +85,7 @@ const bookOpening = (h: AccountHead) => Number(h.opening_balance) * (h.opening_i
 export default async function CashBookPage({
   searchParams,
 }: {
-  searchParams: { from?: string; to?: string; range?: string };
+  searchParams: { from?: string; to?: string; range?: string; page?: string; per?: string };
 }) {
   const locale = getLocale();
   const t = L[locale];
@@ -206,6 +208,7 @@ export default async function CashBookPage({
 
   const rangeLabel = [from || '…', to || '…'].join(' → ');
   const period = resolvePeriod({ from, to }, inRange.map((tx) => tx.date));
+  const paged = paginate(lines, parsePaging(searchParams, 50));
 
   return (
     <div id="doc-report">
@@ -265,15 +268,17 @@ export default async function CashBookPage({
             </tr>
           </thead>
           <tbody>
-            <tr className="bg-muted/50 font-semibold">
-              <td className={tdClass} colSpan={5}>
-                {t.openingRow}
-              </td>
-              <td className={`${tdClass} text-right`}>
-                <Money value={opening} />
-              </td>
-            </tr>
-            {lines.map((l, i) => (
+            {paged.isFirst && (
+              <tr className="bg-muted/50 font-semibold">
+                <td className={tdClass} colSpan={5}>
+                  {t.openingRow}
+                </td>
+                <td className={`${tdClass} text-right`}>
+                  <Money value={opening} />
+                </td>
+              </tr>
+            )}
+            {paged.items.map((l, i) => (
               <tr key={i} className="transition hover:bg-muted/40">
                 <td className={`${tdClass} whitespace-nowrap`}>{l.date}</td>
                 <td className={tdClass}>{l.account}</td>
@@ -292,23 +297,28 @@ export default async function CashBookPage({
                 </td>
               </tr>
             ))}
-            <tr className="border-t-2 border-brand-600/40 bg-brand-50/40 font-bold">
-              <td className={tdClass} colSpan={3}>
-                {t.closingRow}
-              </td>
-              <td className={`${tdClass} text-right`}>
-                <Money value={totalDeposit} className="text-emerald-700" />
-              </td>
-              <td className={`${tdClass} text-right`}>
-                <Money value={totalWithdrawal} className="text-red-600" />
-              </td>
-              <td className={`${tdClass} text-right`}>
-                <Money value={closing} />
-              </td>
-            </tr>
+            {paged.isLast && (
+              <tr className="border-t-2 border-brand-600/40 bg-brand-50/40 font-bold">
+                <td className={tdClass} colSpan={3}>
+                  {t.closingRow}
+                </td>
+                <td className={`${tdClass} text-right`}>
+                  <Money value={totalDeposit} className="text-emerald-700" />
+                </td>
+                <td className={`${tdClass} text-right`}>
+                  <Money value={totalWithdrawal} className="text-red-600" />
+                </td>
+                <td className={`${tdClass} text-right`}>
+                  <Money value={closing} />
+                </td>
+              </tr>
+            )}
           </tbody>
         </TableWrap>
       )}
+      <div className="no-print">
+        <Pagination paged={paged} />
+      </div>
       <PrintSignatures locale={locale} />
     </div>
   );

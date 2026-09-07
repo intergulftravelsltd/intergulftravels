@@ -8,6 +8,8 @@ import { loadActiveHeads, loadTransactions, headMap, headName } from '@/lib/mana
 import { branchShort } from '@/lib/management/branches';
 import { money } from '@/lib/management/format';
 import { resolvePeriod } from '@/lib/period';
+import { Pagination } from '@/components/manage/Pagination';
+import { paginate, parsePaging } from '@/lib/pagination';
 import { getLocale } from '@/lib/i18n-server';
 import { getDict } from '@/lib/dictionaries/areas/adminaccounting';
 
@@ -21,7 +23,7 @@ function toOption(h: { id: string; name: string; type: string; subtype: string; 
 export default async function ExpensesPage({
   searchParams,
 }: {
-  searchParams: { from?: string; to?: string; range?: string };
+  searchParams: { from?: string; to?: string; range?: string; page?: string; per?: string };
 }) {
   const tt = getDict(getLocale());
   const [heads, txns] = await Promise.all([
@@ -65,6 +67,7 @@ export default async function ExpensesPage({
     { from: searchParams.from, to: searchParams.to },
     expenseTxns.map((t) => t.date),
   );
+  const paged = paginate(expenseTxns, parsePaging(searchParams));
 
   return (
     <>
@@ -143,7 +146,7 @@ export default async function ExpensesPage({
             </tr>
           </thead>
           <tbody>
-            {expenseTxns.map((t) => (
+            {paged.items.map((t) => (
               <tr key={t.id}>
                 <td className={`${tdClass} whitespace-nowrap`}>{t.date}</td>
                 <td className={`${tdClass} whitespace-nowrap font-mono text-xs`}>{t.voucher_no ?? '—'}</td>
@@ -160,6 +163,7 @@ export default async function ExpensesPage({
           </tbody>
         </TableWrap>
       )}
+      <Pagination paged={paged} />
     </>
   );
 }

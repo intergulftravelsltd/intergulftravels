@@ -14,6 +14,20 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.5.3',
+    date: '2026-09-07',
+    items: [
+      {
+        en: 'Pagination on every long list — Hajj, Umrah, Care-of, Vouchers, Account Heads, Ledger, Cash Book, Customer Dues, Expenses, Receipts and Activity: choose 10 / 25 / 50 / 100 per page, jump with Prev · 1 2 3 · Next. Exports still include every row.',
+        bn: 'সব লম্বা তালিকায় পেজিনেশন — হজ, উমরাহ, কেয়ার অফ, ভাউচার, হিসাব খাত, লেজার, ক্যাশ বই, গ্রাহক বকেয়া, ব্যয়, রসিদ ও কার্যকলাপ: প্রতি পাতায় ১০ / ২৫ / ৫০ / ১০০, আগের · ১ ২ ৩ · পরের দিয়ে যাওয়া যায়। এক্সপোর্টে সব সারি থাকে।',
+      },
+      {
+        en: 'Hajj list: the year is now a dropdown inside the filter bar, plus a Sort option (newest, name, tracking no., due, paid); Umrah gets sort by newest, name, due, paid or passport expiry.',
+        bn: 'হজ তালিকা: সাল এখন ফিল্টার বারের ভেতরে ড্রপডাউন, সাথে সাজানোর অপশন (নতুন, নাম, ট্র্যাকিং নং, বকেয়া, পরিশোধ); উমরাহতে নতুন, নাম, বকেয়া, পরিশোধ বা পাসপোর্ট মেয়াদ অনুযায়ী সাজানো যায়।',
+      },
+    ],
+  },
+  {
     version: '1.5.2',
     date: '2026-09-07',
     items: [
