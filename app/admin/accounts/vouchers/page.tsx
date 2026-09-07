@@ -57,7 +57,13 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
     getStaffScope(),
   ]);
   const map = headMap(heads);
-  const headOptions = heads.map((h) => ({ id: h.id, name: h.name }));
+  const headOptions = heads.map((h) => ({
+    id: h.id,
+    name: h.name,
+    code: h.code,
+    party_phone: h.party_phone,
+    subtype: h.subtype,
+  }));
 
   const total = txns.reduce((s, t) => s + Number(t.amount), 0);
 

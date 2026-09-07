@@ -14,6 +14,16 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.5.2',
+    date: '2026-09-07',
+    items: [
+      {
+        en: 'Searchable account-head pickers on Daily Entry (Journal, Expense, Income, Cash ⇄ Bank), the Expenses form and voucher edit: click to see the whole list, type a name, mobile number or code to filter, scroll or use the arrow keys, Enter to pick.',
+        bn: 'দৈনিক এন্ট্রি (জার্নাল, ব্যয়, আয়, নগদ ⇄ ব্যাংক), ব্যয় ফর্ম ও ভাউচার সম্পাদনায় খোঁজার সুবিধাসহ হিসাব খাত পিকার: ক্লিক করলেই পুরো তালিকা, নাম, মোবাইল নম্বর বা কোড লিখলে ফিল্টার, স্ক্রল বা অ্যারো কি দিয়ে বাছাই, Enter দিয়ে নির্বাচন।',
+      },
+    ],
+  },
+  {
     version: '1.5.1',
     date: '2026-09-06',
     items: [

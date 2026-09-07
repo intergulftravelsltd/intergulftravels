@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Loader2, Plus, X } from 'lucide-react';
 import { Card, Field, inputClass } from '@/components/manage/ui';
 import { Button } from '@/components/ui/Button';
+import { HeadSelect, toHeadOptions } from '@/components/manage/HeadSelect';
 import { BRANCHES } from '@/lib/management/branches';
 import type { HeadOption } from './VoucherForm';
 import { useLocale } from '@/components/providers/LocaleProvider';
@@ -111,14 +112,12 @@ export function AddExpenseForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t.addExpense.expenseHead} required>
-          <select className={inputClass} value={expenseId} onChange={(e) => setExpenseId(e.target.value)}>
-            <option value="">{t.addExpense.selectExpenseHead}</option>
-            {expenseHeads.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.name}
-              </option>
-            ))}
-          </select>
+          <HeadSelect
+            options={toHeadOptions(expenseHeads)}
+            value={expenseId}
+            onChange={setExpenseId}
+            placeholder={t.addExpense.selectExpenseHead}
+          />
         </Field>
         <Field label={t.addExpense.amount} required>
           <input
@@ -153,14 +152,12 @@ export function AddExpenseForm({
         </Field>
         {method === 'bank' && (
           <Field label={t.addExpense.bankAccount} required>
-            <select className={inputClass} value={bankId} onChange={(e) => setBankId(e.target.value)}>
-              <option value="">{t.addExpense.selectBankAccount}</option>
-              {bankHeads.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.name}
-                </option>
-              ))}
-            </select>
+            <HeadSelect
+              options={toHeadOptions(bankHeads)}
+              value={bankId}
+              onChange={setBankId}
+              placeholder={t.addExpense.selectBankAccount}
+            />
           </Field>
         )}
 

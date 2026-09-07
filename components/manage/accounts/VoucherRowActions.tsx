@@ -7,6 +7,7 @@ import { Loader2, Pencil, Trash2, X, Lock } from 'lucide-react';
 import { confirmDialog } from '@/components/admin/confirm';
 import { Field, inputClass } from '@/components/manage/ui';
 import { Button } from '@/components/ui/Button';
+import { HeadSelect, toHeadOptions } from '@/components/manage/HeadSelect';
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { getDict } from '@/lib/dictionaries/areas/adminaccounting';
 
@@ -19,7 +20,7 @@ const TYPE_LABEL_KEY: Record<string, keyof ReturnType<typeof getDict>['typeLabel
   journal: 'journal',
 };
 
-export type VoucherHead = { id: string; name: string };
+export type VoucherHead = { id: string; name: string; code?: string | null; party_phone?: string | null; subtype?: string | null };
 
 export type VoucherLite = {
   id: string;
@@ -43,6 +44,9 @@ export function VoucherRowActions({ voucher, heads }: { voucher: VoucherLite; he
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [debitId, setDebitId] = useState(voucher.debit_account_id);
+  const [creditId, setCreditId] = useState(voucher.credit_account_id);
+  const headOpts = toHeadOptions(heads);
   const linked = voucher.linked;
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -177,18 +181,10 @@ export function VoucherRowActions({ voucher, heads }: { voucher: VoucherLite; he
                 </select>
               </Field>
               <Field label={tt.voucherRowActions.debitHead}>
-                <select name="debit_account_id" defaultValue={voucher.debit_account_id} className={inputClass} disabled={linked}>
-                  {heads.map((h) => (
-                    <option key={h.id} value={h.id}>{h.name}</option>
-                  ))}
-                </select>
+                <HeadSelect name="debit_account_id" options={headOpts} value={debitId} onChange={setDebitId} disabled={linked} />
               </Field>
               <Field label={tt.voucherRowActions.creditHead}>
-                <select name="credit_account_id" defaultValue={voucher.credit_account_id} className={inputClass} disabled={linked}>
-                  {heads.map((h) => (
-                    <option key={h.id} value={h.id}>{h.name}</option>
-                  ))}
-                </select>
+                <HeadSelect name="credit_account_id" options={headOpts} value={creditId} onChange={setCreditId} disabled={linked} />
               </Field>
               <Field label={tt.voucherRowActions.amount}>
                 <input name="amount" type="number" min={0} step="any" defaultValue={voucher.amount} className={inputClass} disabled={linked} />

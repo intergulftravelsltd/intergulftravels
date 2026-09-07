@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Loader2, ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight, BookOpen } from 'lucide-react';
 import { Card, Field, inputClass } from '@/components/manage/ui';
 import { Button } from '@/components/ui/Button';
+import { HeadSelect, toHeadOptions } from '@/components/manage/HeadSelect';
 import { BRANCHES } from '@/lib/management/branches';
 import { money } from '@/lib/management/format';
 import { useLocale } from '@/components/providers/LocaleProvider';
@@ -77,6 +78,11 @@ export function VoucherForm({ heads }: { heads: HeadOption[] }) {
   const expenseHeads = useMemo(() => heads.filter((h) => h.type === 'expense'), [heads]);
   const bankHeads = useMemo(() => heads.filter((h) => h.subtype === 'bank'), [heads]);
   const cashBankHeads = useMemo(() => heads.filter((h) => h.subtype === 'cash' || h.subtype === 'bank'), [heads]);
+  // Searchable option lists (name · code · mobile) for the pickers.
+  const incomeOpts = useMemo(() => toHeadOptions(incomeHeads), [incomeHeads]);
+  const expenseOpts = useMemo(() => toHeadOptions(expenseHeads), [expenseHeads]);
+  const cashBankOpts = useMemo(() => toHeadOptions(cashBankHeads), [cashBankHeads]);
+  const allOpts = useMemo(() => toHeadOptions(heads), [heads]);
 
   function reset() {
     setAmount('');
@@ -208,14 +214,12 @@ export function VoucherForm({ heads }: { heads: HeadOption[] }) {
           {mode === 'income' && (
             <>
               <Field label={t.voucherForm.incomeHead} required>
-                <select className={inputClass} value={incomeId} onChange={(e) => setIncomeId(e.target.value)}>
-                  <option value="">{t.voucherForm.selectIncomeHead}</option>
-                  {incomeHeads.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.name}
-                    </option>
-                  ))}
-                </select>
+                <HeadSelect
+                  options={incomeOpts}
+                  value={incomeId}
+                  onChange={setIncomeId}
+                  placeholder={t.voucherForm.selectIncomeHead}
+                />
               </Field>
               <MethodPair method={method} setMethod={setMethod} bankId={bankId} setBankId={setBankId} bankHeads={bankHeads} t={t} />
             </>
@@ -225,14 +229,12 @@ export function VoucherForm({ heads }: { heads: HeadOption[] }) {
           {mode === 'expense' && (
             <>
               <Field label={t.voucherForm.expenseHead} required>
-                <select className={inputClass} value={expenseId} onChange={(e) => setExpenseId(e.target.value)}>
-                  <option value="">{t.voucherForm.selectExpenseHead}</option>
-                  {expenseHeads.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.name}
-                    </option>
-                  ))}
-                </select>
+                <HeadSelect
+                  options={expenseOpts}
+                  value={expenseId}
+                  onChange={setExpenseId}
+                  placeholder={t.voucherForm.selectExpenseHead}
+                />
               </Field>
               <MethodPair method={method} setMethod={setMethod} bankId={bankId} setBankId={setBankId} bankHeads={bankHeads} t={t} payOut />
             </>
@@ -242,24 +244,10 @@ export function VoucherForm({ heads }: { heads: HeadOption[] }) {
           {mode === 'transfer' && (
             <>
               <Field label={t.voucherForm.fromAccount} required>
-                <select className={inputClass} value={fromId} onChange={(e) => setFromId(e.target.value)}>
-                  <option value="">{t.voucherForm.selectSource}</option>
-                  {cashBankHeads.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.name}
-                    </option>
-                  ))}
-                </select>
+                <HeadSelect options={cashBankOpts} value={fromId} onChange={setFromId} placeholder={t.voucherForm.selectSource} />
               </Field>
               <Field label={t.voucherForm.toAccount} required>
-                <select className={inputClass} value={toId} onChange={(e) => setToId(e.target.value)}>
-                  <option value="">{t.voucherForm.selectDestination}</option>
-                  {cashBankHeads.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.name}
-                    </option>
-                  ))}
-                </select>
+                <HeadSelect options={cashBankOpts} value={toId} onChange={setToId} placeholder={t.voucherForm.selectDestination} />
               </Field>
             </>
           )}
@@ -268,24 +256,10 @@ export function VoucherForm({ heads }: { heads: HeadOption[] }) {
           {mode === 'journal' && (
             <>
               <Field label={t.voucherForm.debitAccount} required>
-                <select className={inputClass} value={debitId} onChange={(e) => setDebitId(e.target.value)}>
-                  <option value="">{t.voucherForm.selectDebitHead}</option>
-                  {heads.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {headLabel(h)}
-                    </option>
-                  ))}
-                </select>
+                <HeadSelect options={allOpts} value={debitId} onChange={setDebitId} placeholder={t.voucherForm.selectDebitHead} />
               </Field>
               <Field label={t.voucherForm.creditAccount} required>
-                <select className={inputClass} value={creditId} onChange={(e) => setCreditId(e.target.value)}>
-                  <option value="">{t.voucherForm.selectCreditHead}</option>
-                  {heads.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {headLabel(h)}
-                    </option>
-                  ))}
-                </select>
+                <HeadSelect options={allOpts} value={creditId} onChange={setCreditId} placeholder={t.voucherForm.selectCreditHead} />
               </Field>
             </>
           )}
@@ -385,14 +359,12 @@ function MethodPair({
       </Field>
       {method === 'bank' && (
         <Field label={t.voucherForm.bankAccount} required>
-          <select className={inputClass} value={bankId} onChange={(e) => setBankId(e.target.value)}>
-            <option value="">{t.voucherForm.selectBankAccount}</option>
-            {bankHeads.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.name}
-              </option>
-            ))}
-          </select>
+          <HeadSelect
+            options={toHeadOptions(bankHeads)}
+            value={bankId}
+            onChange={setBankId}
+            placeholder={t.voucherForm.selectBankAccount}
+          />
           {bankHeads.length === 0 && (
             <span className="mt-1 block text-xs text-amber-600">
               {t.voucherForm.noBankYet}
