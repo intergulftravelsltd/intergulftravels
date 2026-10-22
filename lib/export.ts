@@ -2,7 +2,15 @@
 
 import { companyAddressLines, type CompanyProfile } from '@/lib/company-profile';
 import { formatPeriodLine, type StatementPeriod } from '@/lib/period';
-import { cellFlatText, cellIsNumeric, cellText, isRichCell, type Cell, type CellTone } from '@/lib/export-cells';
+import {
+  cellFlatText,
+  cellIsNumeric,
+  cellText,
+  isRichCell,
+  numericColumns,
+  type Cell,
+  type CellTone,
+} from '@/lib/export-cells';
 
 /* ------------------------------------------------------------------ *
  *  Shared export / print template.
@@ -361,6 +369,8 @@ export async function buildPdfDocument(opts: PdfOptions) {
   // ---- Table --------------------------------------------------------------
   const rows = opts.rows;
   const foot = opts.foot ?? null;
+  // Money / count columns are right-aligned as a whole (header, cells, totals).
+  const numCols = numericColumns(opts.headers, foot ? [...rows, foot] : rows);
   autoTable(doc, {
     head: [opts.headers.map(pdfText)],
     body: rows.map((r) => r.map(pdfCellText)),
@@ -368,12 +378,14 @@ export async function buildPdfDocument(opts: PdfOptions) {
     showFoot: 'lastPage',
     startY: tableStart,
     margin: { left: M, right: M, top: 14, bottom: 16 },
-    styles: { fontSize: 8, cellPadding: 2 },
+    styles: { fontSize: 8, cellPadding: 2, valign: 'middle' },
     headStyles: { fillColor: [14, 124, 90], textColor: 255 },
     footStyles: { fillColor: [241, 239, 230], textColor: 20, fontStyle: 'bold', fontSize: 8.5 },
     alternateRowStyles: { fillColor: [246, 243, 234] },
     didParseCell: (data) => {
-      // Right-align money/counts; apply RichCell bold + tone.
+      // Whole numeric columns right-aligned (head, body and foot alike).
+      if (numCols[data.column.index]) data.cell.styles.halign = 'right';
+      // RichCell bold + tone.
       const src =
         data.section === 'body'
           ? rows[data.row.index]?.[data.column.index]
@@ -381,7 +393,6 @@ export async function buildPdfDocument(opts: PdfOptions) {
             ? foot?.[data.column.index]
             : undefined;
       if (src === undefined) return;
-      if (cellIsNumeric(src)) data.cell.styles.halign = 'right';
       if (isRichCell(src)) {
         if (src.bold) data.cell.styles.fontStyle = 'bold';
         if (src.tone) data.cell.styles.textColor = TONE_RGB[src.tone];
@@ -507,10 +518,14 @@ function signatureBlockHtml(image: string | null | undefined, name: string | nul
   }<p class="lbl">${escapeHtml(label)}</p></div></div>`;
 }
 
-function printCellHtml(c: Cell, extraClass = ''): string {
+/**
+ * One <td>: `numCol` right-aligns the whole column (so text in a money column
+ * sits flush with the figures), `n` marks a genuinely numeric cell (no wrap,
+ * tabular figures).
+ */
+function printCellHtml(c: Cell, numCol = false): string {
   const text = cellText(c);
-  const num = cellIsNumeric(c);
-  const cls = [num ? 'num' : '', extraClass].filter(Boolean).join(' ');
+  const cls = [numCol ? 'num' : '', cellIsNumeric(c) ? 'n' : ''].filter(Boolean).join(' ');
   let inner = escapeHtml(text);
   if (isRichCell(c)) {
     const spanCls = [c.bold ? 'bold' : '', c.tone ? `tone-${c.tone}` : ''].filter(Boolean).join(' ');
@@ -534,11 +549,13 @@ export function buildPrintHtml(opts: PrintOptions): string {
   const company = opts.company ?? null;
   const logo = company?.logo ? absoluteUrl(company.logo) : '';
 
-  const head = opts.headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('');
-  const body = opts.rows.map((r) => `<tr>${r.map((c) => printCellHtml(c)).join('')}</tr>`).join('');
+  // Money / count columns are right-aligned as a whole (header, cells, totals).
+  const numCols = numericColumns(opts.headers, opts.foot ? [...opts.rows, opts.foot] : opts.rows);
+  const head = opts.headers.map((h, i) => `<th${numCols[i] ? ' class="num"' : ''}>${escapeHtml(h)}</th>`).join('');
+  const body = opts.rows.map((r) => `<tr>${r.map((c, i) => printCellHtml(c, numCols[i])).join('')}</tr>`).join('');
   // The totals line lives in <tbody> (not <tfoot>) so browsers print it once,
   // at the very end, instead of repeating it on every page.
-  const foot = opts.foot ? `<tr class="total">${opts.foot.map((c) => printCellHtml(c)).join('')}</tr>` : '';
+  const foot = opts.foot ? `<tr class="total">${opts.foot.map((c, i) => printCellHtml(c, numCols[i])).join('')}</tr>` : '';
 
   return `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><title>${escapeHtml(opts.title)}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -563,9 +580,10 @@ export function buildPrintHtml(opts: PrintOptions): string {
       table{width:100%;border-collapse:collapse;font-size:11px;background:transparent}
       thead{display:table-header-group}
       tr{page-break-inside:avoid}
-      th,td{border:1px solid #cfd8d3;padding:5px 7px;text-align:left;vertical-align:top}
+      th,td{border:1px solid #cfd8d3;padding:5px 7px;text-align:left;vertical-align:middle}
       th{background:#0e7c5a;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-      td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+      th.num,td.num{text-align:right}
+      td.n{white-space:nowrap;font-variant-numeric:tabular-nums}
       tbody tr:nth-child(even) td{background:rgba(246,243,234,.7)}
       tbody tr.total td{border-top:3px double #0a1410;border-bottom:2px solid #0a1410;background:#f1efe6;font-weight:700;font-size:11.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
       .bold{font-weight:700}

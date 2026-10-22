@@ -21,6 +21,10 @@ export const CHANGELOG: ChangelogEntry[] = [
         en: 'Printed / exported passenger and pilgrim lists are now grouped: each group leader first, their members right under them, the next group after that, and everyone who is not in a group at the end — so a list reads at a glance.',
         bn: 'প্রিন্ট / এক্সপোর্ট করা যাত্রী ও হাজী তালিকা এখন গ্রুপ অনুযায়ী: আগে গ্রুপ লিডার, ঠিক নিচে তার সদস্যরা, তারপর পরের গ্রুপ, আর যারা কোনো গ্রুপে নেই তারা সবার শেষে — এক নজরে পড়া যায়।',
       },
+      {
+        en: 'In those prints the leader’s row now carries the group’s paid and net due ("Group total", e.g. 12,25,000 paid / 2,15,000 due) and members show "Group with <leader>" with a dash, so the Total line is exact; money columns are right-aligned as a whole (header, text and figures) and rows are vertically centred.',
+        bn: 'ওই প্রিন্টে লিডারের সারিতে এখন গ্রুপের মোট পরিশোধ ও নিট বকেয়া ("গ্রুপ মোট", যেমন ১২,২৫,০০০ পরিশোধ / ২,১৫,০০০ বকেয়া), সদস্যদের সারিতে "গ্রুপ: <লিডার>" ও ড্যাশ — তাই মোট লাইন একদম সঠিক; টাকার কলাম (হেডার, লেখা ও সংখ্যা) পুরোটা ডানে সারিবদ্ধ, সারিগুলো মাঝ বরাবর।',
+      },
     ],
   },
   {

@@ -194,14 +194,15 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
   });
   const paged = paginate(sorted, parsePaging(searchParams));
 
-  // Printed / exported list: a group member carries "Group with <head>" under
-  // Paid and a bold amber name, the head a bold brand name with the member
-  // count, and a Group Fund pilgrim the leader's name — so single and grouped
-  // pilgrims read apart at a glance. Own figures per row, so the totals line
-  // under the table adds up.
+  // Printed / exported list, same money model as the on-screen table: the
+  // group leader's row carries the GROUP's paid and net due ("Group total"),
+  // each member shows "Group with <leader>" and a dash (their money sits on
+  // the leader's line, so the totals under the table stay exact), and a
+  // Group Fund pilgrim shows the fund leader's name.
   const groupWith = (head: string) => (locale === 'bn' ? `গ্রুপ: ${head}` : `Group with ${head}`);
   const fundWith = (leader: string) => (locale === 'bn' ? `গ্রুপ ফান্ড · ${leader}` : `Group Fund · ${leader}`);
   const headNote = (n: number) => (locale === 'bn' ? `গ্রুপ প্রধান · ${n} জন` : `Group head · ${n} members`);
+  const groupTotal = locale === 'bn' ? 'গ্রুপ মোট' : 'Group total';
   // Printed order: each group as a block (leader, then members), singles last.
   const printRows = orderByGroup(sorted, (r) => r.p.id, (r) => r.p.group_head_id, groupMembersByHead);
   const exportRows: Cell[][] = printRows.map((r) => {
@@ -217,11 +218,18 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
     const paidCell: Cell = fund
       ? { v: fundWith(fund.name), bold: true, tone: 'amber' }
       : headName
-        ? r.paid > 0
-          ? { v: money(r.paid, false), bold: true, tone: 'amber', note: groupWith(headName) }
-          : { v: groupWith(headName), bold: true, tone: 'amber' }
-        : money(r.paid, false);
-    const dueCell: Cell = fund ? { v: '—', tone: 'muted' } : money(Math.max(0, r.due), false);
+        ? { v: groupWith(headName), bold: true, tone: 'amber' }
+        : members
+          ? { v: money(groupPaidOf(r.p.id), false), bold: true, note: groupTotal }
+          : money(r.paid, false);
+    const groupDue = members ? groupDueOf(r.p.id) : 0;
+    const dueCell: Cell = fund
+      ? { v: '—', tone: 'muted' }
+      : headName
+        ? { v: '—', tone: 'muted' }
+        : members
+          ? { v: money(groupDue, false), bold: true, tone: groupDue > 0 ? 'red' : undefined, note: groupTotal }
+          : money(Math.max(0, r.due), false);
     return [
       r.p.tracking_no ?? '',
       nameCell,

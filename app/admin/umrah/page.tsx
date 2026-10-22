@@ -128,14 +128,15 @@ export default async function UmrahPassengersPage({
   }, 0);
   const expiringSoon = all.filter((r) => isExpiringSoon(r.passport_expiry) && r.status === 'active').length;
 
-  // Printed / exported list: a group member carries "Group with <head>" under
-  // Paid and a bold amber name, the head a bold brand name with the member
-  // count, and a Group Fund passenger the leader's name — so single and
-  // grouped passengers read apart at a glance. Own figures per row, so the
-  // totals line under the table adds up.
+  // Printed / exported list, same money model as the on-screen table: the
+  // group leader's row carries the GROUP's paid and net due ("Group total"),
+  // each member shows "Group with <leader>" and a dash (their money sits on
+  // the leader's line, so the totals under the table stay exact), and a
+  // Group Fund passenger shows the fund leader's name.
   const groupWith = (head: string) => (locale === 'bn' ? `গ্রুপ: ${head}` : `Group with ${head}`);
   const fundWith = (leader: string) => (locale === 'bn' ? `গ্রুপ ফান্ড · ${leader}` : `Group Fund · ${leader}`);
   const headNote = (n: number) => (locale === 'bn' ? `গ্রুপ প্রধান · ${n} জন` : `Group head · ${n} members`);
+  const groupTotal = locale === 'bn' ? 'গ্রুপ মোট' : 'Group total';
   // Printed order: each group as a block (leader, then members), singles last.
   const printRows = orderByGroup(rows, (r) => r.id, (r) => r.group_head_id, groupMembersByHead);
   const exportRows: Cell[][] = printRows.map((r) => {
@@ -151,11 +152,18 @@ export default async function UmrahPassengersPage({
     const paidCell: Cell = fund
       ? { v: fundWith(fund.name), bold: true, tone: 'amber' }
       : headName
-        ? r.paid > 0
-          ? { v: money(r.paid, false), bold: true, tone: 'amber', note: groupWith(headName) }
-          : { v: groupWith(headName), bold: true, tone: 'amber' }
-        : money(r.paid, false);
-    const dueCell: Cell = fund ? { v: '—', tone: 'muted' } : money(r.due, false);
+        ? { v: groupWith(headName), bold: true, tone: 'amber' }
+        : members
+          ? { v: money(groupPaidOf(r.id), false), bold: true, note: groupTotal }
+          : money(r.paid, false);
+    const groupDue = members ? groupDueOf(r.id) : 0;
+    const dueCell: Cell = fund
+      ? { v: '—', tone: 'muted' }
+      : headName
+        ? { v: '—', tone: 'muted' }
+        : members
+          ? { v: money(groupDue, false), bold: true, tone: groupDue > 0 ? 'red' : undefined, note: groupTotal }
+          : money(r.due, false);
     return [
       nameCell,
       r.passport_no ?? '',

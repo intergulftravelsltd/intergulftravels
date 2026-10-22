@@ -69,6 +69,27 @@ export function cellIsNumeric(c: Cell): boolean {
 }
 
 /**
+ * Which columns are money / count columns: the whole column (header, every
+ * cell, the totals line) is then right-aligned as one block, so a text cell
+ * such as "Group with …" sits flush with the figures above and below it.
+ * A column counts as numeric when ≥ 60 % of its non-empty cells are numbers.
+ */
+export function numericColumns(headers: string[], rows: Cell[][]): boolean[] {
+  return headers.map((_, i) => {
+    let numeric = 0;
+    let filled = 0;
+    for (const r of rows) {
+      const c = r[i];
+      const text = cellText(c).trim();
+      if (!text || text === '—') continue;
+      filled++;
+      if (cellNumber(c) !== null) numeric++;
+    }
+    return filled > 0 && numeric / filled >= 0.6;
+  });
+}
+
+/**
  * The totals line printed under a list: one sum per header named in
  * `totalsFor` (matched by header text so a Columns-picker reorder or a
  * dropped column never breaks it), the label in the first other column.
