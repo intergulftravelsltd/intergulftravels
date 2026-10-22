@@ -1,4 +1,4 @@
-import { Printer } from 'lucide-react';
+import { Printer, Search } from 'lucide-react';
 import { PageHeader, Card, Badge, EmptyState, TableWrap, thClass, tdClass } from '@/components/manage/ui';
 import { ExportBar } from '@/components/manage/ExportBar';
 import { DateRangeFilter } from '@/components/manage/DateRangeFilter';
@@ -36,11 +36,22 @@ const TYPE_TONE: Record<string, 'emerald' | 'gold' | 'red' | 'blue' | 'slate'> =
   journal: 'slate',
 };
 
-type SP = { from?: string; to?: string; branch?: string; type?: string; range?: string; page?: string; per?: string };
+type SP = {
+  from?: string;
+  to?: string;
+  branch?: string;
+  type?: string;
+  range?: string;
+  q?: string;
+  page?: string;
+  per?: string;
+};
 
-const labelStyle = 'mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted';
 const ctrl =
-  'w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-ink outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20';
+  'h-10 rounded-xl border border-border bg-card px-3 py-2 text-sm text-ink outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20';
+
+/** Digits only — so "01712-823676" finds a head stored as "01712823676". */
+const digits = (s: string | null | undefined) => (s ?? '').replace(/\D/g, '');
 
 export default async function VouchersPage({ searchParams }: { searchParams: SP }) {
   const locale = getLocale();
@@ -53,12 +64,34 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
     limit: 1000,
   };
 
-  const [heads, txns, scope] = await Promise.all([
+  const [heads, allTxns, scope] = await Promise.all([
     loadActiveHeads(),
     loadTransactions(filters),
     getStaffScope(),
   ]);
   const map = headMap(heads);
+
+  // Search: voucher no, manual no, narration, either head's name, or a
+  // party's mobile number (digits compared, so dashes/spaces don't matter).
+  const q = (searchParams.q ?? '').trim();
+  const qLower = q.toLowerCase();
+  const qDigits = digits(q);
+  const txns = q
+    ? allTxns.filter((t) => {
+        const dr = map.get(t.debit_account_id);
+        const cr = map.get(t.credit_account_id);
+        const text = [t.voucher_no, t.manual_ref, t.narration, dr?.name, cr?.name, dr?.code, cr?.code]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        if (text.includes(qLower)) return true;
+        if (qDigits.length >= 4) {
+          const phones = [dr?.party_phone, cr?.party_phone].map(digits).filter(Boolean);
+          if (phones.some((p) => p.includes(qDigits))) return true;
+        }
+        return false;
+      })
+    : allTxns;
   const headOptions = heads.map((h) => ({
     id: h.id,
     name: h.name,
@@ -113,59 +146,56 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
         }
       />
 
-      <Card className="mb-4">
-        <DateRangeFilter from={searchParams.from ?? ''} to={searchParams.to ?? ''} range={searchParams.range ?? ''} />
-      </Card>
-
-      {/* Filters */}
-      <Card className="mb-5">
-        <form method="get" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <label>
-            <span className={labelStyle}>{tt.vouchers.from}</span>
-            <input type="date" name="from" defaultValue={searchParams.from} className={ctrl} />
+      {/* One filter row: date range · search · type · (branch) · apply / reset.
+          The date pill writes from/to/range into the URL itself; the form
+          carries them as hidden fields so a search or type change keeps the
+          chosen period. */}
+      <Card className="mb-5 !p-3">
+        <form method="get" className="flex flex-wrap items-center gap-2">
+          <DateRangeFilter from={searchParams.from ?? ''} to={searchParams.to ?? ''} range={searchParams.range ?? ''} />
+          {searchParams.from && <input type="hidden" name="from" value={searchParams.from} />}
+          {searchParams.to && <input type="hidden" name="to" value={searchParams.to} />}
+          {searchParams.range && <input type="hidden" name="range" value={searchParams.range} />}
+          <label className="relative min-w-[16rem] flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+            <input
+              type="search"
+              name="q"
+              defaultValue={q}
+              placeholder={tt.vouchers.searchPlaceholder}
+              className={`${ctrl} w-full pl-9`}
+            />
           </label>
-          <label>
-            <span className={labelStyle}>{tt.vouchers.to}</span>
-            <input type="date" name="to" defaultValue={searchParams.to} className={ctrl} />
-          </label>
+          <select name="type" defaultValue={searchParams.type ?? 'all'} className={ctrl} aria-label={tt.vouchers.typeFilter}>
+            <option value="all">{tt.vouchers.allTypes}</option>
+            {TYPES.map((t) => (
+              <option key={t} value={t} className="capitalize">
+                {tt.typeLabels[TYPE_LABEL_KEY[t]] ?? t}
+              </option>
+            ))}
+          </select>
           {!scope.branch && (
-            <label>
-              <span className={labelStyle}>{tt.common.branch}</span>
-              <select name="branch" defaultValue={searchParams.branch ?? 'all'} className={ctrl}>
-                <option value="all">{tt.common.allBranches}</option>
-                {BRANCHES.map((b) => (
-                  <option key={b.value} value={b.value}>
-                    {b.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <label>
-            <span className={labelStyle}>{tt.vouchers.typeFilter}</span>
-            <select name="type" defaultValue={searchParams.type ?? 'all'} className={ctrl}>
-              <option value="all">{tt.vouchers.allTypes}</option>
-              {TYPES.map((t) => (
-                <option key={t} value={t} className="capitalize">
-                  {tt.typeLabels[TYPE_LABEL_KEY[t]] ?? t}
+            <select name="branch" defaultValue={searchParams.branch ?? 'all'} className={ctrl} aria-label={tt.common.branch}>
+              <option value="all">{tt.common.allBranches}</option>
+              {BRANCHES.map((b) => (
+                <option key={b.value} value={b.value}>
+                  {b.label}
                 </option>
               ))}
             </select>
-          </label>
-          <div className="flex items-end gap-2">
-            <button
-              type="submit"
-              className="h-[42px] flex-1 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700"
-            >
-              {tt.vouchers.apply}
-            </button>
-            <a
-              href={localizedPath(locale, '/admin/accounts/vouchers')}
-              className="grid h-[42px] place-items-center rounded-xl border border-border px-4 text-sm font-semibold text-ink-muted transition hover:border-brand-600/40"
-            >
-              {tt.vouchers.reset}
-            </a>
-          </div>
+          )}
+          <button
+            type="submit"
+            className="h-10 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700"
+          >
+            {tt.vouchers.apply}
+          </button>
+          <a
+            href={localizedPath(locale, '/admin/accounts/vouchers')}
+            className="grid h-10 place-items-center rounded-xl border border-border px-4 text-sm font-semibold text-ink-muted transition hover:border-brand-600/40"
+          >
+            {tt.vouchers.reset}
+          </a>
         </form>
       </Card>
 
@@ -260,5 +290,6 @@ function filterSubtitle(sp: SP, tt: ReturnType<typeof getDict>): string {
     const label = tt.typeLabels[TYPE_LABEL_KEY[sp.type]] ?? sp.type;
     parts.push(`${tt.vouchers.subType}: ${label}`);
   }
+  if (sp.q?.trim()) parts.push(`${tt.vouchers.subSearch}: ${sp.q.trim()}`);
   return parts.length ? parts.join(' · ') : tt.vouchers.allVouchers;
 }

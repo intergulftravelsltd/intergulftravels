@@ -14,6 +14,16 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.6.4',
+    date: '2026-10-22',
+    items: [
+      {
+        en: 'Vouchers: a search box — voucher no, manual no, mobile number, head name or narration — and the whole filter (date range, search, type, branch, Apply / Reset) now sits in one row instead of two stacked cards.',
+        bn: 'ভাউচার: সার্চ বক্স — ভাউচার নং, ম্যানুয়াল নং, মোবাইল নম্বর, খাতের নাম বা বিবরণ — আর পুরো ফিল্টার (সময়কাল, সার্চ, ধরন, শাখা, প্রয়োগ / রিসেট) এখন দুটি আলাদা কার্ডের বদলে এক লাইনে।',
+      },
+    ],
+  },
+  {
     version: '1.6.3',
     date: '2026-10-22',
     items: [
