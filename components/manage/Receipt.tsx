@@ -47,10 +47,16 @@ export type ReceiptData = {
     voucher: string;
     manualRef?: string;
     charge: string;
+    /** Discount granted on this line (DV vouchers / adjustments). */
+    discount?: string;
     paid: string;
     balance: string;
   }[];
   totalCharge?: string;
+  /** Discounts granted ('' when none). */
+  totalDiscount?: string;
+  /** Total package minus discounts. */
+  payable?: string;
   /** "Statement for the period: … to …" (statements only). */
   period?: string | null;
   /** When present, the receipt is a voucher receipt showing the double entry. */
@@ -93,9 +99,12 @@ const L = {
     summary: 'Summary',
     colParticulars: 'Particulars / Narration',
     colCharge: 'Charge (৳)',
+    colDiscount: 'Discount (৳)',
     colPaidLedger: 'Paid (৳)',
     colBalance: 'Balance (৳)',
     totalPackage: 'Total package',
+    discountLabel: 'Discount',
+    payable: 'Payable after discount',
     against: 'Against',
     nil: 'Nil',
   },
@@ -134,9 +143,12 @@ const L = {
     summary: 'সারসংক্ষেপ',
     colParticulars: 'বিবরণ',
     colCharge: 'চার্জ (৳)',
+    colDiscount: 'ছাড় (৳)',
     colPaidLedger: 'পরিশোধ (৳)',
     colBalance: 'ব্যালেন্স (৳)',
     totalPackage: 'মোট প্যাকেজ',
+    discountLabel: 'ছাড়',
+    payable: 'ছাড়ের পর দেয়',
     against: 'বিপরীতে',
     nil: 'শূন্য',
   },
@@ -163,6 +175,8 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
     { label: t.branch, value: data.branch },
   ];
   const dueZero = isZero(data.due);
+  // Discounts get their own column + summary lines only when there are any.
+  const hasDiscount = !!data.totalDiscount || !!data.ledger?.some((r) => r.discount);
 
   return (
     <ReceiptFrame logo={data.company.logo} locale={locale}>
@@ -196,6 +210,12 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
               heading={t.summary}
               lines={[
                 { label: t.totalPackage, value: `৳ ${data.totalCharge ?? '0'}` },
+                ...(hasDiscount && data.totalDiscount
+                  ? [
+                      { label: t.discountLabel, value: `− ৳ ${data.totalDiscount}` },
+                      { label: t.payable, value: `৳ ${data.payable ?? data.totalCharge ?? '0'}` },
+                    ]
+                  : []),
                 { label: t.totalPaid, value: `৳ ${data.paid}` },
                 { label: t.balanceDue, value: dueZero ? t.nil : `৳ ${data.due}`, total: true, tone: dueZero ? 'ok' : 'warn' },
               ]}
@@ -221,6 +241,7 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
                   <th className={RT.th}>{t.colDate}</th>
                   <th className={RT.th}>{t.colParticulars}</th>
                   <th className={RT.thRight}>{t.colCharge}</th>
+                  {hasDiscount && <th className={RT.thRight}>{t.colDiscount}</th>}
                   <th className={RT.thRight}>{t.colPaidLedger}</th>
                   <th className={RT.thRight}>{t.colBalance}</th>
                 </tr>
@@ -250,6 +271,7 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
                       )}
                     </td>
                     <td className={RT.tdRight}>{r.charge}</td>
+                    {hasDiscount && <td className={`${RT.tdRight} text-amber-700`}>{r.discount ?? ''}</td>}
                     <td className={RT.tdRight}>{r.paid}</td>
                     <td className={`${RT.tdRight} font-medium text-gray-900`}>{r.balance}</td>
                   </tr>
@@ -261,6 +283,7 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
                     {t.grandTotal}
                   </td>
                   <td className={RT.totalRight}>{data.totalCharge}</td>
+                  {hasDiscount && <td className={`${RT.totalRight} text-amber-700`}>{data.totalDiscount || '0'}</td>}
                   <td className={RT.totalRight}>{data.paid}</td>
                   <td className={`${RT.totalRight} ${dueZero ? 'text-emerald-800' : 'text-red-600'}`}>{data.due}</td>
                 </tr>

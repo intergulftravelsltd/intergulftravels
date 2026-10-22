@@ -1,8 +1,9 @@
-import { Printer, Search } from 'lucide-react';
+import { Printer } from 'lucide-react';
 import { PageHeader, Card, Badge, EmptyState, TableWrap, thClass, tdClass } from '@/components/manage/ui';
 import { ExportBar } from '@/components/manage/ExportBar';
 import { DateRangeFilter } from '@/components/manage/DateRangeFilter';
 import { VoucherRowActions } from '@/components/manage/accounts/VoucherRowActions';
+import { VoucherSearch } from '@/components/manage/accounts/VoucherSearch';
 import { loadActiveHeads, loadTransactions, headMap, headName } from '@/lib/management/accounts-data';
 import { getStaffScope } from '@/lib/management/scope';
 import { BRANCHES, branchShort } from '@/lib/management/branches';
@@ -156,16 +157,7 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
           {searchParams.from && <input type="hidden" name="from" value={searchParams.from} />}
           {searchParams.to && <input type="hidden" name="to" value={searchParams.to} />}
           {searchParams.range && <input type="hidden" name="range" value={searchParams.range} />}
-          <label className="relative min-w-[16rem] flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
-            <input
-              type="search"
-              name="q"
-              defaultValue={q}
-              placeholder={tt.vouchers.searchPlaceholder}
-              className={`${ctrl} w-full pl-9`}
-            />
-          </label>
+          <VoucherSearch initial={q} placeholder={tt.vouchers.searchPlaceholder} />
           <select name="type" defaultValue={searchParams.type ?? 'all'} className={ctrl} aria-label={tt.vouchers.typeFilter}>
             <option value="all">{tt.vouchers.allTypes}</option>
             {TYPES.map((t) => (

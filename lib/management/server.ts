@@ -170,6 +170,28 @@ export const INCOME_HEAD = {
   umrah: 'umrah_package_income',
 } as const;
 
+/** Built-in expense head customer discounts are booked to (migration 0014). */
+export const DISCOUNT_HEAD_KEY = 'discount_allowed';
+
+/**
+ * The branch's "Discount Allowed" expense head, created on demand (and the
+ * head-office template with it) so discounts never fall back to reducing
+ * package income. Returns null only if the insert fails.
+ */
+export async function getDiscountHead(branch = 'general') {
+  const found = await getSystemHead(DISCOUNT_HEAD_KEY, branch);
+  if (found) return found;
+  const db = mgmtDb();
+  const base = { code: '5006', name: 'Discount Allowed', type: 'expense', subtype: 'expense', is_system: true, branch };
+  let { data } = await db.from('account_heads').insert({ ...base, system_key: DISCOUNT_HEAD_KEY }).select('*').single();
+  if (!data) {
+    // pre-0007 schema without system_key — the name fallback still resolves it
+    ({ data } = await db.from('account_heads').insert(base).select('*').single());
+  }
+  if (!data) console.error('[discount] could not create the Discount Allowed head for', branch);
+  return data ?? null;
+}
+
 type PostTx = {
   date?: string;
   type?: 'receipt' | 'payment' | 'contra' | 'journal' | 'expense' | 'income';
@@ -306,9 +328,11 @@ export async function recordPayment(p: {
 }
 
 /**
- * Give a party a custom discount: Dr Package Income, Cr Customer head — the
- * pilgrim's due drops by exactly the entered amount and the discount shows as
- * its own line in the ledger/statement. Pure double-entry, no schema change.
+ * Give a party a custom discount: Dr Discount Allowed (expense), Cr Customer
+ * head — the pilgrim's due drops by exactly the entered amount, the discount
+ * shows as its own line in the ledger/statement and lands under Expenses
+ * instead of quietly reducing package income (migration 0014 moved the old
+ * ones). Pure double-entry.
  */
 export async function recordDiscount(p: {
   packageType: 'hajj' | 'umrah';
@@ -321,13 +345,14 @@ export async function recordDiscount(p: {
   ref_id?: string | null;
   created_by?: string | null;
 }) {
-  const income = await getSystemHead(INCOME_HEAD[p.packageType], p.branch ?? 'general');
-  if (!income) throw new Error('Package income head not found. Run the seed migration.');
+  const branch = p.branch ?? 'general';
+  const debitHead = (await getDiscountHead(branch)) ?? (await getSystemHead(INCOME_HEAD[p.packageType], branch));
+  if (!debitHead) throw new Error('Discount head not found. Run the seed migration.');
   const voucher_no = await nextVoucherNo('DV');
   return postTransaction({
     date: p.date,
     type: 'journal',
-    debit_account_id: income.id,
+    debit_account_id: debitHead.id,
     credit_account_id: p.account_head_id,
     amount: p.amount,
     narration: p.narration ?? 'Discount',

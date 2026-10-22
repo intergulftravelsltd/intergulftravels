@@ -126,6 +126,9 @@ export function GroupLedgerCard({
               </td>
               <td className={`${tdClass} text-right`}>
                 <Money value={m.paid} />
+                {m.discount > 0 && (
+                  <span className="block text-xs text-amber-600">− {money(m.discount)} {locale === 'bn' ? 'ছাড়' : 'discount'}</span>
+                )}
               </td>
               <td className={`${tdClass} text-right`}>
                 <Money value={m.due} className={m.due > 0 ? 'font-semibold text-red-600' : ''} />
@@ -146,6 +149,11 @@ export function GroupLedgerCard({
             </td>
             <td className={`${tdClass} text-right`}>
               <Money value={group.totalPaid} className="text-emerald-700" />
+              {group.totalDiscount > 0 && (
+                <span className="block text-xs font-medium text-amber-600">
+                  − {money(group.totalDiscount)} {locale === 'bn' ? 'ছাড়' : 'discount'}
+                </span>
+              )}
             </td>
             <td className={`${tdClass} text-right`}>
               <Money value={group.totalDue} className={group.totalDue > 0 ? 'text-red-600' : ''} />
@@ -180,7 +188,16 @@ export function GroupLedgerCard({
                   </td>
                   <td className={`${tdClass} text-right`}>{line.charge ? <Money value={line.charge} /> : ''}</td>
                   <td className={`${tdClass} text-right`}>
-                    {line.paid ? <Money value={line.paid} className="text-emerald-700" /> : ''}
+                    {line.paid ? (
+                      <>
+                        <Money value={line.paid} className={line.kind === 'discount' ? 'text-amber-600' : 'text-emerald-700'} />
+                        {line.kind === 'discount' && (
+                          <span className="block text-xs text-amber-600">{locale === 'bn' ? 'ছাড়' : 'discount'}</span>
+                        )}
+                      </>
+                    ) : (
+                      ''
+                    )}
                   </td>
                   <td className={`${tdClass} text-right font-medium`}>
                     <Money value={line.balance} />

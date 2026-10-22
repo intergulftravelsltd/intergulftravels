@@ -20,7 +20,10 @@ export type GroupMemberLedger = {
   ref: string;
   isHead: boolean;
   charged: number;
+  /** Money actually received (discounts excluded). */
   paid: number;
+  /** Discounts granted to this member. */
+  discount: number;
   due: number;
   /** A package is assigned but no package-charge journal was ever posted (due reads 0). */
   chargeMissing: boolean;
@@ -32,6 +35,8 @@ export type GroupLedgerLine = {
   kind: 'charge' | 'discount' | 'payment';
   /** Bold line: member name for charges/discounts, Cash/Bank label for payments. */
   member: string;
+  /** The member a charge / discount belongs to (null for payments). */
+  memberId: string | null;
   particulars: string;
   voucher: string;
   /** Hand-written voucher / receipt number (0011). */
@@ -51,6 +56,9 @@ export type GroupLedger = {
   /** Charges first, then discounts & payments in date order, running balance. */
   ledger: GroupLedgerLine[];
   totalCharged: number;
+  /** Discounts granted across the group. */
+  totalDiscount: number;
+  /** Money actually received across the group (discounts excluded). */
   totalPaid: number;
   /** Net group due: one member's advance offsets another's arrears. */
   totalDue: number;
@@ -127,15 +135,26 @@ export async function loadGroupLedger(table: GroupTable, personId: string): Prom
     // whose package was assigned but never charged.
     const chargedIds = new Set(((chargedRes.data ?? []) as { ref_id: string | null }[]).map((t) => t.ref_id));
 
+    // A customer head's credit_total mixes money received with discounts
+    // granted; the statement lines know which is which.
+    const discountOf = new Map<string, number>();
+    for (const line of ledger) {
+      if (line.kind === 'discount' && line.memberId) {
+        discountOf.set(line.memberId, (discountOf.get(line.memberId) ?? 0) + line.paid);
+      }
+    }
+
     const toLedger = (r: Row): GroupMemberLedger => {
       const acc = r.account_head_id ? heads.get(r.account_head_id) : undefined;
+      const discount = discountOf.get(r.id) ?? 0;
       return {
         id: r.id,
         name: r.name,
         ref: r.tracking_no ?? r.passport_no ?? '',
         isHead: r.id === headId,
         charged: acc ? Number(acc.debit_total) : 0,
-        paid: acc ? Number(acc.credit_total) : 0,
+        paid: acc ? Math.max(0, Number(acc.credit_total) - discount) : 0,
+        discount,
         due: acc ? Math.max(0, naturalBalance(acc)) : 0,
         chargeMissing: !!r.package_id && !chargedIds.has(r.id),
       };
@@ -161,6 +180,7 @@ export async function loadGroupLedger(table: GroupTable, personId: string): Prom
       members,
       ledger,
       totalCharged: members.reduce((s, m) => s + m.charged, 0),
+      totalDiscount: members.reduce((s, m) => s + m.discount, 0),
       totalPaid: members.reduce((s, m) => s + m.paid, 0),
       totalDue,
     };
@@ -242,6 +262,7 @@ async function loadCombinedLedger(rows: Row[]): Promise<GroupLedgerLine[]> {
         date: fmtDate(t.date),
         kind,
         member: label,
+        memberId: kind === 'payment' ? null : (memberRow?.id ?? null),
         particulars,
         voucher: t.voucher_no || '',
         manualRef: t.manual_ref || '',

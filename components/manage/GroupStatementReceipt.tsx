@@ -47,6 +47,11 @@ export type GroupStatementData = {
     balance: string;
   }[];
   totalCharged: string;
+  /** Discounts granted across the group ('' when none). */
+  totalDiscount?: string;
+  /** Total package minus discounts. */
+  payable?: string;
+  /** Money actually received (discounts excluded). */
   totalPaid: string;
   totalDue: string;
   /** "৳1,60,000 × 3 persons" helper line when every member has the same package. */
@@ -70,6 +75,9 @@ const L = {
     packagePrice: 'Package price',
     totalPackage: 'Total package',
     times: (n: number, price: string) => `${n} × ৳ ${price}`,
+    discountLabel: 'Discount',
+    payable: 'Payable after discount',
+    colDiscount: 'Discount (৳)',
     totalPaid: 'Total paid',
     totalDue: 'Total due',
     nil: 'Nil',
@@ -102,6 +110,9 @@ const L = {
     packagePrice: 'প্যাকেজের দাম',
     totalPackage: 'মোট প্যাকেজ',
     times: (n: number, price: string) => `${n} × ৳ ${price}`,
+    discountLabel: 'ছাড়',
+    payable: 'ছাড়ের পর দেয়',
+    colDiscount: 'ছাড় (৳)',
     totalPaid: 'মোট পরিশোধ',
     totalDue: 'মোট বকেয়া',
     nil: 'শূন্য',
@@ -147,6 +158,8 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
   const movements = data.ledger.filter((l) => l.kind !== 'charge');
   const openingDate = charges[0]?.date ?? data.ledger[0]?.date ?? '';
   const openingDetail = data.perHeadLine || t.persons(n);
+  // Discounts get their own column (and summary lines) only when there are any.
+  const hasDiscount = !!data.totalDiscount || movements.some((l) => l.kind === 'discount');
 
   return (
     <ReceiptFrame logo={data.company.logo} locale={locale}>
@@ -175,6 +188,12 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
           lines={[
             ...(data.perHead ? [{ label: t.packagePrice, value: `৳ ${data.perHead}` }] : []),
             { label: data.perHead ? t.times(n, data.perHead) : t.totalPackage, value: `৳ ${data.totalCharged}` },
+            ...(hasDiscount && data.totalDiscount
+              ? [
+                  { label: t.discountLabel, value: `− ৳ ${data.totalDiscount}` },
+                  { label: t.payable, value: `৳ ${data.payable ?? data.totalCharged}` },
+                ]
+              : []),
             { label: t.totalPaid, value: `৳ ${data.totalPaid}` },
             { label: t.totalDue, value: dueZero ? t.nil : `৳ ${data.totalDue}`, total: true, tone: dueZero ? 'ok' : 'warn' },
           ]}
@@ -199,6 +218,7 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
               <tr>
                 <th className={RT.th}>{t.colDate}</th>
                 <th className={RT.th}>{t.colParticulars}</th>
+                {hasDiscount && <th className={RT.thRight}>{t.colDiscount}</th>}
                 <th className={RT.thRight}>{t.colPaid}</th>
                 <th className={RT.thRight}>{t.colBalance}</th>
               </tr>
@@ -208,6 +228,7 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
                 <tr>
                   <td className={`${RT.td} whitespace-nowrap`}>{openingDate}</td>
                   <td className={`${RT.td} font-semibold text-gray-900`}>{t.opening(openingDetail)}</td>
+                  {hasDiscount && <td className={RT.tdRight}></td>}
                   <td className={RT.tdRight}></td>
                   <td className={`${RT.tdRight} font-semibold text-gray-900`}>{data.totalCharged}</td>
                 </tr>
@@ -233,7 +254,8 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
                     </span>
                     {line.particulars && <span className="block text-[0.7rem] text-gray-500">{line.particulars}</span>}
                   </td>
-                  <td className={RT.tdRight}>{line.paid}</td>
+                  {hasDiscount && <td className={`${RT.tdRight} text-amber-700`}>{line.kind === 'discount' ? line.paid : ''}</td>}
+                  <td className={RT.tdRight}>{line.kind === 'payment' ? line.paid : ''}</td>
                   <td className={`${RT.tdRight} font-medium text-gray-900`}>{line.balance}</td>
                 </tr>
               ))}
@@ -241,8 +263,10 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
             <tfoot>
               <tr>
                 <td className={RT.total} colSpan={2}>
+                  {hasDiscount ? `${t.discountLabel} / ` : ''}
                   {t.totalPaid} / {t.balanceDue}
                 </td>
+                {hasDiscount && <td className={`${RT.totalRight} text-amber-700`}>{data.totalDiscount || '0'}</td>}
                 <td className={RT.totalRight}>{data.totalPaid}</td>
                 <td className={`${RT.totalRight} ${dueZero ? 'text-emerald-800' : 'text-red-600'}`}>{data.totalDue}</td>
               </tr>

@@ -74,6 +74,8 @@ export default async function GroupStatementPage({ params }: { params: { table: 
           balance: money(line.balance, false),
         })),
         totalCharged: money(group.totalCharged, false),
+        totalDiscount: group.totalDiscount > 0 ? money(group.totalDiscount, false) : '',
+        payable: money(group.totalCharged - group.totalDiscount, false),
         totalPaid: money(group.totalPaid, false),
         totalDue: money(group.totalDue, false),
         perHeadLine,

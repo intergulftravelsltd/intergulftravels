@@ -70,14 +70,19 @@ export async function buildStatementReceipt(opts: {
   let running = 0;
   let totalCharge = 0;
   let totalPaid = 0;
+  let totalDiscount = 0;
   const ledger = txs.map((t) => {
     const isCharge = t.debit_account_id === headId; // Dr the customer → a charge
+    // A credit that is not money received: discount vouchers (DV-…) / adjustments.
+    const isDiscount = !isCharge && (t.method === 'adjustment' || (t.voucher_no ?? '').startsWith('DV'));
     const amount = Number(t.amount);
     const charge = isCharge ? amount : 0;
-    const paid = isCharge ? 0 : amount;
-    running += charge - paid;
+    const discount = isDiscount ? amount : 0;
+    const paid = isCharge || isDiscount ? 0 : amount;
+    running += charge - paid - discount;
     totalCharge += charge;
     totalPaid += paid;
+    totalDiscount += discount;
     const otherId = isCharge ? t.credit_account_id : t.debit_account_id;
     const against = names.get(otherId) || '';
     const raw = t.narration || against || '—';
@@ -91,6 +96,7 @@ export async function buildStatementReceipt(opts: {
       voucher: t.voucher_no || '',
       manualRef: t.manual_ref || '',
       charge: charge ? money(charge, false) : '',
+      discount: discount ? money(discount, false) : '',
       paid: paid ? money(paid, false) : '',
       balance: money(running, false),
     };
@@ -124,6 +130,8 @@ export async function buildStatementReceipt(opts: {
     isRefund: false,
     ledger,
     totalCharge: money(totalCharge, false),
+    totalDiscount: totalDiscount > 0 ? money(totalDiscount, false) : '',
+    payable: money(totalCharge - totalDiscount, false),
     period,
   };
 }

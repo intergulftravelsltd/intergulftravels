@@ -14,6 +14,28 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.7.0',
+    date: '2026-10-22',
+    items: [
+      {
+        en: 'Speed: the app’s server functions now run in Tokyo — the same region as the database — instead of the US East coast, so every page needs far fewer long round-trips from Bangladesh.',
+        bn: 'গতি: অ্যাপের সার্ভার ফাংশন এখন মার্কিন ইস্ট কোস্টের বদলে টোকিওতে (ডাটাবেসের একই অঞ্চলে) চলে, তাই বাংলাদেশ থেকে প্রতিটি পেজে লম্বা রাউন্ড-ট্রিপ অনেক কমে গেছে।',
+      },
+      {
+        en: 'Discounts are now booked under Expenses as "Discount Allowed" instead of reducing Hajj / Umrah package income (migration 0014 moves the existing discount vouchers too).',
+        bn: 'ছাড় এখন হজ / উমরাহ প্যাকেজ আয় কমানোর বদলে ব্যয়ের অধীনে "Discount Allowed" খাতে বসে (মাইগ্রেশন 0014 পুরনো ছাড়ের ভাউচারগুলোও সরিয়ে নেয়)।',
+      },
+      {
+        en: 'Statements show discounts honestly: Total package → Discount → Payable after discount → Total paid (money actually received) → Due; a Discount column appears in the ledger when there is one. Group statements and the group card use the same figures.',
+        bn: 'বিবরণীতে ছাড় স্পষ্ট: মোট প্যাকেজ → ছাড় → ছাড়ের পর দেয় → মোট পরিশোধ (প্রকৃত জমা) → বকেয়া; ছাড় থাকলে লেজারে আলাদা ছাড় কলাম। গ্রুপ বিবরণী ও গ্রুপ কার্ডেও একই হিসাব।',
+      },
+      {
+        en: 'Vouchers: the search box filters as you type (no need to press Apply), with a clear button.',
+        bn: 'ভাউচার: সার্চ বক্সে লিখতে লিখতেই ফিল্টার হয় (Apply চাপতে হয় না), মুছে ফেলার বাটনসহ।',
+      },
+    ],
+  },
+  {
     version: '1.6.4',
     date: '2026-10-22',
     items: [
