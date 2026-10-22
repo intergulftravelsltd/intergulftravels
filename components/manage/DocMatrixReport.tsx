@@ -142,7 +142,7 @@ export function DocMatrixReport({
           {keys.map((k, i) => `${i + 1} = ${docStatusLabel(k, locale)}`).join(' · ')}
         </p>
       </div>
-      {company && <PrintSignatures locale={locale} />}
+      {company && <PrintSignatures locale={locale} company={company} />}
     </div>
   );
 }

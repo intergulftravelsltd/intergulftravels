@@ -336,14 +336,41 @@ export function ReceiptSectionTitle({ children }: { children: React.ReactNode })
   return <p className="mb-1.5 text-[0.72rem] font-semibold uppercase tracking-wider text-gray-500">{children}</p>;
 }
 
-/** "Prepared by" + "Authorized Signature" footer, with a thank-you line. */
+/** One signature block: image (if uploaded) above the line, name + label under it. */
+export function SignatureBlock({ image, name, label }: { image?: string | null; name?: string | null; label: string }) {
+  return (
+    <div className="w-56 max-w-[45%] text-center">
+      <div className="flex h-16 items-end justify-center">
+        {image && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={image} alt="" className="max-h-16 max-w-full object-contain" />
+        )}
+      </div>
+      <div className="border-t border-gray-600 pt-1">
+        {name && <p className="text-[0.82rem] font-semibold leading-tight text-gray-900">{name}</p>}
+        <p className="text-[0.72rem] text-gray-600">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Footer: two identical signature blocks — "Prepared by" on the left and
+ * "Authorized Signature" on the right — each with the uploaded signature
+ * above the line and the name under it (from Company Profile), plus a
+ * thank-you line.
+ */
 export function ReceiptSignatures({
   locale,
+  company,
   preparedBy,
   note,
   printedOn,
 }: {
   locale: 'en' | 'bn';
+  /** Signature images + names come from the agency's Company Profile. */
+  company?: Pick<CompanyProfile, 'preparedByName' | 'preparedBySignature' | 'authorizedName' | 'authorizedSignature'> | null;
+  /** Overrides the preparer's name (e.g. the signed-in staff member). */
   preparedBy?: string | null;
   note?: string;
   /** Printed date for the "computer-generated" footer line. */
@@ -352,16 +379,9 @@ export function ReceiptSignatures({
   const t = L[locale];
   return (
     <div className="sig-block mt-10">
-      <div className="flex items-end justify-between gap-6 text-[0.8rem] text-gray-700">
-        <div>
-          <span className="font-medium">{t.preparedBy}:</span>{' '}
-          {preparedBy ? (
-            <span className="font-semibold text-gray-900">{preparedBy}</span>
-          ) : (
-            <span className="inline-block w-44 border-b border-gray-500 align-baseline">&nbsp;</span>
-          )}
-        </div>
-        <div className="w-52 border-t border-gray-500 pt-1 text-center font-semibold">{t.authorized}</div>
+      <div className="flex items-end justify-between gap-8">
+        <SignatureBlock image={company?.preparedBySignature} name={preparedBy || company?.preparedByName} label={t.preparedBy} />
+        <SignatureBlock image={company?.authorizedSignature} name={company?.authorizedName} label={t.authorized} />
       </div>
       {note && <p className="mt-5 text-center text-[0.7rem] text-gray-400">{note}</p>}
       {printedOn && (

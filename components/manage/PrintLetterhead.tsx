@@ -127,15 +127,37 @@ export function PrintLetterhead({
   );
 }
 
-/** Prepared-by / Authorized-signature footer — print only. Place after the table. */
-export function PrintSignatures({ locale }: { locale: 'en' | 'bn' }) {
+/**
+ * Prepared-by / Authorized-signature footer — print only. Place after the
+ * table. Two identical blocks: uploaded signature above the line (from
+ * Company Profile), name + label under it.
+ */
+export function PrintSignatures({
+  locale,
+  company,
+}: {
+  locale: 'en' | 'bn';
+  company?: Pick<CompanyProfile, 'preparedByName' | 'preparedBySignature' | 'authorizedName' | 'authorizedSignature'> | null;
+}) {
   const t = L[locale];
-  return (
-    <div className="print-signatures mt-12 items-end justify-between gap-6 text-sm text-black">
-      <div>
-        <b>{t.preparedBy}:</b> <span className="inline-block w-44 border-b border-gray-600 align-baseline">&nbsp;</span>
+  const block = (image: string | undefined, name: string | undefined, label: string) => (
+    <div className="w-56 max-w-[45%] text-center">
+      <div className="flex h-16 items-end justify-center">
+        {image && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={image} alt="" className="max-h-16 max-w-full object-contain" />
+        )}
       </div>
-      <div className="w-52 border-t border-gray-600 pt-1 text-center font-semibold">{t.authorized}</div>
+      <div className="border-t border-gray-600 pt-1">
+        {name && <p className="text-[0.82rem] font-semibold leading-tight text-gray-900">{name}</p>}
+        <p className="text-[0.72rem] text-gray-600">{label}</p>
+      </div>
+    </div>
+  );
+  return (
+    <div className="print-signatures mt-12 items-end justify-between gap-8 text-sm text-black">
+      {block(company?.preparedBySignature || undefined, company?.preparedByName || undefined, t.preparedBy)}
+      {block(company?.authorizedSignature || undefined, company?.authorizedName || undefined, t.authorized)}
     </div>
   );
 }

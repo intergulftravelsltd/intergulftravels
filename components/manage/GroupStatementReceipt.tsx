@@ -280,7 +280,7 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
         </div>
       )}
 
-      <ReceiptSignatures locale={locale} note={t.thanks} printedOn={data.date} />
+      <ReceiptSignatures locale={locale} company={data.company} note={t.thanks} printedOn={data.date} />
     </ReceiptFrame>
   );
 }

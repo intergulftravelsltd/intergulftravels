@@ -22,6 +22,10 @@ const schema = z.object({
     phone: z.string().trim().max(160).optional().default(''),
     email: z.string().trim().max(160).optional().default(''),
     logo: z.string().trim().max(600).optional().default(''),
+    preparedByName: z.string().trim().max(120).optional().default(''),
+    preparedBySignature: z.string().trim().max(600).optional().default(''),
+    authorizedName: z.string().trim().max(120).optional().default(''),
+    authorizedSignature: z.string().trim().max(600).optional().default(''),
   }),
 });
 
@@ -58,8 +62,10 @@ export async function PATCH(request: Request) {
   if (!branch) return NextResponse.json({ ok: false, error: 'You can only edit your own agency.' }, { status: 403 });
 
   const profile = { ...parsed.data.profile, logo: parsed.data.profile.logo || defaultCompanyProfile(branch).logo };
-  if (profile.logo && !/^(\/|https?:\/\/)/.test(profile.logo)) {
-    return NextResponse.json({ ok: false, error: 'The logo must be a URL or a /public path.' }, { status: 400 });
+  for (const key of ['logo', 'preparedBySignature', 'authorizedSignature'] as const) {
+    if (profile[key] && !/^(\/|https?:\/\/)/.test(profile[key])) {
+      return NextResponse.json({ ok: false, error: 'Images must be a URL or a /public path.' }, { status: 400 });
+    }
   }
 
   try {

@@ -282,7 +282,7 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
         </ReceiptPanel>
       )}
 
-      <ReceiptSignatures locale={locale} note={t.thanks} printedOn={data.date} />
+      <ReceiptSignatures locale={locale} company={data.company} note={t.thanks} printedOn={data.date} />
     </ReceiptFrame>
   );
 }

@@ -24,6 +24,14 @@ export type CompanyProfile = {
   email: string;
   /** Public URL / path of the logo used in headers + as the print watermark. */
   logo: string;
+  /** Name printed under the left ("Prepared by") signature line. */
+  preparedByName: string;
+  /** Transparent PNG of the preparer's signature (above the left line). */
+  preparedBySignature: string;
+  /** Name / designation under the right ("Authorized Signature") line. */
+  authorizedName: string;
+  /** Transparent PNG of the authorized signatory's signature (above the right line). */
+  authorizedSignature: string;
 };
 
 export const COMPANY_PROFILE_KEY_PREFIX = 'company_profile:';
@@ -48,6 +56,7 @@ export function defaultCompanyProfile(branch?: string | null): CompanyProfile {
       phone: (phones.length ? phones : [...contact.phones]).join(', '),
       email: b.email,
       logo: b.logo,
+      ...NO_SIGNATURES,
     };
   }
   return {
@@ -59,8 +68,16 @@ export function defaultCompanyProfile(branch?: string | null): CompanyProfile {
     phone: contact.phones.join(', '),
     email: contact.emails[0],
     logo: branches[0].logo,
+    ...NO_SIGNATURES,
   };
 }
+
+const NO_SIGNATURES = {
+  preparedByName: '',
+  preparedBySignature: '',
+  authorizedName: '',
+  authorizedSignature: '',
+} as const;
 
 const STRING_FIELDS: (keyof CompanyProfile)[] = [
   'name',
@@ -70,6 +87,10 @@ const STRING_FIELDS: (keyof CompanyProfile)[] = [
   'phone',
   'email',
   'logo',
+  'preparedByName',
+  'preparedBySignature',
+  'authorizedName',
+  'authorizedSignature',
 ];
 
 /** Overlay a saved override (untrusted JSON) on top of the defaults. */

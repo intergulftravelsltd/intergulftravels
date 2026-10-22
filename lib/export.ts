@@ -112,8 +112,8 @@ export async function exportToExcel(
 
   const tail: Cell[][] = [
     [],
-    [`${L.preparedBy}: ${meta.preparedBy ?? ''}`],
-    [`${L.authorized}:`],
+    [`${L.preparedBy}: ${meta.preparedBy || company?.preparedByName || ''}`],
+    [`${L.authorized}: ${company?.authorizedName || ''}`],
   ];
 
   const flat = (r: Cell[]) => r.map((c) => (isRichCell(c) ? cellFlatText(c) : c ?? ''));
@@ -194,6 +194,35 @@ async function loadLogo(src: string): Promise<LogoBitmap | null> {
   }
 }
 
+type PngBitmap = { dataUrl: string; w: number; h: number };
+
+/** Load a transparent PNG (signature) as a PNG data URL jsPDF keeps the alpha of. */
+async function loadPng(src: string): Promise<PngBitmap | null> {
+  try {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return null;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('image failed to load'));
+      img.src = new URL(src, window.location.origin).href;
+    });
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    if (!w || !h) return null;
+    const scale = Math.min(1, 800 / Math.max(w, h));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(w * scale));
+    canvas.height = Math.max(1, Math.round(h * scale));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return { dataUrl: canvas.toDataURL('image/png'), w: canvas.width, h: canvas.height };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * jsPDF's built-in Helvetica has no Taka glyph — "৳" comes out as a stray
  * accented letter and switches the whole line to spaced-out rendering.
@@ -231,7 +260,11 @@ export async function buildPdfDocument(opts: PdfOptions) {
   // English in the PDF (the HTML print is fully localized).
   const L = LABELS.en;
   const company = opts.company ?? null;
-  const logo = company?.logo ? await loadLogo(company.logo) : null;
+  const [logo, prepSig, authSig] = await Promise.all([
+    company?.logo ? loadLogo(company.logo) : null,
+    company?.preparedBySignature ? loadPng(company.preparedBySignature) : null,
+    company?.authorizedSignature ? loadPng(company.authorizedSignature) : null,
+  ]);
 
   const doc = new jsPDF({ orientation: opts.orientation ?? 'p', unit: 'mm', format: 'a4', compress: true });
   const pageW = doc.internal.pageSize.getWidth();
@@ -373,23 +406,43 @@ export async function buildPdfDocument(opts: PdfOptions) {
     },
   });
 
-  // ---- Signatures ---------------------------------------------------------
-  let fy = (anyDoc.lastAutoTable?.finalY ?? tableStart) + 22;
-  if (fy > pageH - 22) {
+  // ---- Signatures: two identical blocks, image above the line, name + label under it
+  const sigW = 55;
+  const imgH = 14;
+  let fy = (anyDoc.lastAutoTable?.finalY ?? tableStart) + 12 + imgH;
+  if (fy > pageH - 26) {
     doc.addPage();
     drawWatermark();
-    fy = 40;
+    fy = 30 + imgH;
   }
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(40);
-  doc.text(`${L.preparedBy}: ${opts.preparedBy || '________________________'}`, M, fy);
-  const sigW = 55;
-  const sx = pageW - M - sigW;
-  doc.setDrawColor(120);
-  doc.setLineWidth(0.3);
-  doc.line(sx, fy - 1, sx + sigW, fy - 1);
-  doc.text(L.authorized, sx + sigW / 2, fy + 4, { align: 'center' });
+  const drawSignature = (x: number, img: PngBitmap | null, name: string | undefined, label: string) => {
+    if (img) {
+      const w = Math.min(sigW, (imgH * img.w) / img.h);
+      const h = (w * img.h) / img.w;
+      try {
+        doc.addImage(img.dataUrl, 'PNG', x + (sigW - w) / 2, fy - 1.5 - h, w, h);
+      } catch {
+        // a broken image never blocks the export
+      }
+    }
+    doc.setDrawColor(90);
+    doc.setLineWidth(0.3);
+    doc.line(x, fy, x + sigW, fy);
+    let ty = fy + 4;
+    if (name) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(20);
+      doc.text(pdfText(name), x + sigW / 2, ty, { align: 'center', maxWidth: sigW });
+      ty += 4;
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(90);
+    doc.text(label, x + sigW / 2, ty, { align: 'center' });
+  };
+  drawSignature(M, prepSig, opts.preparedBy || company?.preparedByName || undefined, L.preparedBy);
+  drawSignature(pageW - M - sigW, authSig, company?.authorizedName || undefined, L.authorized);
 
   return doc;
 }
@@ -444,6 +497,14 @@ export function letterheadHtml(
       </div>
       ${titleHtml}
     </div>`;
+}
+
+/** One signature block of the print footer: image above the line, name + label under it. */
+function signatureBlockHtml(image: string | null | undefined, name: string | null | undefined, label: string): string {
+  const img = image ? `<img src="${escapeHtml(absoluteUrl(image))}" alt="">` : '';
+  return `<div class="blk"><div class="img">${img}</div><div class="line">${
+    name ? `<p class="name">${escapeHtml(name)}</p>` : ''
+  }<p class="lbl">${escapeHtml(label)}</p></div></div>`;
 }
 
 function printCellHtml(c: Cell, extraClass = ''): string {
@@ -510,9 +571,13 @@ export function buildPrintHtml(opts: PrintOptions): string {
       .bold{font-weight:700}
       .tone-brand{color:${TONE_HEX.brand}}.tone-amber{color:${TONE_HEX.amber}}.tone-red{color:${TONE_HEX.red}}.tone-muted{color:${TONE_HEX.muted}}
       .note{display:block;font-size:9.5px;color:#666;margin-top:1px;font-weight:400}
-      .sig{display:flex;justify-content:space-between;align-items:flex-end;margin-top:46px;font-size:11.5px;page-break-inside:avoid}
-      .sig .prep{padding-bottom:4px}
-      .sig .line{border-top:1px solid #444;padding-top:5px;min-width:210px;text-align:center;font-weight:600}
+      .sig{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;margin-top:40px;page-break-inside:avoid}
+      .sig .blk{width:220px;max-width:45%;text-align:center}
+      .sig .img{height:64px;display:flex;align-items:flex-end;justify-content:center}
+      .sig .img img{max-height:64px;max-width:100%;object-fit:contain}
+      .sig .line{border-top:1px solid #444;padding-top:4px}
+      .sig .name{font-size:11.5px;font-weight:700;margin:0;color:#0a1410}
+      .sig .lbl{font-size:10.5px;color:#555;margin:0}
       @page{margin:12mm}
       @media print{.noprint{display:none}}
     </style></head><body>
@@ -521,8 +586,8 @@ export function buildPrintHtml(opts: PrintOptions): string {
         ${letterheadHtml(company, locale, { title: opts.title, period: periodLine(opts.period, locale), subtitle: opts.subtitle })}
         <table><thead><tr>${head}</tr></thead><tbody>${body}${foot}</tbody></table>
         <div class="sig">
-          <div class="prep">${escapeHtml(L.preparedBy)}: ${escapeHtml(opts.preparedBy || '')}${opts.preparedBy ? '' : '________________________'}</div>
-          <div class="line">${escapeHtml(L.authorized)}</div>
+          ${signatureBlockHtml(company?.preparedBySignature, opts.preparedBy || company?.preparedByName, L.preparedBy)}
+          ${signatureBlockHtml(company?.authorizedSignature, company?.authorizedName, L.authorized)}
         </div>
       </div>
       <script>

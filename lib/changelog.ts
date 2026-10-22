@@ -14,6 +14,24 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.6.2',
+    date: '2026-10-22',
+    items: [
+      {
+        en: 'Group statement rebuilt as the leader’s document: package price × members = total package, total paid and total due in the summary; the leader (bold) then every member serially; and a payment statement that starts at the total package and comes down with each payment date-wise (voucher under the date, no charge column). "Print receipt" for anyone in a group now opens this statement instead of the person’s own ledger.',
+        bn: 'গ্রুপ বিবরণী এখন লিডারের ডকুমেন্ট: সারসংক্ষেপে প্যাকেজের দাম × সদস্য = মোট প্যাকেজ, মোট পরিশোধ ও মোট বকেয়া; লিডার (বোল্ড) তারপর ক্রমানুসারে সদস্যরা; আর পেমেন্ট বিবরণী মোট প্যাকেজ থেকে শুরু হয়ে প্রতিটি পেমেন্টে তারিখ অনুযায়ী কমে আসে (তারিখের নিচে ভাউচার, চার্জ কলাম নেই)। গ্রুপের যে কারও "রসিদ প্রিন্ট" এখন নিজের লেজারের বদলে এই বিবরণী খোলে।',
+      },
+      {
+        en: 'Signatures on every receipt, statement, print and PDF: two identical blocks — the uploaded signature above the line, the name under it — "Prepared by" on the left and "Authorized Signature" on the right.',
+        bn: 'প্রতিটি রসিদ, বিবরণী, প্রিন্ট ও PDF-এ স্বাক্ষর: একই রকম দুটি ব্লক — রেখার উপরে আপলোড করা স্বাক্ষর, নিচে নাম — বামে "প্রস্তুতকারী", ডানে "অনুমোদিত স্বাক্ষর"।',
+      },
+      {
+        en: 'Company Profile → Signatures: upload a photo or scan of a signature on white paper; the paper background is removed automatically and only the ink is kept as a transparent PNG. Names for both signatories are saved alongside.',
+        bn: 'কোম্পানি প্রোফাইল → স্বাক্ষর: সাদা কাগজে করা স্বাক্ষরের ছবি/স্ক্যান আপলোড করুন; কাগজের সাদা ব্যাকগ্রাউন্ড নিজে থেকে মুছে শুধু কালিটুকু স্বচ্ছ PNG হিসেবে থাকে। দুই স্বাক্ষরকারীর নামও সংরক্ষিত হয়।',
+      },
+    ],
+  },
+  {
     version: '1.6.1',
     date: '2026-10-22',
     items: [

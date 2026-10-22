@@ -319,7 +319,7 @@ export default async function CashBookPage({
       <div className="no-print">
         <Pagination paged={paged} />
       </div>
-      <PrintSignatures locale={locale} />
+      <PrintSignatures locale={locale} company={company} />
     </div>
   );
 }

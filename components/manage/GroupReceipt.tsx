@@ -161,7 +161,7 @@ export function GroupReceipt({ data, locale }: { data: GroupReceiptData; locale:
         {data.narration && <ReceiptRow label={t.note} value={data.narration} />}
       </ReceiptPanel>
 
-      <ReceiptSignatures locale={locale} note={t.thanks} printedOn={data.date} />
+      <ReceiptSignatures locale={locale} company={data.company} note={t.thanks} printedOn={data.date} />
     </ReceiptFrame>
   );
 }
