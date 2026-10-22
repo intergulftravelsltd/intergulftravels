@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import DOMPurify from 'isomorphic-dompurify';
 import { ArrowLeft, ArrowRight, CalendarDays, Clock, UserRound } from 'lucide-react';
 import { getPost, getPosts, toneGradient, coverFor } from '@/lib/blog';
 import { Container } from '@/components/ui/Container';
@@ -17,6 +16,8 @@ import { articleSchema, breadcrumbSchema } from '@/lib/seo';
 import { getLocale, setRequestLocale, toLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/blog';
+import { marked } from 'marked';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 export async function generateStaticParams() {
   const posts = await getPosts();
@@ -66,7 +67,9 @@ export default async function ArticlePage({ params }: { params: { slug: string; 
 
   const locale = getLocale();
   const t = getDict(locale);
-  const clean = DOMPurify.sanitize(post.content);
+  // Posts are written in Markdown or HTML (marked passes HTML through), then
+  // reduced to the article allowlist before being rendered.
+  const clean = sanitizeHtml(marked.parse(post.content, { async: false }) as string);
   const url = `/blog/${post.slug}`;
 
   // Related articles: same category, excluding the current post.

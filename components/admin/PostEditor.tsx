@@ -103,7 +103,7 @@ export function PostEditor({ initial }: { initial?: Partial<PostFormData> }) {
     (async () => {
       const [{ marked }, { default: DOMPurify }] = await Promise.all([
         import('marked'),
-        import('isomorphic-dompurify'),
+        import('dompurify'),
       ]);
       if (cancelled) return;
       const raw = marked.parse(form.content || '', { async: false }) as string;

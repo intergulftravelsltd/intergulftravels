@@ -14,6 +14,20 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.8.1',
+    date: '2026-10-22',
+    items: [
+      {
+        en: 'Blog articles open again on the live site: the HTML sanitiser that needed a browser emulation (and crashed inside the hosting function) is replaced by a lightweight one, and posts written in Markdown in the admin editor are now rendered as formatted text instead of raw Markdown.',
+        bn: 'লাইভ সাইটে ব্লগ আর্টিকেল আবার খুলছে: ব্রাউজার-ইমুলেশন লাগা HTML স্যানিটাইজার (হোস্টিং ফাংশনে ক্র্যাশ করত) বদলে হালকা একটি বসানো হয়েছে, আর অ্যাডমিন এডিটরে Markdown-এ লেখা পোস্ট এখন কাঁচা টেক্সটের বদলে ফরম্যাট হয়ে দেখায়।',
+      },
+      {
+        en: 'Unknown public URLs (and unknown article links) show the branded 404 page with a real 404 status instead of the plain default page.',
+        bn: 'অজানা পাবলিক লিংক (এবং অজানা আর্টিকেল লিংক) এখন সাদামাটা ডিফল্ট পেজের বদলে ব্র্যান্ডেড ৪০৪ পেজ দেখায়, সঠিক ৪০৪ স্ট্যাটাসসহ।',
+      },
+    ],
+  },
+  {
     version: '1.8.0',
     date: '2026-10-22',
     items: [
