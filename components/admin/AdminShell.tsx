@@ -163,10 +163,10 @@ export function AdminShell({
   const company = companyProp ?? defaultCompanyProfile(lockedBranch);
 
   return (
-    <div className="min-h-screen bg-sand-soft text-ink">
+    <div className="min-h-screen bg-sand-soft text-ink print:bg-white">
       <ConfirmHost />
       {/* ---------- Desktop sidebar ---------- */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-border bg-card text-ink lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-border bg-card text-ink lg:flex print:hidden">
         <SidebarContent pathname={pathname} isAdmin={isAdmin} locale={locale} company={company} />
       </aside>
 
@@ -197,10 +197,10 @@ export function AdminShell({
         </div>
       )}
 
-      {/* ---------- Main column ---------- */}
-      <div className="lg:pl-72">
+      {/* ---------- Main column (sidebar, top bar and page padding drop out of print) ---------- */}
+      <div className="lg:pl-72 print:pl-0">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-card/90 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-card/90 px-4 backdrop-blur sm:px-6 print:hidden">
           <button
             aria-label={t.openNavigation}
             onClick={() => setDrawerOpen(true)}
@@ -253,7 +253,7 @@ export function AdminShell({
         </header>
 
         {/* Page content */}
-        <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8 print:p-0">
           <BranchScopeProvider branch={lockedBranch}>
             <CompanyProfileProvider company={company}>{children}</CompanyProfileProvider>
           </BranchScopeProvider>

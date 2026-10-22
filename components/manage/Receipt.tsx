@@ -1,14 +1,18 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Printer, ArrowLeft } from 'lucide-react';
 import type { CompanyProfile } from '@/lib/company-profile';
 import {
-  RECEIPT_PRINT_CSS,
+  ReceiptAmount,
+  ReceiptFrame,
   ReceiptLetterhead,
+  ReceiptPanel,
   ReceiptPeriod,
+  ReceiptRow,
   ReceiptSignatures,
-  ReceiptWatermark,
+  ReceiptSummary,
+  RT,
+  type ReceiptMeta,
 } from '@/components/manage/ReceiptChrome';
 
 export type ReceiptData = {
@@ -57,15 +61,17 @@ const L = {
   en: {
     receipt: 'Money Receipt',
     refund: 'Refund Voucher',
+    voucherTitle: 'Voucher',
     no: 'Receipt No',
     manualNo: 'Manual No',
     date: 'Date',
     branch: 'Branch',
     receivedFrom: 'Received with thanks from',
     refundTo: 'Refunded to',
+    accountHolder: 'Account holder',
     phone: 'Phone',
     address: 'Address',
-    forProgram: 'For',
+    forProgram: 'Program',
     package: 'Package',
     amount: 'Amount',
     inWords: 'In words',
@@ -75,8 +81,6 @@ const L = {
     totalPaid: 'Total paid',
     balanceDue: 'Balance due',
     thanks: 'Thank you for choosing us.',
-    print: 'Print / Save PDF',
-    back: 'Back',
     only: 'only',
     passport: 'Passport No',
     colDate: 'Date',
@@ -84,27 +88,32 @@ const L = {
     grandTotal: 'Total',
     debit: 'Debit (Dr)',
     credit: 'Credit (Cr)',
-    statementHeading: 'Account statement',
+    voucherEntry: 'Entry',
+    statementHeading: 'Account Statement',
+    summary: 'Summary',
     colParticulars: 'Particulars / Narration',
     colVoucher: 'Voucher No',
-    colCharge: 'Charge',
-    colPaidLedger: 'Paid',
-    colBalance: 'Balance',
+    colCharge: 'Charge (৳)',
+    colPaidLedger: 'Paid (৳)',
+    colBalance: 'Balance (৳)',
     totalPackage: 'Total package',
     against: 'Against',
+    nil: 'Nil',
   },
   bn: {
     receipt: 'অর্থ রসিদ',
     refund: 'রিফান্ড ভাউচার',
+    voucherTitle: 'ভাউচার',
     no: 'রসিদ নং',
     manualNo: 'ম্যানুয়াল নং',
     date: 'তারিখ',
     branch: 'শাখা',
     receivedFrom: 'ধন্যবাদসহ গ্রহণ করা হলো',
     refundTo: 'ফেরত দেওয়া হলো',
+    accountHolder: 'হিসাবধারী',
     phone: 'ফোন',
     address: 'ঠিকানা',
-    forProgram: 'কীসের জন্য',
+    forProgram: 'প্রোগ্রাম',
     package: 'প্যাকেজ',
     amount: 'পরিমাণ',
     inWords: 'কথায়',
@@ -114,8 +123,6 @@ const L = {
     totalPaid: 'মোট পরিশোধিত',
     balanceDue: 'বাকি',
     thanks: 'আমাদের বেছে নেওয়ার জন্য ধন্যবাদ।',
-    print: 'প্রিন্ট / PDF সেভ',
-    back: 'ফিরুন',
     only: 'মাত্র',
     passport: 'পাসপোর্ট নং',
     colDate: 'তারিখ',
@@ -123,16 +130,21 @@ const L = {
     grandTotal: 'মোট',
     debit: 'ডেবিট (নামে)',
     credit: 'ক্রেডিট (জমা)',
+    voucherEntry: 'এন্ট্রি',
     statementHeading: 'হিসাব বিবরণী',
+    summary: 'সারসংক্ষেপ',
     colParticulars: 'বিবরণ',
     colVoucher: 'ভাউচার নং',
-    colCharge: 'চার্জ',
-    colPaidLedger: 'পরিশোধ',
-    colBalance: 'ব্যালেন্স',
+    colCharge: 'চার্জ (৳)',
+    colPaidLedger: 'পরিশোধ (৳)',
+    colBalance: 'ব্যালেন্স (৳)',
     totalPackage: 'মোট প্যাকেজ',
     against: 'বিপরীতে',
+    nil: 'শূন্য',
   },
 };
+
+const isZero = (s: string) => /^0+(\.0+)?$/.test(s.replace(/[,\s৳]/g, '')) || s.trim() === '';
 
 export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'bn' }) {
   const t = L[locale];
@@ -143,208 +155,129 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
     return () => clearTimeout(id);
   }, []);
 
-  const Row = ({ label, value }: { label: string; value: string }) => (
-    <div className="flex gap-2 py-1 text-[0.92rem]">
-      <span className="w-40 shrink-0 text-gray-500">{label}</span>
-      <span className="font-medium text-gray-900">: {value}</span>
-    </div>
-  );
+  const kind = data.ledger ? 'statement' : data.voucher ? 'voucher' : data.isRefund ? 'refund' : 'receipt';
+  const title =
+    kind === 'statement' ? t.statementHeading : kind === 'voucher' ? t.voucherTitle : kind === 'refund' ? t.refund : t.receipt;
+  const meta: ReceiptMeta[] = [
+    { label: t.no, value: data.receiptNo },
+    ...(data.manualRef ? [{ label: t.manualNo, value: data.manualRef }] : []),
+    { label: t.date, value: data.date },
+    { label: t.branch, value: data.branch },
+  ];
+  const dueZero = isZero(data.due);
 
   return (
-    <div id="print-root" className="fixed inset-0 z-[100] overflow-auto bg-neutral-100 p-4 text-black sm:p-8">
-      <style>{RECEIPT_PRINT_CSS}</style>
+    <ReceiptFrame logo={data.company.logo} locale={locale}>
+      <ReceiptLetterhead company={data.company} locale={locale} title={title} meta={meta} />
+      <ReceiptPeriod text={data.period} />
 
-      <div className="no-print mx-auto mb-4 flex max-w-2xl items-center justify-between">
-        <button
-          type="button"
-          onClick={() => {
-            // Opened in its own tab (from the list print buttons) → close it;
-            // otherwise behave like a normal back button.
-            if (window.history.length > 1) window.history.back();
-            else window.close();
-          }}
-          className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-        >
-          <ArrowLeft className="h-4 w-4" /> {t.back}
-        </button>
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
-        >
-          <Printer className="h-4 w-4" /> {t.print}
-        </button>
-      </div>
-
-      <div id="receipt" className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-        <ReceiptWatermark logo={data.company.logo} />
-        <div className="relative">
-          <ReceiptLetterhead company={data.company} locale={locale} />
-
-          {/* Title */}
-          <div className="my-5 text-center">
-            <span className="inline-block rounded-full border border-emerald-700 px-5 py-1 text-lg font-bold uppercase tracking-wide text-emerald-800">
-              {data.ledger ? t.statementHeading : data.isRefund ? t.refund : t.receipt}
-            </span>
-          </div>
-          <ReceiptPeriod text={data.period} />
-
-          {/* Meta */}
-          <div className="mb-4 flex flex-wrap justify-between gap-x-4 gap-y-1 text-sm">
-            <span>
-              <span className="text-gray-500">{t.no}:</span>{' '}
-              <span className="font-semibold text-gray-900">{data.receiptNo}</span>
-            </span>
-            {data.manualRef && (
-              <span>
-                <span className="text-gray-500">{t.manualNo}:</span>{' '}
-                <span className="font-semibold text-gray-900">{data.manualRef}</span>
-              </span>
-            )}
-            <span>
-              <span className="text-gray-500">{t.branch}:</span>{' '}
-              <span className="font-semibold text-gray-900">{data.branch}</span>
-            </span>
-            <span>
-              <span className="text-gray-500">{t.date}:</span>{' '}
-              <span className="font-semibold text-gray-900">{data.date}</span>
-            </span>
-          </div>
-
-          {data.voucher && (
-            <>
-              <div className="my-4 rounded-xl bg-gray-50/60 p-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t.debit}</p>
-                    <p className="text-base font-bold text-gray-900">{data.voucher.debit}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t.credit}</p>
-                    <p className="text-base font-bold text-gray-900">{data.voucher.credit}</p>
-                  </div>
-                </div>
-                {data.narration && (
-                  <div className="mt-3 border-t border-gray-200 pt-2">
-                    <Row label={t.note} value={data.narration} />
-                  </div>
-                )}
-              </div>
-              <div className="my-5 flex items-center justify-between rounded-xl border-2 border-emerald-700 bg-emerald-50/60 px-5 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{t.amount}</p>
-                <p className="text-3xl font-extrabold text-emerald-800">৳ {data.amount}</p>
-              </div>
-            </>
-          )}
-
-          {!data.voucher && (
-            <>
-              {/* Party — translucent so the brand watermark stays visible behind it */}
-              <div className="rounded-xl bg-gray-50/60 p-4">
-                <p className="text-sm text-gray-500">{data.isRefund ? t.refundTo : t.receivedFrom}</p>
-                <p className="text-lg font-bold text-gray-900">{data.partyName}</p>
-                {data.partyPassport && <Row label={t.passport} value={data.partyPassport} />}
-                <Row label={t.phone} value={data.partyPhone} />
-                {data.partyAddress && <Row label={t.address} value={data.partyAddress} />}
-                <Row label={t.forProgram} value={data.program} />
-                {data.packageName && <Row label={t.package} value={data.packageName} />}
-              </div>
-
-              {data.ledger ? (
-                /* In-depth statement — every ledger entry + running balance + totals. */
-                <div className="my-5">
-                  {data.ledger.length === 0 ? (
-                    <p className="rounded-xl bg-gray-50/60 px-4 py-6 text-center text-sm text-gray-500">{t.noPayments}</p>
-                  ) : (
-                    <table className="w-full border-collapse text-sm">
-                      <thead>
-                        <tr className="border-b-2 border-gray-300 text-left text-gray-500">
-                          <th className="py-2">{t.colDate}</th>
-                          <th className="py-2">{t.colVoucher}</th>
-                          <th className="py-2">{t.colParticulars}</th>
-                          <th className="py-2 text-right">{t.colCharge}</th>
-                          <th className="py-2 text-right">{t.colPaidLedger}</th>
-                          <th className="py-2 text-right">{t.colBalance}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.ledger.map((r, i) => (
-                          <tr key={i} className="border-b border-gray-200 align-top">
-                            <td className="whitespace-nowrap py-2 text-gray-800">{r.date}</td>
-                            <td className="whitespace-nowrap py-2 text-xs text-gray-600">
-                              {r.voucher || '—'}
-                              {r.manualRef && (
-                                <span className="block font-semibold text-gray-800">{r.manualRef}</span>
-                              )}
-                            </td>
-                            <td className="py-2 text-gray-800">
-                              {r.particulars}
-                              {r.against && r.against !== r.particulars && (
-                                <span className="block text-xs text-gray-400">
-                                  {t.against}: {r.against}
-                                </span>
-                              )}
-                            </td>
-                            <td className="whitespace-nowrap py-2 text-right text-gray-800">{r.charge ? `৳ ${r.charge}` : ''}</td>
-                            <td className="whitespace-nowrap py-2 text-right text-gray-800">{r.paid ? `৳ ${r.paid}` : ''}</td>
-                            <td className="whitespace-nowrap py-2 text-right font-medium text-gray-900">৳ {r.balance}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t-2 border-emerald-700 font-bold text-emerald-800">
-                          <td className="py-2" colSpan={3}>
-                            {t.grandTotal}
-                          </td>
-                          <td className="whitespace-nowrap py-2 text-right">৳ {data.totalCharge}</td>
-                          <td className="whitespace-nowrap py-2 text-right">৳ {data.paid}</td>
-                          <td className="whitespace-nowrap py-2 text-right">৳ {data.due}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  )}
-                  <div className="mt-3 flex flex-wrap justify-end gap-6 text-sm">
-                    <span className="text-gray-600">
-                      {t.totalPackage}: <span className="font-semibold text-gray-900">৳ {data.totalCharge}</span>
-                    </span>
-                    <span className="text-gray-600">
-                      {t.totalPaid}: <span className="font-semibold text-gray-900">৳ {data.paid}</span>
-                    </span>
-                    <span className="text-gray-600">
-                      {t.balanceDue}: <span className="font-semibold text-gray-900">৳ {data.due}</span>
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {/* Single-payment amount */}
-                  <div className="my-5 flex items-center justify-between rounded-xl border-2 border-emerald-700 bg-emerald-50/60 px-5 py-4">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{t.amount}</p>
-                      {data.amountWords && (
-                        <p className="mt-0.5 text-sm text-gray-600">
-                          {t.inWords}: {data.amountWords} {t.only}
-                        </p>
-                      )}
-                    </div>
-                    <p className="text-3xl font-extrabold text-emerald-800">৳ {data.amount}</p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-x-6">
-                    <Row label={t.method} value={data.method} />
-                    <Row label={t.type} value={data.type} />
-                    <Row label={t.totalPaid} value={`৳ ${data.paid}`} />
-                    <Row label={t.balanceDue} value={`৳ ${data.due}`} />
-                  </div>
-                  {data.narration && <Row label={t.note} value={data.narration} />}
-                </>
-              )}
-            </>
-          )}
-
-          <ReceiptSignatures locale={locale} note={t.thanks} />
+      {kind === 'voucher' && data.voucher ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <ReceiptPanel heading={t.voucherEntry}>
+            <ReceiptRow label={t.debit} value={data.voucher.debit} />
+            <ReceiptRow label={t.credit} value={data.voucher.credit} />
+            {data.narration && <ReceiptRow label={t.note} value={data.narration} />}
+          </ReceiptPanel>
+          <ReceiptAmount label={t.amount} amount={data.amount} />
         </div>
-      </div>
-    </div>
+      ) : (
+        <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <ReceiptPanel heading={kind === 'statement' ? t.accountHolder : kind === 'refund' ? t.refundTo : t.receivedFrom}>
+            <p className="text-[1.02rem] font-bold leading-tight text-gray-900">{data.partyName}</p>
+            <div className="mt-1.5">
+              {data.partyPassport && <ReceiptRow label={t.passport} value={data.partyPassport} />}
+              <ReceiptRow label={t.phone} value={data.partyPhone} />
+              {data.partyAddress && <ReceiptRow label={t.address} value={data.partyAddress} />}
+              <ReceiptRow label={t.forProgram} value={data.program} />
+              {data.packageName && <ReceiptRow label={t.package} value={data.packageName} />}
+            </div>
+          </ReceiptPanel>
+
+          {kind === 'statement' ? (
+            <ReceiptSummary
+              heading={t.summary}
+              lines={[
+                { label: t.totalPackage, value: `৳ ${data.totalCharge ?? '0'}` },
+                { label: t.totalPaid, value: `৳ ${data.paid}` },
+                { label: t.balanceDue, value: dueZero ? t.nil : `৳ ${data.due}`, total: true, tone: dueZero ? 'ok' : 'warn' },
+              ]}
+            />
+          ) : (
+            <ReceiptAmount
+              label={t.amount}
+              amount={data.amount}
+              words={data.amountWords ? `${t.inWords}: ${data.amountWords} ${t.only}` : undefined}
+            />
+          )}
+        </div>
+      )}
+
+      {kind === 'statement' && data.ledger && (
+        <div className="mt-5">
+          {data.ledger.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-center text-sm text-gray-500">{t.noPayments}</p>
+          ) : (
+            <table className={RT.table}>
+              <thead>
+                <tr>
+                  <th className={RT.th}>{t.colDate}</th>
+                  <th className={RT.th}>{t.colVoucher}</th>
+                  <th className={RT.th}>{t.colParticulars}</th>
+                  <th className={RT.thRight}>{t.colCharge}</th>
+                  <th className={RT.thRight}>{t.colPaidLedger}</th>
+                  <th className={RT.thRight}>{t.colBalance}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.ledger.map((r, i) => (
+                  <tr key={i}>
+                    <td className={`${RT.td} whitespace-nowrap`}>{r.date}</td>
+                    <td className={RT.tdMuted}>
+                      {r.voucher || '—'}
+                      {r.manualRef && <span className="block font-semibold text-gray-800">{r.manualRef}</span>}
+                    </td>
+                    <td className={RT.td}>
+                      {r.particulars}
+                      {r.against && r.against !== r.particulars && (
+                        <span className="block text-[0.7rem] text-gray-400">
+                          {t.against}: {r.against}
+                        </span>
+                      )}
+                    </td>
+                    <td className={RT.tdRight}>{r.charge}</td>
+                    <td className={RT.tdRight}>{r.paid}</td>
+                    <td className={`${RT.tdRight} font-medium text-gray-900`}>{r.balance}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td className={RT.total} colSpan={3}>
+                    {t.grandTotal}
+                  </td>
+                  <td className={RT.totalRight}>{data.totalCharge}</td>
+                  <td className={RT.totalRight}>{data.paid}</td>
+                  <td className={`${RT.totalRight} ${dueZero ? 'text-emerald-800' : 'text-red-600'}`}>{data.due}</td>
+                </tr>
+              </tfoot>
+            </table>
+          )}
+        </div>
+      )}
+
+      {kind !== 'statement' && kind !== 'voucher' && (
+        <ReceiptPanel className="mt-3">
+          <div className="grid gap-x-6 sm:grid-cols-2">
+            <ReceiptRow label={t.method} value={data.method} />
+            <ReceiptRow label={t.type} value={data.type} />
+            <ReceiptRow label={t.totalPaid} value={`৳ ${data.paid}`} />
+            <ReceiptRow label={t.balanceDue} value={dueZero ? t.nil : `৳ ${data.due}`} />
+          </div>
+          {data.narration && <ReceiptRow label={t.note} value={data.narration} />}
+        </ReceiptPanel>
+      )}
+
+      <ReceiptSignatures locale={locale} note={t.thanks} printedOn={data.date} />
+    </ReceiptFrame>
   );
 }
