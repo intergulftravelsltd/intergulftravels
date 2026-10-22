@@ -1,10 +1,12 @@
-import type { Metadata } from 'next';
+import '@/app/globals.css';
+import type { Metadata, Viewport } from 'next';
 import { redirect } from 'next/navigation';
 import { getAuthUser, getProfileLite } from '@/lib/supabase/server';
 import { isAdminEmail } from '@/lib/admin';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { AuthForm } from '@/components/auth/AuthForm';
+import { RootShell } from '@/components/layout/RootShell';
 import { getLocale } from '@/lib/i18n-server';
 import { getDict } from '@/lib/dictionaries/areas/auth';
 import { getStaffScope } from '@/lib/management/scope';
@@ -21,7 +23,23 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+export const viewport: Viewport = {
+  themeColor: '#06402b',
+  colorScheme: 'light',
+  width: 'device-width',
+  initialScale: 1,
+};
+
+/**
+ * Root layout of the admin console (its own <html>, separate from the
+ * statically generated public site): auth gate + the admin shell.
+ */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const locale = getLocale();
+  return <RootShell locale={locale}>{await AdminBody({ children })}</RootShell>;
+}
+
+async function AdminBody({ children }: { children: React.ReactNode }) {
   const user = await getAuthUser();
 
   // Not signed in → show the staff login right here at /admin (no separate URL).

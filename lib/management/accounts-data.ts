@@ -66,11 +66,22 @@ export async function loadTransactions(filters: TxFilters = {}): Promise<Transac
     }
 
     q = q.order('date', { ascending: false }).order('created_at', { ascending: false });
-    if (filters.limit) q = q.limit(filters.limit);
 
-    const { data, error } = await q;
-    if (error) return [];
-    return (data ?? []) as Transaction[];
+    // PostgREST answers at most 1000 rows per request; page through in
+    // 1000-row windows up to `limit` (default 5000) so a busy branch's
+    // voucher register / expenses never silently stop at row 1000.
+    const PAGE = 1000;
+    const limit = filters.limit ?? 5000;
+    const out: Transaction[] = [];
+    for (let from = 0; from < limit; from += PAGE) {
+      const to = Math.min(from + PAGE, limit) - 1;
+      const { data, error } = await q.range(from, to);
+      if (error) return out;
+      const rows = (data ?? []) as Transaction[];
+      out.push(...rows);
+      if (rows.length < to - from + 1) break;
+    }
+    return out;
   } catch {
     return [];
   }

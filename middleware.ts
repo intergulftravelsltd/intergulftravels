@@ -3,11 +3,22 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 /**
  * - Locale routing: English is the default (no prefix); Bangla lives under
- *   /bn. We strip the /bn prefix internally and pass the active locale to
- *   Server Components via the `x-locale` request header (the URL stays /bn/*).
+ *   /bn. The public site is built as app/(site)/[locale]/… and statically
+ *   generated for both languages, so:
+ *     /hajj      → rewritten to /en/hajj   (URL stays /hajj)
+ *     /bn/hajj   → served as-is            ([locale] = bn)
+ *   Admin and share pages have no [locale] segment: /bn/admin/… is
+ *   rewritten to /admin/… and the active locale travels in the `x-locale`
+ *   request header (those pages are dynamic anyway).
  * - Legacy /en/* URLs (from the old bn-default scheme) 308-redirect to /*.
- * - Refreshes the Supabase auth session cookie on every request.
+ * - Refreshes the Supabase auth session cookie when an auth cookie exists.
  */
+
+/** Paths that live outside the [locale] site tree. */
+const NON_SITE = /^\/(admin|share|api|auth)(\/|$)/;
+/** Metadata / asset routes that must never be rewritten. */
+const PASSTHROUGH = /^\/(_next|feed\.xml|sitemap\.xml|robots\.txt|manifest\.webmanifest|favicon|icon|apple-icon|og\.png)/;
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -20,15 +31,29 @@ export async function middleware(request: NextRequest) {
 
   const isBn = pathname === '/bn' || pathname.startsWith('/bn/');
   const locale = isBn ? 'bn' : 'en';
+  const unprefixed = isBn ? (pathname === '/bn' ? '/' : pathname.replace(/^\/bn/, '')) : pathname;
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-locale', locale);
 
   const rewriteUrl = request.nextUrl.clone();
-  if (isBn) rewriteUrl.pathname = pathname === '/bn' ? '/' : pathname.replace(/^\/bn/, '');
+  let rewrite = false;
+  if (PASSTHROUGH.test(unprefixed)) {
+    // assets + metadata routes: untouched
+  } else if (NON_SITE.test(unprefixed)) {
+    // /bn/admin/x → /admin/x (locale via header); /admin/x unchanged
+    if (isBn) {
+      rewriteUrl.pathname = unprefixed;
+      rewrite = true;
+    }
+  } else if (!isBn) {
+    // public site, English: /x → /en/x so the [locale] segment resolves
+    rewriteUrl.pathname = pathname === '/' ? '/en' : `/en${pathname}`;
+    rewrite = true;
+  }
 
   const build = () =>
-    isBn
+    rewrite
       ? NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } })
       : NextResponse.next({ request: { headers: requestHeaders } });
 

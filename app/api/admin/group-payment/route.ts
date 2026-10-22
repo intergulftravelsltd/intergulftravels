@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { mgmtDb, recordPayment, logActivity } from '@/lib/management/server';
+import { mgmtDb, recordPayment, logActivity, getCashHead } from '@/lib/management/server';
 import { requireStaff } from '@/lib/management/guard';
 
 export const runtime = 'nodejs';
@@ -93,6 +93,14 @@ export async function POST(request: Request) {
     const baseNarration = `Group payment — ${d.payer_name}${d.narration ? ` · ${d.narration}` : ''}`;
     const paymentIds: string[] = [];
 
+    // Cash head per branch resolved once up front (not once per member).
+    const cashHeadByBranch = new Map<string, string | null>();
+    if (d.method === 'cash') {
+      for (const branch of new Set(d.items.map((i) => parties.get(i.id)!.branch))) {
+        cashHeadByBranch.set(branch, (await getCashHead(branch))?.id ?? null);
+      }
+    }
+
     // Sequential on purpose: voucher numbers stay consecutive for the family.
     for (const item of d.items) {
       const party = parties.get(item.id)!;
@@ -103,6 +111,7 @@ export async function POST(request: Request) {
         amount: item.amount,
         method: d.method,
         bank_account_id: d.method === 'bank' ? d.bank_account_id ?? null : null,
+        cash_head_id: cashHeadByBranch.get(party.branch) ?? null,
         type: d.type,
         date: d.date ?? undefined,
         narration: baseNarration,

@@ -14,6 +14,20 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.8.0',
+    date: '2026-10-22',
+    items: [
+      {
+        en: 'Public website is now pre-built and served from the CDN: every page of both languages is generated statically (refreshed within 5 minutes of an admin edit) instead of being rendered on a server for each visitor — the fastest the marketing site can be from Bangladesh.',
+        bn: 'পাবলিক ওয়েবসাইট এখন আগে থেকে তৈরি হয়ে CDN থেকে আসে: দুই ভাষার প্রতিটি পেজ স্ট্যাটিক (অ্যাডমিন বদলালে ৫ মিনিটের মধ্যে রিফ্রেশ), প্রতিটি ভিজিটরের জন্য সার্ভারে রেন্ডার হয় না — বাংলাদেশ থেকে মার্কেটিং সাইট যত দ্রুত হতে পারে।',
+      },
+      {
+        en: 'Vouchers / expenses no longer stop at the database’s 1000-row page — up to 5000 vouchers are read in 1000-row windows; group payments resolve the cash head once instead of once per member.',
+        bn: 'ভাউচার / ব্যয় তালিকা আর ডাটাবেসের ১০০০-সারির সীমায় থামে না — ১০০০ করে জানালায় ৫০০০ পর্যন্ত পড়া হয়; গ্রুপ পেমেন্টে নগদ খাত প্রতি সদস্যে নয়, একবারই খোঁজা হয়।',
+      },
+    ],
+  },
+  {
     version: '1.7.0',
     date: '2026-10-22',
     items: [

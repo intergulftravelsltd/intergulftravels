@@ -278,13 +278,14 @@ export async function recordPayment(p: {
   created_by?: string | null;
   /** Hand-written money-receipt number from the physical paper. */
   manual_ref?: string | null;
+  /** Pre-resolved Cash in Hand head id (bulk postings resolve it once). */
+  cash_head_id?: string | null;
 }) {
   const db = mgmtDb();
 
   let debitId = p.bank_account_id ?? null;
   if (p.method === 'cash') {
-    const cash = await getCashHead(p.branch ?? 'general');
-    debitId = cash?.id ?? null;
+    debitId = p.cash_head_id ?? (await getCashHead(p.branch ?? 'general'))?.id ?? null;
   }
   if (!debitId) throw new Error('No cash/bank account available for this payment.');
 
