@@ -24,6 +24,8 @@ const L = {
     colPaid: 'Paid',
     colBalance: 'Balance',
     netDue: 'Net group due',
+    chargeMissing: 'Charge not posted',
+    chargeMissingHint: 'A package is assigned but its charge was never posted — open the profile and press "Post package charge".',
   },
   bn: {
     heading: 'গ্রুপ / পারিবারিক হিসাব',
@@ -43,6 +45,8 @@ const L = {
     colPaid: 'পরিশোধ',
     colBalance: 'ব্যালেন্স',
     netDue: 'গ্রুপের নিট বকেয়া',
+    chargeMissing: 'খরচ পোস্ট হয়নি',
+    chargeMissingHint: 'প্যাকেজ দেওয়া আছে কিন্তু খরচ পোস্ট হয়নি — প্রোফাইলে গিয়ে "প্যাকেজ খরচ পোস্ট করুন" চাপুন।',
   },
 };
 
@@ -98,14 +102,22 @@ export function GroupLedgerCard({
           {group.members.map((m) => (
             <tr key={m.id} className="transition hover:bg-muted/40">
               <td className={tdClass}>
-                <span className="inline-flex items-center gap-1.5 font-medium text-ink">
+                <Link
+                  href={localizedPath(locale, `/admin/${table}/${m.id}`)}
+                  className="inline-flex items-center gap-1.5 font-medium text-ink hover:text-brand-700"
+                >
                   {m.isHead && <Crown className="h-3.5 w-3.5 text-amber-500" />}
                   {m.name}
-                </span>
+                </Link>
                 {m.ref && <span className="block text-xs text-ink-muted">{m.ref}</span>}
                 {m.isHead && (
                   <span className="mt-0.5 inline-block">
                     <Badge tone="gold">{t.head}</Badge>
+                  </span>
+                )}
+                {m.chargeMissing && (
+                  <span className="mt-0.5 inline-block" title={t.chargeMissingHint}>
+                    <Badge tone="red">{t.chargeMissing}</Badge>
                   </span>
                 )}
               </td>

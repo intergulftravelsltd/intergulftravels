@@ -83,7 +83,7 @@ const L = {
     thanks: 'Thank you for choosing us.',
     only: 'only',
     passport: 'Passport No',
-    colDate: 'Date',
+    colDate: 'Date / Voucher No',
     noPayments: 'No transactions recorded yet.',
     grandTotal: 'Total',
     debit: 'Debit (Dr)',
@@ -92,7 +92,6 @@ const L = {
     statementHeading: 'Account Statement',
     summary: 'Summary',
     colParticulars: 'Particulars / Narration',
-    colVoucher: 'Voucher No',
     colCharge: 'Charge (৳)',
     colPaidLedger: 'Paid (৳)',
     colBalance: 'Balance (৳)',
@@ -125,7 +124,7 @@ const L = {
     thanks: 'আমাদের বেছে নেওয়ার জন্য ধন্যবাদ।',
     only: 'মাত্র',
     passport: 'পাসপোর্ট নং',
-    colDate: 'তারিখ',
+    colDate: 'তারিখ / ভাউচার নং',
     noPayments: 'এখনও কোনো লেনদেন নেই।',
     grandTotal: 'মোট',
     debit: 'ডেবিট (নামে)',
@@ -134,7 +133,6 @@ const L = {
     statementHeading: 'হিসাব বিবরণী',
     summary: 'সারসংক্ষেপ',
     colParticulars: 'বিবরণ',
-    colVoucher: 'ভাউচার নং',
     colCharge: 'চার্জ (৳)',
     colPaidLedger: 'পরিশোধ (৳)',
     colBalance: 'ব্যালেন্স (৳)',
@@ -221,7 +219,6 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
               <thead>
                 <tr>
                   <th className={RT.th}>{t.colDate}</th>
-                  <th className={RT.th}>{t.colVoucher}</th>
                   <th className={RT.th}>{t.colParticulars}</th>
                   <th className={RT.thRight}>{t.colCharge}</th>
                   <th className={RT.thRight}>{t.colPaidLedger}</th>
@@ -231,10 +228,18 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
               <tbody>
                 {data.ledger.map((r, i) => (
                   <tr key={i}>
-                    <td className={`${RT.td} whitespace-nowrap`}>{r.date}</td>
-                    <td className={RT.tdMuted}>
-                      {r.voucher || '—'}
-                      {r.manualRef && <span className="block font-semibold text-gray-800">{r.manualRef}</span>}
+                    {/* Voucher (and the hand-written number) sit under the date. */}
+                    <td className={`${RT.td} whitespace-nowrap`}>
+                      {r.date}
+                      <span className="block text-[0.68rem] text-gray-500">
+                        {r.voucher || '—'}
+                        {r.manualRef && (
+                          <>
+                            {' · '}
+                            <span className="font-semibold text-gray-800">{r.manualRef}</span>
+                          </>
+                        )}
+                      </span>
                     </td>
                     <td className={RT.td}>
                       {r.particulars}
@@ -252,7 +257,7 @@ export function Receipt({ data, locale }: { data: ReceiptData; locale: 'en' | 'b
               </tbody>
               <tfoot>
                 <tr>
-                  <td className={RT.total} colSpan={3}>
+                  <td className={RT.total} colSpan={2}>
                     {t.grandTotal}
                   </td>
                   <td className={RT.totalRight}>{data.totalCharge}</td>

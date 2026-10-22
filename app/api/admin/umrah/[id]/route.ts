@@ -113,8 +113,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       if (d[key] !== undefined) update[key] = d[key];
     }
 
-    const assigningPackage =
-      d.package_id !== undefined && d.package_id !== null && d.package_id !== existing.package_id;
+    const wantsPackage = d.package_id !== undefined && d.package_id !== null;
+    const assigningPackage = wantsPackage && d.package_id !== existing.package_id;
 
     if (d.package_id !== undefined) update.package_id = d.package_id;
 
@@ -149,7 +149,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     // Charge the package price exactly once. Guard against a double charge by
     // checking for an existing journal transaction tagged with this passenger.
-    if (assigningPackage && existing.account_head_id && d.package_id) {
+    // Re-sending the SAME package is the repair path: when the charge was never
+    // posted (a hiccup at creation left package_id set but no journal) it is
+    // posted now instead of being silently skipped.
+    let charged = false;
+    if (wantsPackage && existing.account_head_id && d.package_id) {
       try {
         const { data: pkg } = await supabase
           .from('mgmt_packages')
@@ -192,6 +196,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
             ref_id: params.id,
             created_by: guard.user.id,
           });
+          charged = true;
         }
       } catch (err) {
         console.error('[admin/umrah/:id] package charge failed:', err);
@@ -207,9 +212,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       user_email: guard.user.email,
       action: assigningPackage
         ? 'umrah.passenger.assign'
-        : d.status
-        ? 'umrah.passenger.status'
-        : 'umrah.passenger.update',
+        : charged
+          ? 'umrah.passenger.charge'
+          : d.status
+            ? 'umrah.passenger.status'
+            : 'umrah.passenger.update',
       entity: 'umrah_passengers',
       entity_id: params.id,
       detail: { ...update },

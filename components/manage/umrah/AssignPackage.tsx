@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, PackageCheck, PackageMinus } from 'lucide-react';
+import { AlertTriangle, Loader2, PackageCheck, PackageMinus } from 'lucide-react';
 import { confirmDialog } from '@/components/admin/confirm';
 import { Field, inputClass } from '@/components/manage/ui';
 import { Button } from '@/components/ui/Button';
@@ -42,6 +42,10 @@ export function AssignPackage({
           removed: 'প্যাকেজ বাদ দেওয়া হয়েছে, খরচ reverse হয়েছে।',
           failed: 'প্যাকেজ বাদ দেওয়া যায়নি।',
           changeHint: 'অন্য প্যাকেজ দিলে আগের প্যাকেজ খরচ reverse হয়ে নতুন দাম বসবে।',
+          notCharged:
+            'প্যাকেজ দেওয়া আছে কিন্তু এর খরচ লেজারে পোস্ট হয়নি — তাই বকেয়া ০ দেখাচ্ছে। নিচের বাটনে চাপলে প্যাকেজের দাম খরচ হিসেবে পোস্ট হবে।',
+          postCharge: 'প্যাকেজ খরচ পোস্ট করুন',
+          chargePosted: 'প্যাকেজ খরচ লেজারে পোস্ট হয়েছে।',
         }
       : {
           remove: 'Remove package',
@@ -49,7 +53,14 @@ export function AssignPackage({
           removed: 'Package removed and its charge reversed.',
           failed: 'Could not remove the package.',
           changeHint: 'Choosing a different package reverses the old charge and posts the new price.',
+          notCharged:
+            'This package is assigned but its charge was never posted to the ledger, so the due shows 0. The button below posts the package price as the charge.',
+          postCharge: 'Post package charge',
+          chargePosted: 'Package charge posted to the ledger.',
         };
+
+  // Same package re-sent = repair: the server posts the missing charge.
+  const repairing = !!currentPackageId && packageId === currentPackageId && !alreadyCharged;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,7 +68,7 @@ export function AssignPackage({
       toast.error(t.toastChoosePackage);
       return;
     }
-    if (packageId === currentPackageId) {
+    if (packageId === currentPackageId && alreadyCharged) {
       toast.info(t.toastAlreadyOnPackage);
       return;
     }
@@ -73,7 +84,7 @@ export function AssignPackage({
         toast.error(data?.error ?? t.toastAssignFail);
         return;
       }
-      toast.success(t.toastAssigned);
+      toast.success(repairing ? L.chargePosted : t.toastAssigned);
       router.refresh();
     } catch {
       toast.error(t.toastNetwork);
@@ -132,6 +143,12 @@ export function AssignPackage({
           {t.alreadyChargedHint}
         </p>
       )}
+      {repairing && (
+        <p className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          {L.notCharged}
+        </p>
+      )}
 
       <div className="flex flex-wrap justify-end gap-2">
         {currentPackageId && (
@@ -147,9 +164,9 @@ export function AssignPackage({
             {L.remove}
           </Button>
         )}
-        <Button type="submit" size="sm" disabled={saving || !packageId}>
+        <Button type="submit" size="sm" disabled={saving || !packageId} className={repairing ? 'bg-amber-600 hover:bg-amber-700' : undefined}>
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {saving ? t.assigningEllipsis : currentPackageId ? t.updatePackage : t.assignPackage}
+          {saving ? t.assigningEllipsis : repairing ? L.postCharge : currentPackageId ? t.updatePackage : t.assignPackage}
         </Button>
       </div>
     </form>

@@ -128,6 +128,7 @@ export function PilgrimForm({
         router.push(localizedPath(locale, `/admin/hajj/${pilgrimId}`));
       } else {
         toast.success(`${t.toastSavedPrefix} · ${data.tracking_no ?? ''}`.trim());
+        if (data?.warning) toast.warning(String(data.warning), { duration: 12000 });
         router.push(localizedPath(locale, `/admin/hajj/${data.id}`));
       }
       router.refresh();

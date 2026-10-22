@@ -22,6 +22,8 @@ export type GroupMemberLedger = {
   charged: number;
   paid: number;
   due: number;
+  /** A package is assigned but no package-charge journal was ever posted (due reads 0). */
+  chargeMissing: boolean;
 };
 
 /** One line of the combined, date-wise group statement. */
@@ -59,6 +61,7 @@ type Row = {
   passport_no?: string | null;
   account_head_id: string | null;
   group_head_id?: string | null;
+  package_id?: string | null;
   branch: string;
 };
 
@@ -82,7 +85,7 @@ export async function loadGroupLedger(table: GroupTable, personId: string): Prom
     const refCol = table === 'hajj_pilgrims' ? 'tracking_no' : 'passport_no';
     const { data, error } = await db
       .from(table)
-      .select(`id, name, ${refCol}, account_head_id, group_head_id, branch`)
+      .select(`id, name, ${refCol}, account_head_id, group_head_id, package_id, branch`)
       .or(`id.eq.${headId},group_head_id.eq.${headId}`);
     if (error || !data) return null;
 
@@ -93,9 +96,10 @@ export async function loadGroupLedger(table: GroupTable, personId: string): Prom
     if (!head) return null;
 
     const headIds = rows.map((r) => r.account_head_id).filter(Boolean) as string[];
-    // The member balances (heads) and the combined statement (transactions)
-    // are independent — run both round-trips concurrently.
-    const [hRes, ledger] = await Promise.all([
+    // The member balances (heads), the combined statement (transactions) and
+    // the "which members have a package charge posted" check are independent
+    // — run all three round-trips concurrently.
+    const [hRes, ledger, chargedRes] = await Promise.all([
       headIds.length
         ? db
             .from('account_heads')
@@ -103,9 +107,22 @@ export async function loadGroupLedger(table: GroupTable, personId: string): Prom
             .in('id', headIds)
         : Promise.resolve({ data: [] as AccountHead[] }),
       loadCombinedLedger(rows),
+      db
+        .from('transactions')
+        .select('ref_id')
+        .eq('ref_table', table)
+        .eq('type', 'journal')
+        .in(
+          'ref_id',
+          rows.map((r) => r.id),
+        ),
     ]);
     const heads = new Map<string, AccountHead>();
     ((hRes.data ?? []) as AccountHead[]).forEach((h) => heads.set(h.id, h));
+    // Package charges are journals tagged with the member's id (also when the
+    // charge sits on a Group Fund leader's head), so this catches a member
+    // whose package was assigned but never charged.
+    const chargedIds = new Set(((chargedRes.data ?? []) as { ref_id: string | null }[]).map((t) => t.ref_id));
 
     const toLedger = (r: Row): GroupMemberLedger => {
       const acc = r.account_head_id ? heads.get(r.account_head_id) : undefined;
@@ -117,6 +134,7 @@ export async function loadGroupLedger(table: GroupTable, personId: string): Prom
         charged: acc ? Number(acc.debit_total) : 0,
         paid: acc ? Number(acc.credit_total) : 0,
         due: acc ? Math.max(0, naturalBalance(acc)) : 0,
+        chargeMissing: !!r.package_id && !chargedIds.has(r.id),
       };
     };
 

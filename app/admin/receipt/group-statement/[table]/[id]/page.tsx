@@ -59,6 +59,7 @@ export default async function GroupStatementPage({ params }: { params: { table: 
           charged: money(m.charged, false),
           paid: money(m.paid, false),
           due: money(m.due, false),
+          chargeMissing: m.chargeMissing,
         })),
         ledger: group.ledger.map((line) => ({
           date: line.date,

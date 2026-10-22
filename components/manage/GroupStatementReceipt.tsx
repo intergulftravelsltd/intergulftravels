@@ -22,7 +22,16 @@ export type GroupStatementData = {
   headName: string;
   /** "Statement for the period: … to …" */
   period?: string | null;
-  rows: { name: string; ref: string; isHead: boolean; charged: string; paid: string; due: string }[];
+  rows: {
+    name: string;
+    ref: string;
+    isHead: boolean;
+    charged: string;
+    paid: string;
+    due: string;
+    /** Package assigned but its charge never posted — flagged on the print. */
+    chargeMissing?: boolean;
+  }[];
   /** Charges first, then discounts & payments date-wise, running balance. */
   ledger: {
     date: string;
@@ -58,8 +67,7 @@ const L = {
     membersHeading: 'Members',
     grandTotal: 'Group total',
     ledgerHeading: 'Statement — charges first, then payments date-wise',
-    colDate: 'Date',
-    colVoucher: 'Voucher No',
+    colDate: 'Date / Voucher No',
     colParticulars: 'Particulars / Narration',
     colBalance: 'Balance (৳)',
     summary: 'Summary',
@@ -67,6 +75,7 @@ const L = {
     totalPaid: 'Total paid',
     totalDue: 'Net group due',
     nil: 'Nil',
+    chargeMissing: 'Package charge not posted',
     thanks: 'Thank you for choosing us.',
   },
   bn: {
@@ -85,8 +94,7 @@ const L = {
     membersHeading: 'সদস্যরা',
     grandTotal: 'গ্রুপ মোট',
     ledgerHeading: 'হিসাব বিবরণী — আগে খরচ, তারপর তারিখ অনুযায়ী পেমেন্ট',
-    colDate: 'তারিখ',
-    colVoucher: 'ভাউচার নং',
+    colDate: 'তারিখ / ভাউচার নং',
     colParticulars: 'বিবরণ',
     colBalance: 'ব্যালেন্স (৳)',
     summary: 'সারসংক্ষেপ',
@@ -94,6 +102,7 @@ const L = {
     totalPaid: 'মোট পরিশোধিত',
     totalDue: 'গ্রুপের নিট বকেয়া',
     nil: 'শূন্য',
+    chargeMissing: 'প্যাকেজ খরচ পোস্ট হয়নি',
     thanks: 'আমাদের বেছে নেওয়ার জন্য ধন্যবাদ।',
   },
 };
@@ -169,6 +178,7 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
                     )}
                   </span>
                   {r.ref && <span className="block text-[0.7rem] text-gray-400">{r.ref}</span>}
+                  {r.chargeMissing && <span className="block text-[0.66rem] font-semibold text-red-600">{t.chargeMissing}</span>}
                 </td>
                 <td className={RT.tdRight}>{r.charged}</td>
                 <td className={RT.tdRight}>{r.paid}</td>
@@ -198,7 +208,6 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
             <thead>
               <tr>
                 <th className={RT.th}>{t.colDate}</th>
-                <th className={RT.th}>{t.colVoucher}</th>
                 <th className={RT.th}>{t.colParticulars}</th>
                 <th className={RT.thRight}>{t.colCharged}</th>
                 <th className={RT.thRight}>{t.colPaid}</th>
@@ -208,10 +217,18 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
             <tbody>
               {data.ledger.map((line, i) => (
                 <tr key={i}>
-                  <td className={`${RT.td} whitespace-nowrap`}>{line.date}</td>
-                  <td className={RT.tdMuted}>
-                    {line.voucher || '—'}
-                    {line.manualRef && <span className="block font-semibold text-gray-800">{line.manualRef}</span>}
+                  {/* Voucher (and the hand-written number) sit under the date. */}
+                  <td className={`${RT.td} whitespace-nowrap`}>
+                    {line.date}
+                    <span className="block text-[0.68rem] text-gray-500">
+                      {line.voucher || '—'}
+                      {line.manualRef && (
+                        <>
+                          {' · '}
+                          <span className="font-semibold text-gray-800">{line.manualRef}</span>
+                        </>
+                      )}
+                    </span>
                   </td>
                   <td className={RT.td}>
                     <span className="font-medium text-gray-900">{line.member}</span>
@@ -225,7 +242,7 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
             </tbody>
             <tfoot>
               <tr>
-                <td className={RT.total} colSpan={3}>
+                <td className={RT.total} colSpan={2}>
                   {t.totalDue}
                 </td>
                 <td className={RT.totalRight}>{data.totalCharged}</td>

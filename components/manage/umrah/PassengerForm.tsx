@@ -137,6 +137,7 @@ export function PassengerForm({
         return;
       }
       toast.success(isEdit ? t.toastPassengerUpdated : t.toastPassengerAdded);
+      if (data?.warning) toast.warning(String(data.warning), { duration: 12000 });
       router.push(localizedPath(locale, `/admin/umrah/${isEdit ? passengerId : data.id}`));
       router.refresh();
     } catch {

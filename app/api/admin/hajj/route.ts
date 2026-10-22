@@ -132,26 +132,35 @@ export async function POST(request: Request) {
     const headId = target.headId;
 
     // Charge the package price once (creates the due) when a package is assigned.
+    // A failure here must never be silent: the pilgrim would carry a package
+    // with no due, so the form is told to point staff at the repair button.
+    let warning: string | null = null;
     if (hasPackage && headId) {
-      const { data: pkg } = await db
-        .from('mgmt_packages')
-        .select('price, name')
-        .eq('id', d.package_id)
-        .maybeSingle();
-      const price = Number(pkg?.price ?? 0);
-      if (price > 0) {
-        await chargeParty({
-          customer_head_id: headId,
-          packageType: 'hajj',
-          amount: price,
-          branch: pilgrim.branch,
-          narration: target.groupFund
-            ? `Hajj package — ${pkg?.name ?? ''} · ${d.name} (${tracking_no})`.trim()
-            : `Hajj package — ${pkg?.name ?? ''}`.trim(),
-          ref_table: 'hajj_pilgrims',
-          ref_id: pilgrim.id,
-          created_by: guard.user.id,
-        });
+      try {
+        const { data: pkg } = await db
+          .from('mgmt_packages')
+          .select('price, name')
+          .eq('id', d.package_id)
+          .maybeSingle();
+        const price = Number(pkg?.price ?? 0);
+        if (price > 0) {
+          await chargeParty({
+            customer_head_id: headId,
+            packageType: 'hajj',
+            amount: price,
+            branch: pilgrim.branch,
+            narration: target.groupFund
+              ? `Hajj package — ${pkg?.name ?? ''} · ${d.name} (${tracking_no})`.trim()
+              : `Hajj package — ${pkg?.name ?? ''}`.trim(),
+            ref_table: 'hajj_pilgrims',
+            ref_id: pilgrim.id,
+            created_by: guard.user.id,
+          });
+        }
+      } catch (err) {
+        console.error('[admin/hajj] package charge failed:', err);
+        warning =
+          'Pilgrim saved, but the package charge could not be posted to the ledger. Open the profile → Package → "Post package charge".';
       }
     }
 
@@ -181,7 +190,7 @@ export async function POST(request: Request) {
       branch: pilgrim.branch,
     });
 
-    return NextResponse.json({ ok: true, id: pilgrim.id, tracking_no });
+    return NextResponse.json({ ok: true, id: pilgrim.id, tracking_no, warning });
   } catch (err) {
     console.error('[admin/hajj] unexpected error:', err);
     return NextResponse.json({ ok: false, error: 'Unexpected error. Please try again.' }, { status: 500 });

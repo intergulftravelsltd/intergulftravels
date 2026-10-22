@@ -57,6 +57,22 @@ async function loadHead(id: string | null): Promise<AccountHead | null> {
   }
 }
 
+/** True once a package-charge journal tagged with this pilgrim exists (false = repair needed). */
+async function loadAlreadyCharged(pilgrimId: string): Promise<boolean> {
+  try {
+    const { data } = await mgmtDb()
+      .from('transactions')
+      .select('id')
+      .eq('ref_table', 'hajj_pilgrims')
+      .eq('ref_id', pilgrimId)
+      .eq('type', 'journal')
+      .limit(1);
+    return (data?.length ?? 0) > 0;
+  } catch {
+    return true; // never show the repair button on a failed lookup
+  }
+}
+
 async function loadPayments(pilgrimId: string): Promise<Payment[]> {
   try {
     const { data } = await mgmtDb()
@@ -79,12 +95,13 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
   const t = getDict(locale);
   // Everything keyed only by the URL id starts immediately alongside the
   // pilgrim row; the two loaders that need the row's fields follow in one step.
-  const [pilgrim, payments, packages, banks, group] = await Promise.all([
+  const [pilgrim, payments, packages, banks, group, alreadyCharged] = await Promise.all([
     loadPilgrim(params.id),
     loadPayments(params.id),
     loadHajjPackages(),
     loadBankAccounts(),
     loadGroupLedger('hajj_pilgrims', params.id),
+    loadAlreadyCharged(params.id),
   ]);
   if (!pilgrim) notFound();
 
@@ -264,6 +281,7 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
               pilgrimId={pilgrim.id}
               packages={pkgOptions}
               currentPackageId={pilgrim.package_id}
+              alreadyCharged={alreadyCharged}
             />
           </Card>
 

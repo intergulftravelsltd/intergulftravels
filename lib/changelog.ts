@@ -14,6 +14,24 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.6.1',
+    date: '2026-10-22',
+    items: [
+      {
+        en: 'Receipts and statements redesigned as a compact one-page A4 document: the title with receipt no / date / branch sits beside the letterhead, the account holder and a Summary box (total package, total paid, balance due) sit side by side, ruled tables with a double-ruled total, the logo watermark is never covered, and the admin sidebar / top bar no longer take space on the printed page.',
+        bn: 'রসিদ ও বিবরণী নতুন এক-পৃষ্ঠার A4 ডিজাইনে: শিরোনামসহ রসিদ নং / তারিখ / শাখা লেটারহেডের পাশে, হিসাবধারী ও সারসংক্ষেপ বক্স (মোট প্যাকেজ, মোট পরিশোধ, বাকি) পাশাপাশি, রেখা টানা টেবিল ও ডাবল-রুল মোট, লোগোর জলছাপ কখনো ঢাকা পড়ে না, আর প্রিন্টে অ্যাডমিনের সাইডবার / টপবার জায়গা নেয় না।',
+      },
+      {
+        en: 'Statement tables: the voucher number (and the hand-written number) now sit under the date in one column.',
+        bn: 'বিবরণীর টেবিলে ভাউচার নং (ও ম্যানুয়াল নং) এখন তারিখের নিচে এক কলামে।',
+      },
+      {
+        en: 'Package charge repair: if a passenger has a package but its charge was never posted (due reads 0), the profile shows a warning and a "Post package charge" button; the group card and group statement flag such members as "Charge not posted". Creating a passenger whose charge fails now warns instead of silently skipping.',
+        bn: 'প্যাকেজ খরচ মেরামত: কোনো যাত্রীর প্যাকেজ থাকলেও খরচ পোস্ট না হলে (বকেয়া ০ দেখালে) প্রোফাইলে সতর্কবার্তা ও "প্যাকেজ খরচ পোস্ট করুন" বাটন; গ্রুপ কার্ড ও গ্রুপ বিবরণীতে এমন সদস্যে "খরচ পোস্ট হয়নি" চিহ্ন। নতুন যাত্রী যোগের সময় খরচ ব্যর্থ হলে এখন নীরবে বাদ না গিয়ে সতর্ক করে।',
+      },
+    ],
+  },
+  {
     version: '1.6.0',
     date: '2026-10-22',
     items: [

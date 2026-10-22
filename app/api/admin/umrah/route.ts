@@ -116,7 +116,10 @@ export async function POST(request: Request) {
     const target = await resolveChargeTarget(passenger.account_head_id as string | null, affiliateId);
     const headId = target.headId;
 
-    // If assigned to a package at creation, charge the package price once.
+    // If assigned to a package at creation, charge the package price once. A
+    // failure here must never be silent: the passenger would carry a package
+    // with no due, so the form is told to point staff at the repair button.
+    let warning: string | null = null;
     if (d.package_id && headId) {
       try {
         const { data: pkg } = await supabase
@@ -140,6 +143,8 @@ export async function POST(request: Request) {
         }
       } catch (err) {
         console.error('[admin/umrah] package charge failed:', err);
+        warning =
+          'Passenger saved, but the package charge could not be posted to the ledger. Open the profile → Package → "Post package charge".';
       }
     }
 
@@ -173,7 +178,7 @@ export async function POST(request: Request) {
       branch: passenger.branch,
     });
 
-    return NextResponse.json({ ok: true, id: passenger.id });
+    return NextResponse.json({ ok: true, id: passenger.id, warning });
   } catch (err) {
     console.error('[admin/umrah] unexpected error:', err);
     return NextResponse.json({ ok: false, error: 'Unexpected error.' }, { status: 500 });
