@@ -51,6 +51,7 @@ export default async function GroupStatementPage({ params }: { params: { table: 
         date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         branch: branchLabel(group.branch),
         headName: group.headName,
+        headPhone: group.headPhone,
         period,
         rows: group.members.map((m) => ({
           name: m.name,

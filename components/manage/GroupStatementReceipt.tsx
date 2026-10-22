@@ -20,6 +20,8 @@ export type GroupStatementData = {
   date: string;
   branch: string;
   headName: string;
+  /** The leader's mobile number. */
+  headPhone?: string | null;
   /** "Statement for the period: … to …" */
   period?: string | null;
   rows: {
@@ -60,6 +62,7 @@ const L = {
     branch: 'Branch',
     headOf: 'Group leader',
     forProgram: 'Program',
+    mobile: 'Mobile',
     membersLabel: 'Members',
     members: (n: number) => `${n} ${n === 1 ? 'member' : 'members'}`,
     persons: (n: number) => `${n} ${n === 1 ? 'person' : 'persons'}`,
@@ -91,6 +94,7 @@ const L = {
     branch: 'শাখা',
     headOf: 'গ্রুপ লিডার',
     forProgram: 'প্রোগ্রাম',
+    mobile: 'মোবাইল',
     membersLabel: 'সদস্য',
     members: (n: number) => `${n} জন সদস্য`,
     persons: (n: number) => `${n} জন`,
@@ -163,6 +167,7 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
           <div className="mt-1.5">
             <ReceiptRow label={t.forProgram} value={data.program} />
             <ReceiptRow label={t.membersLabel} value={t.members(n)} />
+            {data.headPhone && <ReceiptRow label={t.mobile} value={data.headPhone} />}
           </div>
         </ReceiptPanel>
         <ReceiptSummary
@@ -176,48 +181,14 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
         />
       </div>
 
-      {/* Leader first (bold), then the members serially */}
-      <div className="mt-5">
-        <ReceiptSectionTitle>{t.membersHeading}</ReceiptSectionTitle>
-        <table className={RT.table}>
-          <thead>
-            <tr>
-              <th className={`${RT.th} w-8`}>#</th>
-              <th className={RT.th}>{t.colMember}</th>
-              <th className={RT.thRight}>{t.colPackage}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.rows.map((r, i) => (
-              <tr key={i}>
-                <td className={RT.tdMuted}>{i + 1}</td>
-                <td className={RT.td}>
-                  <span className={r.isHead ? 'font-bold text-gray-900' : 'font-medium text-gray-900'}>
-                    {r.name}
-                    {r.isHead && (
-                      <span className="ml-1.5 rounded border border-amber-400 px-1 py-px text-[0.6rem] font-bold uppercase tracking-wide text-amber-600">
-                        {t.head}
-                      </span>
-                    )}
-                  </span>
-                  {r.ref && <span className="block text-[0.7rem] text-gray-400">{r.ref}</span>}
-                  {r.chargeMissing && <span className="block text-[0.66rem] font-semibold text-red-600">{t.chargeMissing}</span>}
-                </td>
-                <td className={RT.tdRight}>{r.charged}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td className={RT.total} colSpan={2}>
-                {t.totalPackage}
-                <span className="block text-[0.7rem] font-medium text-gray-500">{data.perHeadLine || t.persons(n)}</span>
-              </td>
-              <td className={RT.totalRight}>{data.totalCharged}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+      {/* Members whose package charge was never posted are called out here
+          (the member table itself is not printed — the summary and the
+          running balance below are what the leader needs). */}
+      {data.rows.some((r) => r.chargeMissing) && (
+        <p className="mt-3 text-[0.72rem] font-semibold text-red-600">
+          {t.chargeMissing}: {data.rows.filter((r) => r.chargeMissing).map((r) => r.name).join(', ')}
+        </p>
+      )}
 
       {/* Running balance: total package first, then each payment brings it down */}
       {data.ledger.length > 0 && (

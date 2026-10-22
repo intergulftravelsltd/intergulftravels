@@ -21,6 +21,10 @@ export const CHANGELOG: ChangelogEntry[] = [
         en: 'Vouchers: a search box — voucher no, manual no, mobile number, head name or narration — and the whole filter (date range, search, type, branch, Apply / Reset) now sits in one row instead of two stacked cards.',
         bn: 'ভাউচার: সার্চ বক্স — ভাউচার নং, ম্যানুয়াল নং, মোবাইল নম্বর, খাতের নাম বা বিবরণ — আর পুরো ফিল্টার (সময়কাল, সার্চ, ধরন, শাখা, প্রয়োগ / রিসেট) এখন দুটি আলাদা কার্ডের বদলে এক লাইনে।',
       },
+      {
+        en: 'Group statement: the member table is gone (the summary and the running balance say it all) and the leader’s mobile number is printed under the Group leader box.',
+        bn: 'গ্রুপ বিবরণী: সদস্য টেবিলটি বাদ (সারসংক্ষেপ ও চলমান ব্যালেন্সেই সব আছে), আর গ্রুপ লিডার বক্সের নিচে লিডারের মোবাইল নম্বর প্রিন্ট হয়।',
+      },
     ],
   },
   {

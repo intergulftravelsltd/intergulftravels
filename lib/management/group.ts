@@ -44,6 +44,8 @@ export type GroupLedgerLine = {
 export type GroupLedger = {
   headId: string;
   headName: string;
+  /** The leader's mobile number (printed on the group statement). */
+  headPhone: string | null;
   branch: string;
   members: GroupMemberLedger[]; // head first
   /** Charges first, then discounts & payments in date order, running balance. */
@@ -59,6 +61,7 @@ type Row = {
   name: string;
   tracking_no?: string | null;
   passport_no?: string | null;
+  phone?: string | null;
   account_head_id: string | null;
   group_head_id?: string | null;
   package_id?: string | null;
@@ -85,7 +88,7 @@ export async function loadGroupLedger(table: GroupTable, personId: string): Prom
     const refCol = table === 'hajj_pilgrims' ? 'tracking_no' : 'passport_no';
     const { data, error } = await db
       .from(table)
-      .select(`id, name, ${refCol}, account_head_id, group_head_id, package_id, branch`)
+      .select(`id, name, ${refCol}, phone, account_head_id, group_head_id, package_id, branch`)
       .or(`id.eq.${headId},group_head_id.eq.${headId}`);
     if (error || !data) return null;
 
@@ -153,6 +156,7 @@ export async function loadGroupLedger(table: GroupTable, personId: string): Prom
     return {
       headId,
       headName: head.name,
+      headPhone: head.phone ?? null,
       branch: head.branch,
       members,
       ledger,
