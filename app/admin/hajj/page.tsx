@@ -26,6 +26,7 @@ import { docStatusDone, DOC_STATUS_TOTAL } from '@/lib/management/doc-status';
 import { branchShort } from '@/lib/management/branches';
 import { money } from '@/lib/management/format';
 import { isGroupFund, type HajjPilgrim, type MgmtPackage } from '@/lib/management/types';
+import { orderByGroup } from '@/lib/management/group-order';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminhajj';
@@ -201,7 +202,9 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
   const groupWith = (head: string) => (locale === 'bn' ? `গ্রুপ: ${head}` : `Group with ${head}`);
   const fundWith = (leader: string) => (locale === 'bn' ? `গ্রুপ ফান্ড · ${leader}` : `Group Fund · ${leader}`);
   const headNote = (n: number) => (locale === 'bn' ? `গ্রুপ প্রধান · ${n} জন` : `Group head · ${n} members`);
-  const exportRows: Cell[][] = sorted.map((r) => {
+  // Printed order: each group as a block (leader, then members), singles last.
+  const printRows = orderByGroup(sorted, (r) => r.p.id, (r) => r.p.group_head_id, groupMembersByHead);
+  const exportRows: Cell[][] = printRows.map((r) => {
     const careOf = r.p.affiliate_id ? affMap.get(r.p.affiliate_id) : undefined;
     const fund = isGroupFund(careOf) ? careOf : undefined;
     const headName = r.p.group_head_id ? nameById.get(r.p.group_head_id) : undefined;
@@ -238,7 +241,7 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
     d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
 
   // Format B — Airlines / Visa office list: no money or phone, just identity.
-  const airlinesRows = rows.map((r, i) => [
+  const airlinesRows = printRows.map((r, i) => [
     i + 1,
     r.p.name,
     r.p.passport_no ?? '',

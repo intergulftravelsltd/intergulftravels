@@ -24,6 +24,7 @@ import { docStatusDoneFor, docStatusTotalFor } from '@/lib/management/doc-status
 import { money } from '@/lib/management/format';
 import { branchShort } from '@/lib/management/branches';
 import { isGroupFund } from '@/lib/management/types';
+import { orderByGroup } from '@/lib/management/group-order';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminumrah';
@@ -135,7 +136,9 @@ export default async function UmrahPassengersPage({
   const groupWith = (head: string) => (locale === 'bn' ? `গ্রুপ: ${head}` : `Group with ${head}`);
   const fundWith = (leader: string) => (locale === 'bn' ? `গ্রুপ ফান্ড · ${leader}` : `Group Fund · ${leader}`);
   const headNote = (n: number) => (locale === 'bn' ? `গ্রুপ প্রধান · ${n} জন` : `Group head · ${n} members`);
-  const exportRows: Cell[][] = rows.map((r) => {
+  // Printed order: each group as a block (leader, then members), singles last.
+  const printRows = orderByGroup(rows, (r) => r.id, (r) => r.group_head_id, groupMembersByHead);
+  const exportRows: Cell[][] = printRows.map((r) => {
     const careOf = r.affiliate_id ? affMap.get(r.affiliate_id) : undefined;
     const fund = isGroupFund(careOf) ? careOf : undefined;
     const headName = r.group_head_id ? nameById.get(r.group_head_id) : undefined;
@@ -166,7 +169,7 @@ export default async function UmrahPassengersPage({
   });
 
   // Format B — Airlines / Visa office list: no money or phone, just identity.
-  const airlinesRows = rows.map((r, i) => [
+  const airlinesRows = printRows.map((r, i) => [
     i + 1,
     r.name,
     r.passport_no ?? '',

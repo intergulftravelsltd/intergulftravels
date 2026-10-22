@@ -14,6 +14,16 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.6.3',
+    date: '2026-10-22',
+    items: [
+      {
+        en: 'Printed / exported passenger and pilgrim lists are now grouped: each group leader first, their members right under them, the next group after that, and everyone who is not in a group at the end — so a list reads at a glance.',
+        bn: 'প্রিন্ট / এক্সপোর্ট করা যাত্রী ও হাজী তালিকা এখন গ্রুপ অনুযায়ী: আগে গ্রুপ লিডার, ঠিক নিচে তার সদস্যরা, তারপর পরের গ্রুপ, আর যারা কোনো গ্রুপে নেই তারা সবার শেষে — এক নজরে পড়া যায়।',
+      },
+    ],
+  },
+  {
     version: '1.6.2',
     date: '2026-10-22',
     items: [
