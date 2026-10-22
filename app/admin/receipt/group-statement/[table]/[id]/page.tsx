@@ -67,6 +67,7 @@ export default async function GroupStatementPage({ params }: { params: { table: 
           particulars: line.particulars,
           voucher: line.voucher,
           manualRef: line.manualRef,
+          kind: line.kind,
           charge: line.charge ? money(line.charge, false) : '',
           paid: line.paid ? money(line.paid, false) : '',
           balance: money(line.balance, false),
@@ -75,6 +76,7 @@ export default async function GroupStatementPage({ params }: { params: { table: 
         totalPaid: money(group.totalPaid, false),
         totalDue: money(group.totalDue, false),
         perHeadLine,
+        perHead: uniform !== null ? money(uniform, false) : null,
       }}
     />
   );

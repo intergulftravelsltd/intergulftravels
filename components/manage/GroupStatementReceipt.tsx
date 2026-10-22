@@ -39,6 +39,7 @@ export type GroupStatementData = {
     particulars: string;
     voucher: string;
     manualRef?: string;
+    kind: 'charge' | 'discount' | 'payment';
     charge: string;
     paid: string;
     balance: string;
@@ -46,8 +47,10 @@ export type GroupStatementData = {
   totalCharged: string;
   totalPaid: string;
   totalDue: string;
-  /** "৳1,60,000 × 3" helper line when every member has the same package. */
+  /** "৳1,60,000 × 3 persons" helper line when every member has the same package. */
   perHeadLine: string;
+  /** The uniform per-person package price ("1,60,000"), null when packages differ. */
+  perHead?: string | null;
 };
 
 const L = {
@@ -55,61 +58,74 @@ const L = {
     title: 'Group Statement',
     date: 'Date',
     branch: 'Branch',
-    headOf: 'Group head',
+    headOf: 'Group leader',
     forProgram: 'Program',
     membersLabel: 'Members',
     members: (n: number) => `${n} ${n === 1 ? 'member' : 'members'}`,
-    colMember: 'Member',
-    colCharged: 'Package (৳)',
-    colPaid: 'Paid (৳)',
-    colDue: 'Due (৳)',
-    head: 'Head',
-    membersHeading: 'Members',
-    grandTotal: 'Group total',
-    ledgerHeading: 'Statement — charges first, then payments date-wise',
-    colDate: 'Date / Voucher No',
-    colParticulars: 'Particulars / Narration',
-    colBalance: 'Balance (৳)',
+    persons: (n: number) => `${n} ${n === 1 ? 'person' : 'persons'}`,
     summary: 'Summary',
+    packagePrice: 'Package price',
     totalPackage: 'Total package',
+    times: (n: number, price: string) => `${n} × ৳ ${price}`,
     totalPaid: 'Total paid',
-    totalDue: 'Net group due',
+    totalDue: 'Total due',
     nil: 'Nil',
+    membersHeading: 'Group leader & members',
+    colMember: 'Member',
+    colPackage: 'Package (৳)',
+    head: 'Leader',
     chargeMissing: 'Package charge not posted',
+    ledgerHeading: 'Payment statement — balance comes down with every payment',
+    colDate: 'Date / Voucher No',
+    colParticulars: 'Particulars',
+    colPaid: 'Paid (৳)',
+    colBalance: 'Balance (৳)',
+    opening: (detail: string) => `Package — ${detail}`,
+    discount: 'Discount',
+    balanceDue: 'Balance due',
     thanks: 'Thank you for choosing us.',
   },
   bn: {
     title: 'গ্রুপ হিসাব বিবরণী',
     date: 'তারিখ',
     branch: 'শাখা',
-    headOf: 'গ্রুপ প্রধান',
+    headOf: 'গ্রুপ লিডার',
     forProgram: 'প্রোগ্রাম',
     membersLabel: 'সদস্য',
     members: (n: number) => `${n} জন সদস্য`,
+    persons: (n: number) => `${n} জন`,
+    summary: 'সারসংক্ষেপ',
+    packagePrice: 'প্যাকেজের দাম',
+    totalPackage: 'মোট প্যাকেজ',
+    times: (n: number, price: string) => `${n} × ৳ ${price}`,
+    totalPaid: 'মোট পরিশোধ',
+    totalDue: 'মোট বকেয়া',
+    nil: 'শূন্য',
+    membersHeading: 'গ্রুপ লিডার ও সদস্যরা',
     colMember: 'সদস্য',
-    colCharged: 'প্যাকেজ (৳)',
-    colPaid: 'পরিশোধিত (৳)',
-    colDue: 'বকেয়া (৳)',
-    head: 'প্রধান',
-    membersHeading: 'সদস্যরা',
-    grandTotal: 'গ্রুপ মোট',
-    ledgerHeading: 'হিসাব বিবরণী — আগে খরচ, তারপর তারিখ অনুযায়ী পেমেন্ট',
+    colPackage: 'প্যাকেজ (৳)',
+    head: 'লিডার',
+    chargeMissing: 'প্যাকেজ খরচ পোস্ট হয়নি',
+    ledgerHeading: 'পেমেন্ট বিবরণী — প্রতিটি পেমেন্টে ব্যালেন্স কমে আসে',
     colDate: 'তারিখ / ভাউচার নং',
     colParticulars: 'বিবরণ',
+    colPaid: 'পরিশোধ (৳)',
     colBalance: 'ব্যালেন্স (৳)',
-    summary: 'সারসংক্ষেপ',
-    totalPackage: 'মোট প্যাকেজ',
-    totalPaid: 'মোট পরিশোধিত',
-    totalDue: 'গ্রুপের নিট বকেয়া',
-    nil: 'শূন্য',
-    chargeMissing: 'প্যাকেজ খরচ পোস্ট হয়নি',
+    opening: (detail: string) => `প্যাকেজ — ${detail}`,
+    discount: 'ছাড়',
+    balanceDue: 'বাকি',
     thanks: 'আমাদের বেছে নেওয়ার জন্য ধন্যবাদ।',
   },
 };
 
 const isZero = (s: string) => /^0+(\.0+)?$/.test(s.replace(/[,\s৳]/g, '')) || s.trim() === '';
 
-/** Printable combined statement for a permanent family/group. */
+/**
+ * Printable combined statement for a permanent family/group — the document
+ * the leader is handed: package price × members = total package, what has
+ * been paid, what is still due; the leader and members listed; then every
+ * payment date-wise with the balance coming down from the total package.
+ */
 export function GroupStatementReceipt({ data, locale }: { data: GroupStatementData; locale: 'en' | 'bn' }) {
   const t = L[locale];
 
@@ -118,7 +134,15 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
     return () => clearTimeout(id);
   }, []);
 
+  const n = data.rows.length;
   const dueZero = isZero(data.totalDue);
+  // All package charges are folded into one opening line (they are posted
+  // first in the ledger, so the running balance after them = total package);
+  // discounts and payments then bring the balance down date-wise.
+  const charges = data.ledger.filter((l) => l.kind === 'charge');
+  const movements = data.ledger.filter((l) => l.kind !== 'charge');
+  const openingDate = charges[0]?.date ?? data.ledger[0]?.date ?? '';
+  const openingDetail = data.perHeadLine || t.persons(n);
 
   return (
     <ReceiptFrame logo={data.company.logo} locale={locale}>
@@ -133,25 +157,26 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
       />
       <ReceiptPeriod text={data.period} />
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <ReceiptPanel heading={t.headOf}>
-          <p className="text-[1.02rem] font-bold leading-tight text-gray-900">{data.headName}</p>
+          <p className="text-[1.05rem] font-bold leading-tight text-gray-900">{data.headName}</p>
           <div className="mt-1.5">
             <ReceiptRow label={t.forProgram} value={data.program} />
-            <ReceiptRow label={t.membersLabel} value={t.members(data.rows.length)} />
+            <ReceiptRow label={t.membersLabel} value={t.members(n)} />
           </div>
         </ReceiptPanel>
         <ReceiptSummary
           heading={t.summary}
           lines={[
-            { label: t.totalPackage, value: `৳ ${data.totalCharged}` },
+            ...(data.perHead ? [{ label: t.packagePrice, value: `৳ ${data.perHead}` }] : []),
+            { label: data.perHead ? t.times(n, data.perHead) : t.totalPackage, value: `৳ ${data.totalCharged}` },
             { label: t.totalPaid, value: `৳ ${data.totalPaid}` },
             { label: t.totalDue, value: dueZero ? t.nil : `৳ ${data.totalDue}`, total: true, tone: dueZero ? 'ok' : 'warn' },
           ]}
         />
       </div>
 
-      {/* Member table */}
+      {/* Leader first (bold), then the members serially */}
       <div className="mt-5">
         <ReceiptSectionTitle>{t.membersHeading}</ReceiptSectionTitle>
         <table className={RT.table}>
@@ -159,9 +184,7 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
             <tr>
               <th className={`${RT.th} w-8`}>#</th>
               <th className={RT.th}>{t.colMember}</th>
-              <th className={RT.thRight}>{t.colCharged}</th>
-              <th className={RT.thRight}>{t.colPaid}</th>
-              <th className={RT.thRight}>{t.colDue}</th>
+              <th className={RT.thRight}>{t.colPackage}</th>
             </tr>
           </thead>
           <tbody>
@@ -169,7 +192,7 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
               <tr key={i}>
                 <td className={RT.tdMuted}>{i + 1}</td>
                 <td className={RT.td}>
-                  <span className="font-medium text-gray-900">
+                  <span className={r.isHead ? 'font-bold text-gray-900' : 'font-medium text-gray-900'}>
                     {r.name}
                     {r.isHead && (
                       <span className="ml-1.5 rounded border border-amber-400 px-1 py-px text-[0.6rem] font-bold uppercase tracking-wide text-amber-600">
@@ -181,26 +204,22 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
                   {r.chargeMissing && <span className="block text-[0.66rem] font-semibold text-red-600">{t.chargeMissing}</span>}
                 </td>
                 <td className={RT.tdRight}>{r.charged}</td>
-                <td className={RT.tdRight}>{r.paid}</td>
-                <td className={`${RT.tdRight} font-medium ${isZero(r.due) ? 'text-gray-900' : 'text-red-600'}`}>{r.due}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr>
               <td className={RT.total} colSpan={2}>
-                {t.grandTotal}
-                {data.perHeadLine && <span className="block text-[0.7rem] font-medium text-gray-500">{data.perHeadLine}</span>}
+                {t.totalPackage}
+                <span className="block text-[0.7rem] font-medium text-gray-500">{data.perHeadLine || t.persons(n)}</span>
               </td>
               <td className={RT.totalRight}>{data.totalCharged}</td>
-              <td className={RT.totalRight}>{data.totalPaid}</td>
-              <td className={`${RT.totalRight} ${dueZero ? 'text-emerald-800' : 'text-red-600'}`}>{data.totalDue}</td>
             </tr>
           </tfoot>
         </table>
       </div>
 
-      {/* Date-wise combined statement: charges first, then payments */}
+      {/* Running balance: total package first, then each payment brings it down */}
       {data.ledger.length > 0 && (
         <div className="mt-5">
           <ReceiptSectionTitle>{t.ledgerHeading}</ReceiptSectionTitle>
@@ -209,13 +228,20 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
               <tr>
                 <th className={RT.th}>{t.colDate}</th>
                 <th className={RT.th}>{t.colParticulars}</th>
-                <th className={RT.thRight}>{t.colCharged}</th>
                 <th className={RT.thRight}>{t.colPaid}</th>
                 <th className={RT.thRight}>{t.colBalance}</th>
               </tr>
             </thead>
             <tbody>
-              {data.ledger.map((line, i) => (
+              {charges.length > 0 && (
+                <tr>
+                  <td className={`${RT.td} whitespace-nowrap`}>{openingDate}</td>
+                  <td className={`${RT.td} font-semibold text-gray-900`}>{t.opening(openingDetail)}</td>
+                  <td className={RT.tdRight}></td>
+                  <td className={`${RT.tdRight} font-semibold text-gray-900`}>{data.totalCharged}</td>
+                </tr>
+              )}
+              {movements.map((line, i) => (
                 <tr key={i}>
                   {/* Voucher (and the hand-written number) sit under the date. */}
                   <td className={`${RT.td} whitespace-nowrap`}>
@@ -231,10 +257,11 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
                     </span>
                   </td>
                   <td className={RT.td}>
-                    <span className="font-medium text-gray-900">{line.member}</span>
-                    <span className="block text-[0.7rem] text-gray-500">{line.particulars}</span>
+                    <span className="font-medium text-gray-900">
+                      {line.kind === 'discount' ? `${t.discount} — ${line.member}` : line.member}
+                    </span>
+                    {line.particulars && <span className="block text-[0.7rem] text-gray-500">{line.particulars}</span>}
                   </td>
-                  <td className={RT.tdRight}>{line.charge}</td>
                   <td className={RT.tdRight}>{line.paid}</td>
                   <td className={`${RT.tdRight} font-medium text-gray-900`}>{line.balance}</td>
                 </tr>
@@ -243,9 +270,8 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
             <tfoot>
               <tr>
                 <td className={RT.total} colSpan={2}>
-                  {t.totalDue}
+                  {t.totalPaid} / {t.balanceDue}
                 </td>
-                <td className={RT.totalRight}>{data.totalCharged}</td>
                 <td className={RT.totalRight}>{data.totalPaid}</td>
                 <td className={`${RT.totalRight} ${dueZero ? 'text-emerald-800' : 'text-red-600'}`}>{data.totalDue}</td>
               </tr>
