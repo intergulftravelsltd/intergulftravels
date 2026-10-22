@@ -15,9 +15,9 @@ import { ColumnChooser, COLUMN_LABELS } from '@/components/manage/ColumnChooser'
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { useCompanyProfile } from '@/components/providers/CompanyProfile';
 import { getDict } from '@/lib/dictionaries/areas/adminshell';
+import { buildTotalsRow, type Cell } from '@/lib/export-cells';
+import { money } from '@/lib/management/format';
 import { cn } from '@/lib/utils';
-
-type Cell = string | number | null | undefined;
 
 export const exportBtnClass =
   'inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2 text-sm font-medium text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700';
@@ -36,6 +36,7 @@ export function ExportBar({
   orientation = 'p',
   label,
   period,
+  totals,
 }: {
   filename: string;
   title: string;
@@ -45,12 +46,13 @@ export function ExportBar({
   orientation?: 'p' | 'l';
   label?: string;
   period?: ExportPeriod | null;
+  /** Headers (by label) summed into a totals line under the table, e.g. [Paid, Due]. */
+  totals?: string[];
 }) {
   const locale = useLocale();
   const t = getDict(locale).export;
   const tc = COLUMN_LABELS[locale];
   const company = useCompanyProfile();
-  const meta = { company, period, locale };
 
   const [sel, setSel] = useState<ColumnSelection>(() => defaultSelection(headers.length));
   const [open, setOpen] = useState(false);
@@ -85,6 +87,12 @@ export function ExportBar({
   };
 
   const picked = () => applyColumnSelection(headers, rows, sel, tc.serialHeader);
+  const metaFor = (p: { headers: string[]; rows: Cell[][] }) => ({
+    company,
+    period,
+    locale,
+    foot: buildTotalsRow(p.headers, p.rows, totals, tc.total, (v) => money(v, false)),
+  });
   const n = pickedCount(sel);
   const customised = n !== headers.length || sel.serial;
 
@@ -124,7 +132,7 @@ export function ExportBar({
         className={exportBtnClass}
         onClick={() => {
           const p = picked();
-          void exportToExcel(filename, p.headers, p.rows, { ...meta, title, subtitle });
+          void exportToExcel(filename, p.headers, p.rows, { ...metaFor(p), title, subtitle });
         }}
       >
         <FileSpreadsheet className="h-4 w-4" /> {t.excel}
@@ -134,7 +142,7 @@ export function ExportBar({
         className={exportBtnClass}
         onClick={() => {
           const p = picked();
-          void exportToPDF({ filename, title, subtitle, headers: p.headers, rows: p.rows, orientation, ...meta });
+          void exportToPDF({ filename, title, subtitle, headers: p.headers, rows: p.rows, orientation, ...metaFor(p) });
         }}
       >
         <FileText className="h-4 w-4" /> {t.pdf}
@@ -144,7 +152,7 @@ export function ExportBar({
         className={exportBtnClass}
         onClick={() => {
           const p = picked();
-          printTable({ title, subtitle, headers: p.headers, rows: p.rows, ...meta });
+          printTable({ title, subtitle, headers: p.headers, rows: p.rows, ...metaFor(p) });
         }}
       >
         <Printer className="h-4 w-4" /> {t.print}

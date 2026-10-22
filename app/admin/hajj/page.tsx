@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Users, UserPlus, BadgeCheck, Wallet, Printer, Share2, HandCoins } from 'lucide-react';
+import { Users, UserPlus, BadgeCheck, Wallet, HandCoins } from 'lucide-react';
 import {
   PageHeader,
   StatCard,
@@ -14,9 +14,9 @@ import { ExportMenu } from '@/components/manage/ExportMenu';
 import { PilgrimFilters, type HajjSort } from '@/components/manage/hajj/PilgrimFilters';
 import { Pagination } from '@/components/manage/Pagination';
 import { paginate, parsePaging } from '@/lib/pagination';
-import { RecordRowActions } from '@/components/manage/RecordRowActions';
-import { DocStatusViewer } from '@/components/manage/DocStatusViewer';
+import { RowMenu } from '@/components/manage/RowMenu';
 import { sharePath } from '@/lib/management/share-token';
+import type { Cell } from '@/lib/export-cells';
 import { Button } from '@/components/ui/Button';
 import { mgmtDb } from '@/lib/management/server';
 import { getStaffScope } from '@/lib/management/scope';
@@ -30,6 +30,7 @@ import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminhajj';
 import { getDict as getCareDict } from '@/lib/dictionaries/areas/careof';
+import { getDict as getShellDict } from '@/lib/dictionaries/areas/adminshell';
 
 export const dynamic = 'force-dynamic';
 export function generateMetadata() {
@@ -74,6 +75,7 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
   const locale = getLocale();
   const t = getDict(locale);
   const ct = getCareDict(locale);
+  const st = getShellDict(locale).rowActions;
   const [allPilgrims, packages, heads, affiliates] = await Promise.all([
     loadPilgrims(),
     loadHajjPackages(),
@@ -191,19 +193,46 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
   });
   const paged = paginate(sorted, parsePaging(searchParams));
 
-  const exportRows = sorted.map((r) => [
-    r.p.tracking_no ?? '',
-    r.p.name,
-    r.p.phone ?? '',
-    genderLabel(r.p.gender),
-    r.p.year,
-    r.p.reg_type === 'registered' ? t.exTypeRegistered : t.exTypePreRegistration,
-    r.pkgName,
-    money(r.paid, false),
-    money(Math.max(0, r.due), false),
-    branchShort(r.p.branch),
-    r.p.status,
-  ]);
+  // Printed / exported list: a group member carries "Group with <head>" under
+  // Paid and a bold amber name, the head a bold brand name with the member
+  // count, and a Group Fund pilgrim the leader's name — so single and grouped
+  // pilgrims read apart at a glance. Own figures per row, so the totals line
+  // under the table adds up.
+  const groupWith = (head: string) => (locale === 'bn' ? `গ্রুপ: ${head}` : `Group with ${head}`);
+  const fundWith = (leader: string) => (locale === 'bn' ? `গ্রুপ ফান্ড · ${leader}` : `Group Fund · ${leader}`);
+  const headNote = (n: number) => (locale === 'bn' ? `গ্রুপ প্রধান · ${n} জন` : `Group head · ${n} members`);
+  const exportRows: Cell[][] = sorted.map((r) => {
+    const careOf = r.p.affiliate_id ? affMap.get(r.p.affiliate_id) : undefined;
+    const fund = isGroupFund(careOf) ? careOf : undefined;
+    const headName = r.p.group_head_id ? nameById.get(r.p.group_head_id) : undefined;
+    const members = groupMembersByHead.get(r.p.id)?.length ?? 0;
+    const nameCell: Cell = headName
+      ? { v: r.p.name, bold: true, tone: 'amber' }
+      : members
+        ? { v: r.p.name, bold: true, tone: 'brand', note: headNote(members) }
+        : r.p.name;
+    const paidCell: Cell = fund
+      ? { v: fundWith(fund.name), bold: true, tone: 'amber' }
+      : headName
+        ? r.paid > 0
+          ? { v: money(r.paid, false), bold: true, tone: 'amber', note: groupWith(headName) }
+          : { v: groupWith(headName), bold: true, tone: 'amber' }
+        : money(r.paid, false);
+    const dueCell: Cell = fund ? { v: '—', tone: 'muted' } : money(Math.max(0, r.due), false);
+    return [
+      r.p.tracking_no ?? '',
+      nameCell,
+      r.p.phone ?? '',
+      genderLabel(r.p.gender),
+      r.p.year,
+      r.p.reg_type === 'registered' ? t.exTypeRegistered : t.exTypePreRegistration,
+      r.pkgName,
+      paidCell,
+      dueCell,
+      branchShort(r.p.branch),
+      r.p.status,
+    ];
+  });
 
   const fmtDob = (d?: string | null) =>
     d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
@@ -237,6 +266,7 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                   headers: [t.exTracking, t.exName, t.exPhone, t.gender, t.exYear, t.exType, t.exPackage, t.exPaid, t.exDue, t.exBranch, t.exStatus],
                   rows: exportRows,
                   orientation: 'l',
+                  totals: [t.exPaid, t.exDue],
                 },
                 {
                   key: 'airlines',
@@ -347,7 +377,12 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                   </Link>
                 </td>
                 <td className={tdClass}>
-                  <Link href={localizedPath(locale, `/admin/hajj/${p.id}`)} className="font-medium text-ink hover:text-brand-700">
+                  <Link
+                    href={localizedPath(locale, `/admin/hajj/${p.id}`)}
+                    className={
+                      groupHeadName ? 'font-bold text-amber-700 hover:text-amber-800' : 'font-medium text-ink hover:text-brand-700'
+                    }
+                  >
                     {p.name}
                   </Link>
                   {p.name_bn && <span className="block text-xs text-ink-muted">{p.name_bn}</span>}
@@ -386,11 +421,15 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                   {viaFund ? (
                     fundCell
                   ) : groupHeadName ? (
-                    paid > 0 ? (
-                      <Money value={paid} />
-                    ) : (
-                      <span className="text-xs text-ink-muted">—</span>
-                    )
+                    <>
+                      {paid > 0 && <Money value={paid} className="block" />}
+                      <span
+                        className="inline-block max-w-[11rem] truncate text-xs font-semibold text-amber-600"
+                        title={groupHeadName}
+                      >
+                        {locale === 'bn' ? `গ্রুপ: ${groupHeadName}` : `Group with ${groupHeadName}`}
+                      </span>
+                    </>
                   ) : isGroupHead ? (
                     <>
                       <Money value={groupPaidOf(p.id)} />
@@ -439,35 +478,36 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                   {p.status === 'cancelled' && <Badge tone="red">{t.badgeCancelled}</Badge>}
                 </td>
                 <td className={`${tdClass} whitespace-nowrap text-right`}>
-                  <div className="inline-flex items-center gap-2">
-                    <Link
-                      href={localizedPath(locale, `/admin/receipt/passenger/hajj/${p.id}`)}
-                      target="_blank"
-                      rel="noopener"
-                      title={locale === 'bn' ? 'রসিদ প্রিন্ট' : 'Print receipt'}
-                      className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700"
-                    >
-                      <Printer className="h-3.5 w-3.5" />
-                    </Link>
-                    <a
-                      href={sharePath('hajj', p.id)}
-                      target="_blank"
-                      rel="noopener"
-                      title={locale === 'bn' ? 'শেয়ারযোগ্য ফরম লিংক' : 'Shareable form link'}
-                      className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700"
-                    >
-                      <Share2 className="h-3.5 w-3.5" />
-                    </a>
-                    <DocStatusViewer name={p.name} subtitle={p.tracking_no ?? undefined} value={p.doc_status} />
-                    <RecordRowActions
-                      editHref={localizedPath(locale, `/admin/hajj/${p.id}/edit`)}
-                      deleteEndpoint={`/api/admin/hajj/${p.id}`}
-                      name={p.name}
-                      confirmMessage={t.confirmDelete
-                        .replace('{name}', p.name)
-                        .replace('{suffix}', p.tracking_no ? ` (${p.tracking_no})` : '')}
-                    />
-                  </div>
+                  <RowMenu
+                    name={p.name}
+                    items={[
+                      {
+                        kind: 'link',
+                        icon: 'print',
+                        label: st.printReceipt,
+                        href: localizedPath(locale, `/admin/receipt/passenger/hajj/${p.id}`),
+                        newTab: true,
+                      },
+                      { kind: 'link', icon: 'share', label: st.shareLink, href: sharePath('hajj', p.id), newTab: true },
+                      {
+                        kind: 'docs',
+                        label: st.viewDocs,
+                        value: p.doc_status,
+                        program: 'hajj',
+                        subtitle: p.tracking_no ?? undefined,
+                      },
+                      { kind: 'link', icon: 'sms', label: st.sendSms, href: localizedPath(locale, `/admin/sms?to=hajj:${p.id}`) },
+                      { kind: 'link', icon: 'edit', label: st.edit, href: localizedPath(locale, `/admin/hajj/${p.id}/edit`) },
+                      {
+                        kind: 'delete',
+                        label: st.remove,
+                        endpoint: `/api/admin/hajj/${p.id}`,
+                        confirmMessage: t.confirmDelete
+                          .replace('{name}', p.name)
+                          .replace('{suffix}', p.tracking_no ? ` (${p.tracking_no})` : ''),
+                      },
+                    ]}
+                  />
                 </td>
               </tr>
               );

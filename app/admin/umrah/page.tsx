@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Users, UserCheck, HandCoins, CalendarClock, Plus, Plane, Printer, Share2 } from 'lucide-react';
+import { Users, UserCheck, HandCoins, CalendarClock, Plus, Plane } from 'lucide-react';
 import {
   PageHeader,
   StatCard,
@@ -11,9 +11,9 @@ import {
   tdClass,
 } from '@/components/manage/ui';
 import { ExportMenu } from '@/components/manage/ExportMenu';
-import { RecordRowActions } from '@/components/manage/RecordRowActions';
-import { DocStatusViewer } from '@/components/manage/DocStatusViewer';
+import { RowMenu } from '@/components/manage/RowMenu';
 import { sharePath } from '@/lib/management/share-token';
+import type { Cell } from '@/lib/export-cells';
 import { Button } from '@/components/ui/Button';
 import { PassengerFilters, type UmrahSort } from '@/components/manage/umrah/PassengerFilters';
 import { Pagination } from '@/components/manage/Pagination';
@@ -28,6 +28,7 @@ import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminumrah';
 import { getDict as getCareDict } from '@/lib/dictionaries/areas/careof';
+import { getDict as getShellDict } from '@/lib/dictionaries/areas/adminshell';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Umrah Passengers' };
@@ -69,6 +70,7 @@ export default async function UmrahPassengersPage({
   const locale = getLocale();
   const t = getDict(locale);
   const ct = getCareDict(locale);
+  const st = getShellDict(locale).rowActions;
   const [all, packages, affiliates] = await Promise.all([
     loadPassengers(),
     loadUmrahPackages(),
@@ -125,16 +127,43 @@ export default async function UmrahPassengersPage({
   }, 0);
   const expiringSoon = all.filter((r) => isExpiringSoon(r.passport_expiry) && r.status === 'active').length;
 
-  const exportRows = rows.map((r) => [
-    r.name,
-    r.passport_no ?? '',
-    fmtDate(r.passport_expiry),
-    r.phone ?? '',
-    genderLabel(r.gender),
-    r.package_name ?? t.unassigned,
-    money(r.paid, false),
-    money(r.due, false),
-  ]);
+  // Printed / exported list: a group member carries "Group with <head>" under
+  // Paid and a bold amber name, the head a bold brand name with the member
+  // count, and a Group Fund passenger the leader's name — so single and
+  // grouped passengers read apart at a glance. Own figures per row, so the
+  // totals line under the table adds up.
+  const groupWith = (head: string) => (locale === 'bn' ? `গ্রুপ: ${head}` : `Group with ${head}`);
+  const fundWith = (leader: string) => (locale === 'bn' ? `গ্রুপ ফান্ড · ${leader}` : `Group Fund · ${leader}`);
+  const headNote = (n: number) => (locale === 'bn' ? `গ্রুপ প্রধান · ${n} জন` : `Group head · ${n} members`);
+  const exportRows: Cell[][] = rows.map((r) => {
+    const careOf = r.affiliate_id ? affMap.get(r.affiliate_id) : undefined;
+    const fund = isGroupFund(careOf) ? careOf : undefined;
+    const headName = r.group_head_id ? nameById.get(r.group_head_id) : undefined;
+    const members = groupMembersByHead.get(r.id)?.length ?? 0;
+    const nameCell: Cell = headName
+      ? { v: r.name, bold: true, tone: 'amber' }
+      : members
+        ? { v: r.name, bold: true, tone: 'brand', note: headNote(members) }
+        : r.name;
+    const paidCell: Cell = fund
+      ? { v: fundWith(fund.name), bold: true, tone: 'amber' }
+      : headName
+        ? r.paid > 0
+          ? { v: money(r.paid, false), bold: true, tone: 'amber', note: groupWith(headName) }
+          : { v: groupWith(headName), bold: true, tone: 'amber' }
+        : money(r.paid, false);
+    const dueCell: Cell = fund ? { v: '—', tone: 'muted' } : money(r.due, false);
+    return [
+      nameCell,
+      r.passport_no ?? '',
+      fmtDate(r.passport_expiry),
+      r.phone ?? '',
+      genderLabel(r.gender),
+      r.package_name ?? t.unassigned,
+      paidCell,
+      dueCell,
+    ];
+  });
 
   // Format B — Airlines / Visa office list: no money or phone, just identity.
   const airlinesRows = rows.map((r, i) => [
@@ -165,6 +194,7 @@ export default async function UmrahPassengersPage({
                   headers: [t.exName, t.exPassport, t.exExpiry, t.exPhone, locale === 'bn' ? 'লিঙ্গ' : 'Gender', t.exPackage, t.exPaid, t.exDue],
                   rows: exportRows,
                   orientation: 'l',
+                  totals: [t.exPaid, t.exDue],
                 },
                 {
                   key: 'airlines',
@@ -276,7 +306,14 @@ export default async function UmrahPassengersPage({
               return (
                 <tr key={r.id} className="transition hover:bg-muted/40">
                   <td className={tdClass}>
-                    <Link href={localizedPath(locale, `/admin/umrah/${r.id}`)} className="font-semibold text-ink hover:text-brand-700">
+                    <Link
+                      href={localizedPath(locale, `/admin/umrah/${r.id}`)}
+                      className={
+                        groupHeadName
+                          ? 'font-bold text-amber-700 hover:text-amber-800'
+                          : 'font-semibold text-ink hover:text-brand-700'
+                      }
+                    >
                       {r.name}
                     </Link>
                     {r.name_bn && <p className="text-xs text-ink-muted">{r.name_bn}</p>}
@@ -333,11 +370,15 @@ export default async function UmrahPassengersPage({
                     {viaFund ? (
                       fundCell
                     ) : groupHeadName ? (
-                      r.paid > 0 ? (
-                        <Money value={r.paid} />
-                      ) : (
-                        <span className="text-xs text-ink-muted">—</span>
-                      )
+                      <>
+                        {r.paid > 0 && <Money value={r.paid} className="block" />}
+                        <span
+                          className="inline-block max-w-[11rem] truncate text-xs font-semibold text-amber-600"
+                          title={groupHeadName}
+                        >
+                          {locale === 'bn' ? `গ্রুপ: ${groupHeadName}` : `Group with ${groupHeadName}`}
+                        </span>
+                      </>
                     ) : isGroupHead ? (
                       <>
                         <Money value={groupPaidOf(r.id)} />
@@ -386,33 +427,34 @@ export default async function UmrahPassengersPage({
                     <Badge>{branchShort(r.branch)}</Badge>
                   </td>
                   <td className={`${tdClass} whitespace-nowrap text-right`}>
-                    <div className="inline-flex items-center gap-2">
-                      <Link
-                        href={localizedPath(locale, `/admin/receipt/passenger/umrah/${r.id}`)}
-                        target="_blank"
-                        rel="noopener"
-                        title={locale === 'bn' ? 'রসিদ প্রিন্ট' : 'Print receipt'}
-                        className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700"
-                      >
-                        <Printer className="h-3.5 w-3.5" />
-                      </Link>
-                      <a
-                        href={sharePath('umrah', r.id)}
-                        target="_blank"
-                        rel="noopener"
-                        title={locale === 'bn' ? 'শেয়ারযোগ্য ফরম লিংক' : 'Shareable form link'}
-                        className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-muted transition hover:border-brand-600/40 hover:text-brand-700"
-                      >
-                        <Share2 className="h-3.5 w-3.5" />
-                      </a>
-                      <DocStatusViewer name={r.name} subtitle={r.passport_no ?? undefined} value={r.doc_status} program="umrah" />
-                      <RecordRowActions
-                        editHref={localizedPath(locale, `/admin/umrah/${r.id}/edit`)}
-                        deleteEndpoint={`/api/admin/umrah/${r.id}`}
-                        name={r.name}
-                        confirmMessage={t.confirmDelete.replace('{name}', r.name)}
-                      />
-                    </div>
+                    <RowMenu
+                      name={r.name}
+                      items={[
+                        {
+                          kind: 'link',
+                          icon: 'print',
+                          label: st.printReceipt,
+                          href: localizedPath(locale, `/admin/receipt/passenger/umrah/${r.id}`),
+                          newTab: true,
+                        },
+                        { kind: 'link', icon: 'share', label: st.shareLink, href: sharePath('umrah', r.id), newTab: true },
+                        {
+                          kind: 'docs',
+                          label: st.viewDocs,
+                          value: r.doc_status,
+                          program: 'umrah',
+                          subtitle: r.passport_no ?? undefined,
+                        },
+                        { kind: 'link', icon: 'sms', label: st.sendSms, href: localizedPath(locale, `/admin/sms?to=umrah:${r.id}`) },
+                        { kind: 'link', icon: 'edit', label: st.edit, href: localizedPath(locale, `/admin/umrah/${r.id}/edit`) },
+                        {
+                          kind: 'delete',
+                          label: st.remove,
+                          endpoint: `/api/admin/umrah/${r.id}`,
+                          confirmMessage: t.confirmDelete.replace('{name}', r.name),
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               );

@@ -11,6 +11,7 @@ export const COLUMN_LABELS = {
     all: 'All',
     serial: 'Serial no.',
     serialHeader: 'SL',
+    total: 'Total',
   },
   bn: {
     columns: 'কলাম',
@@ -18,6 +19,7 @@ export const COLUMN_LABELS = {
     all: 'সব',
     serial: 'ক্রমিক নং',
     serialHeader: 'ক্রমিক',
+    total: 'মোট',
   },
 } as const;
 

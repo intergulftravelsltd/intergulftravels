@@ -77,6 +77,7 @@ export function PackageWiseList({
             subtitle={`${rows.length} ${rows.length === 1 ? t.pwPassengerSingular : t.pwPassengerPlural} · ${t.pwExportPaid} ${money(totalPaid)} · ${t.pwExportDue} ${money(totalDue)}`}
             headers={[t.exName, t.exPassport, t.exPhone, t.pwExportPaid, t.pwExportDue]}
             rows={exportRows}
+            totals={[t.pwExportPaid, t.pwExportDue]}
           />
         )}
       </div>

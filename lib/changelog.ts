@@ -14,6 +14,28 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.6.0',
+    date: '2026-10-22',
+    items: [
+      {
+        en: 'New SMS section: send one message to any single passenger, to everyone, to chosen or all care-of / group leaders, or to typed numbers — through the agency’s khudebarta.com masking gateway. {name}, {due}, {paid}, {package} fill in per recipient; live SMS-part count and preview; batch sending with progress and retry; an SMS History page; per-agency SMS Settings with a test send (migration 0013 for the log).',
+        bn: 'নতুন এসএমএস সেকশন: একজন যাত্রী, সবাই, নির্দিষ্ট বা সব কেয়ার অফ / গ্রুপ লিডার, কিংবা লেখা নম্বরে — এজেন্সির khudebarta.com মাস্কিং গেটওয়ে দিয়ে বার্তা পাঠান। {name}, {due}, {paid}, {package} প্রতি প্রাপকের জন্য বসে যায়; লাইভ এসএমএস সংখ্যা ও প্রিভিউ; প্রগ্রেস ও রিট্রাইসহ ব্যাচে পাঠানো; এসএমএস ইতিহাস পেজ; এজেন্সিভিত্তিক এসএমএস সেটিংস ও টেস্ট পাঠানো (লগের জন্য মাইগ্রেশন 0013)।',
+      },
+      {
+        en: 'Printed / PDF / Excel passenger and pilgrim lists: a group member now shows "Group with <head>" under Paid with a bold amber name (the head in bold green with the member count), so single and grouped people read apart at a glance; the title / printed-on / record-count block moved top-right beside the letterhead so the table starts higher; a ruled Total line for Paid and Due under every list.',
+        bn: 'প্রিন্ট / PDF / Excel যাত্রী ও হাজী তালিকা: গ্রুপের সদস্যের পরিশোধ কলামে এখন “গ্রুপ: <প্রধান>” ও বোল্ড হলুদ নাম (প্রধান বোল্ড সবুজে, সদস্য সংখ্যাসহ) — কে একা আর কে গ্রুপে তা এক নজরে বোঝা যায়; শিরোনাম / প্রিন্টের তারিখ / রেকর্ড সংখ্যা লেটারহেডের পাশে উপরে ডানে — টেবিল উপর থেকে শুরু হয়; প্রতিটি তালিকার নিচে রেখা টানা মোট পরিশোধ ও বকেয়া।',
+      },
+      {
+        en: 'Hajj and Umrah lists: the five Manage buttons are now one “⋯” menu per row — Print receipt, Shareable form link, Document checklist, Send SMS, Edit, Remove.',
+        bn: 'হজ ও উমরাহ তালিকা: ম্যানেজ কলামের পাঁচটি বাটন এখন প্রতি সারিতে একটি “⋯” মেনু — রসিদ প্রিন্ট, শেয়ারযোগ্য ফরম লিংক, ডকুমেন্ট চেকলিস্ট, এসএমএস পাঠান, সম্পাদনা, সরান।',
+      },
+      {
+        en: 'Bangla typeface switched to Noto Sans Bengali across the whole site (Bangla version, Bangla text on the English version, and print windows).',
+        bn: 'পুরো সাইটের বাংলা ফন্ট এখন Noto Sans Bengali (বাংলা ভার্সন, ইংরেজি ভার্সনের বাংলা লেখা ও প্রিন্ট উইন্ডো)।',
+      },
+    ],
+  },
+  {
     version: '1.5.3',
     date: '2026-09-07',
     items: [

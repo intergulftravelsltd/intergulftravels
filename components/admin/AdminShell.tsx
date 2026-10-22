@@ -39,6 +39,9 @@ import {
   BookOpen,
   Rocket,
   Building2,
+  Send,
+  MessagesSquare,
+  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react';
 import { LogoMark } from '@/components/brand/Logo';
@@ -99,6 +102,14 @@ const NAV: NavGroup[] = [
   {
     groupKey: 'reports',
     items: [{ labelKey: 'reportsExport', href: '/admin/reports', icon: BarChart3 }],
+  },
+  {
+    groupKey: 'sms',
+    items: [
+      { labelKey: 'sendSms', href: '/admin/sms', icon: Send },
+      { labelKey: 'smsHistory', href: '/admin/sms/history', icon: MessagesSquare },
+      { labelKey: 'smsSettings', href: '/admin/sms/settings', icon: SlidersHorizontal },
+    ],
   },
   {
     groupKey: 'website',

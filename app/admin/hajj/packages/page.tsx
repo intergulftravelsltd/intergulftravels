@@ -222,6 +222,7 @@ export default async function HajjPackagesPage({
                 headers={[t.exTracking, t.exName, t.exPhone, t.pkgExType, t.exPaid, t.exDue, t.exBranch]}
                 rows={assignedExport}
                 orientation="l"
+                totals={[t.exPaid, t.exDue]}
               />
             </div>
             <TableWrap>

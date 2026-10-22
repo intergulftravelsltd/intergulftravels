@@ -112,14 +112,16 @@ export function PrintLetterhead({
               </p>
             )}
           </div>
-          {(title || period || subtitle) && (
-            <div className="mt-2">
-              {title && <p className="text-base font-bold text-gray-900">{title}</p>}
-              {period && <p className="text-sm font-semibold text-emerald-800">{period}</p>}
-              {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
-            </div>
-          )}
         </div>
+        {/* Title / period / count sit top-right beside the letterhead so the
+            table starts higher on the page. */}
+        {(title || period || subtitle) && (
+          <div className="ml-auto max-w-[40%] shrink-0 pl-3 text-right">
+            {title && <p className="text-base font-bold leading-tight text-gray-900">{title}</p>}
+            {period && <p className="text-sm font-semibold text-emerald-800">{period}</p>}
+            {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+          </div>
+        )}
       </div>
     </>
   );

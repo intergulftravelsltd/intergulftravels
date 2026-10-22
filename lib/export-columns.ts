@@ -5,7 +5,7 @@
  *  export buttons and any server helper share the same maths.
  * ------------------------------------------------------------------ */
 
-type Cell = string | number | null | undefined;
+import type { Cell } from '@/lib/export-cells';
 
 export type ColumnSelection = {
   /** One flag per header, in header order. */

@@ -14,9 +14,9 @@ import { ColumnChooser, COLUMN_LABELS } from '@/components/manage/ColumnChooser'
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { useCompanyProfile } from '@/components/providers/CompanyProfile';
 import { getDict } from '@/lib/dictionaries/areas/adminshell';
+import { buildTotalsRow, type Cell } from '@/lib/export-cells';
+import { money } from '@/lib/management/format';
 import { cn } from '@/lib/utils';
-
-type Cell = string | number | null | undefined;
 
 export type ExportSet = {
   key: string;
@@ -30,6 +30,8 @@ export type ExportSet = {
   rows: Cell[][];
   orientation?: 'p' | 'l';
   period?: ExportPeriod | null;
+  /** Headers (by label) summed into a totals line under the table, e.g. [Paid, Due]. */
+  totals?: string[];
 };
 
 /**
@@ -76,8 +78,9 @@ export function ExportMenu({ sets, label }: { sets: ExportSet[]; label?: string 
   const selFor = (s: ExportSet) => sels[s.key] ?? defaultSelection(s.headers.length);
 
   const run = (s: ExportSet, kind: 'excel' | 'pdf' | 'print') => {
-    const meta = { company, period: s.period, locale };
     const p = applyColumnSelection(s.headers, s.rows, selFor(s), tc.serialHeader);
+    const foot = buildTotalsRow(p.headers, p.rows, s.totals, tc.total, (n) => money(n, false));
+    const meta = { company, period: s.period, locale, foot };
     if (kind === 'excel') {
       void exportToExcel(s.filename, p.headers, p.rows, { ...meta, title: s.title, subtitle: s.subtitle });
     } else if (kind === 'pdf') {

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Fraunces, Hind_Siliguri } from 'next/font/google';
+import { Inter, Fraunces, Noto_Sans_Bengali } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { siteConfig } from '@/lib/site';
 import { getBaseUrl } from '@/lib/utils';
@@ -21,8 +21,10 @@ const fraunces = Fraunces({
   variable: '--font-display',
 });
 
-// Bengali typeface — used across the whole Bangla version.
-const hindSiliguri = Hind_Siliguri({
+// Bengali typeface — Noto Sans Bengali across the whole site: the Bangla
+// version uses it for everything, and the English version falls back to it
+// for any Bangla glyphs (names in Bangla, ৳) via the Tailwind font stacks.
+const notoSansBengali = Noto_Sans_Bengali({
   subsets: ['bengali'],
   display: 'swap',
   weight: ['400', '500', '600', '700'],
@@ -112,7 +114,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang={locale}
-      className={`${inter.variable} ${fraunces.variable} ${hindSiliguri.variable}`}
+      className={`${inter.variable} ${fraunces.variable} ${notoSansBengali.variable}`}
       style={fontOverride}
     >
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">

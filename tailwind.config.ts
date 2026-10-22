@@ -62,8 +62,10 @@ const config: Config = {
         border: 'rgb(var(--border) / <alpha-value>)',
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
-        display: ['var(--font-display)', 'Georgia', 'serif'],
+        // The Bengali face sits in every stack so Bangla glyphs on the English
+        // version (names in Bangla, ৳) render in Noto Sans Bengali too.
+        sans: ['var(--font-sans)', 'var(--font-bengali)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'var(--font-bengali)', 'Georgia', 'serif'],
       },
       borderRadius: {
         '4xl': '2rem',
