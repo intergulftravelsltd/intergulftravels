@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -48,7 +48,8 @@ export function RowMenu({ name, items }: { name: string; items: RowMenuItem[] })
   const [open, setOpen] = useState(false);
   const [docsOpen, setDocsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number }>({ left: 0 });
+  // null until measured, so the menu never paints at an unplaced position.
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -67,8 +68,9 @@ export function RowMenu({ name, items }: { name: string; items: RowMenuItem[] })
     }
   }, [items.length]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (open) place();
+    else setPos(null);
   }, [open, place]);
 
   useEffect(() => {
@@ -137,6 +139,7 @@ export function RowMenu({ name, items }: { name: string; items: RowMenuItem[] })
       </button>
 
       {open &&
+        pos &&
         typeof document !== 'undefined' &&
         createPortal(
           <div
