@@ -34,8 +34,10 @@ const L = {
     banks: 'Banks',
     overdraft: 'Bank overdraft',
     excluded: 'not included',
-    cashBankNow: 'Cash & Bank page now',
-    overdraftMoved: 'overdraft movement',
+    closingHint: (x: string) => `Debit / Credit include ${x} moved through overdrawn bank accounts (bank loan, not cash)`,
+    odTag: 'overdraft a/c',
+    odNote:
+      'Rows marked “overdraft a/c” moved a bank account that is overdrawn: they count in Debit / Credit but not in the balance — exactly as the Cash & Bank page, which lists an overdraft as a loan, not as cash.',
     allAccounts: 'All cash & bank accounts',
     accountFilter: 'Account',
     apply: 'Apply',
@@ -71,8 +73,10 @@ const L = {
     banks: 'ব্যাংক',
     overdraft: 'ব্যাংক ওভারড্রাফট',
     excluded: 'ধরা হয়নি',
-    cashBankNow: 'ক্যাশ ও ব্যাংক পেজে এখন',
-    overdraftMoved: 'ওভারড্রাফটের নড়াচড়া',
+    closingHint: (x: string) => `ডেবিট / ক্রেডিটে ${x} ওভারড্রাফট অ্যাকাউন্টের নড়াচড়া আছে (ব্যাংক ঋণ, নগদ নয়)`,
+    odTag: 'ওভারড্রাফট অ্যাকাউন্ট',
+    odNote:
+      '“ওভারড্রাফট অ্যাকাউন্ট” চিহ্নিত সারিগুলো এমন ব্যাংক অ্যাকাউন্টের লেনদেন যা ওভারড্রাফটে আছে: ডেবিট / ক্রেডিটে গোনা হয়, ব্যালেন্সে নয় — ঠিক ক্যাশ ও ব্যাংক পেজের মতো, যেখানে ওভারড্রাফট ঋণ হিসেবে দেখানো হয়, নগদ হিসেবে নয়।',
     allAccounts: 'সব ক্যাশ ও ব্যাংক অ্যাকাউন্ট',
     accountFilter: 'অ্যাকাউন্ট',
     apply: 'দেখুন',
@@ -118,14 +122,18 @@ const ctrl =
 /**
  * Consolidated Cash Book: cash in hand + the active bank accounts as ONE
  * book. Money entering a liquid account (debited) is a debit; money leaving
- * (credited) is a credit. A cash↔bank contra shows both sides on one row and
- * leaves the running balance untouched.
+ * (credited) is a credit. A cash↔bank contra shows both sides on one row.
  *
- * The opening balance follows the Cash & Bank page: cash in hand plus the
- * bank balances, with an overdrawn bank (negative balance) kept out — the
- * same figure that page calls "Liquid Total", as it stood at the start of
- * the period. Filtering to one account shows that account's own book with
- * its real (signed) balance.
+ * The balance follows the Cash & Bank page's rule at every point: cash in
+ * hand plus the bank balances, with an overdrawn bank (negative balance)
+ * kept out — that page lists an overdraft as a loan, not as cash. So the
+ * opening is that figure at the start of the period, the closing is that
+ * figure at the end (today's closing = the page's "Liquid Total"), and last
+ * month's closing is this month's opening. A payment made from an overdrawn
+ * account is still a credit here, but it does not move the balance (the
+ * bank's loan grew, our cash did not shrink); such rows are tagged.
+ * Filtering to one account shows that account's own book with its real
+ * (signed) balance.
  */
 export default async function CashBookPage({
   searchParams,
@@ -181,7 +189,7 @@ export default async function CashBookPage({
   const selected = allLiquid.find((h) => h.id === searchParams.account) ?? null;
   const pool = selected ? [selected] : allLiquid;
   const poolIds = new Set(pool.map((h) => h.id));
-  const nameOf = new Map(pool.map((h) => [h.id, h.name]));
+  const headById = new Map(pool.map((h) => [h.id, h]));
   const ids = Array.from(poolIds);
 
   // Fetch from `from` onwards only (paged past the 1000-row cap): rows inside
@@ -209,33 +217,26 @@ export default async function CashBookPage({
   // Per-head balance at the start of the period.
   const flowOf = (headId: string, tx: Transaction) =>
     (tx.debit_account_id === headId ? Number(tx.amount) : 0) - (tx.credit_account_id === headId ? Number(tx.amount) : 0);
-  const startBal = new Map<string, number>();
+  const bal = new Map<string, number>();
   for (const h of pool) {
-    startBal.set(
-      h.id,
-      from ? netDebit(h) - allTxs.reduce((s, tx) => s + flowOf(h.id, tx), 0) : bookOpening(h),
-    );
-  }
-  const endBal = new Map<string, number>();
-  for (const h of pool) {
-    endBal.set(h.id, (startBal.get(h.id) ?? 0) + inRange.reduce((s, tx) => s + flowOf(h.id, tx), 0));
+    bal.set(h.id, from ? netDebit(h) - allTxs.reduce((s, tx) => s + flowOf(h.id, tx), 0) : bookOpening(h));
   }
 
-  // Cash & Bank page definition: cash + bank balances, overdrawn banks excluded.
-  const liquidOf = (bal: Map<string, number>) =>
+  // Cash & Bank page rule: cash + bank balances, an overdrawn bank counts 0.
+  const liquidNow = () =>
     pool.reduce((s, h) => {
       const b = bal.get(h.id) ?? 0;
       return s + (h.subtype === 'bank' ? Math.max(0, b) : b);
     }, 0);
-  const overdraftOf = (bal: Map<string, number>) =>
+  const overdraftNow = () =>
     pool.reduce((s, h) => s + (h.subtype === 'bank' && (bal.get(h.id) ?? 0) < 0 ? -(bal.get(h.id) ?? 0) : 0), 0);
-  const cashOf = (bal: Map<string, number>) =>
-    pool.reduce((s, h) => s + (h.subtype === 'cash' ? bal.get(h.id) ?? 0 : 0), 0);
+  const cashNow = () => pool.reduce((s, h) => s + (h.subtype === 'cash' ? bal.get(h.id) ?? 0 : 0), 0);
+  const balanceNow = () => (selected ? bal.get(selected.id) ?? 0 : liquidNow());
 
-  const opening = selected ? startBal.get(selected.id) ?? 0 : liquidOf(startBal);
-  const openingCash = cashOf(startBal);
+  const opening = balanceNow();
+  const openingCash = cashNow();
   const openingBanks = opening - openingCash;
-  const openingOverdraft = overdraftOf(startBal);
+  const openingOverdraft = overdraftNow();
 
   // Names for the non-liquid counterpart heads (fallback particulars).
   const counterpartIds = Array.from(
@@ -252,20 +253,30 @@ export default async function CashBookPage({
   let running = opening;
   let totalDebit = 0;
   let totalCredit = 0;
+  let odRows = 0;
   const lines = inRange.map((tx) => {
     const debitIn = poolIds.has(tx.debit_account_id);
     const creditIn = poolIds.has(tx.credit_account_id);
     const amount = Number(tx.amount);
     const debit = debitIn ? amount : 0;
     const credit = creditIn ? amount : 0;
-    running += debit - credit;
     totalDebit += debit;
     totalCredit += credit;
 
+    if (debitIn) bal.set(tx.debit_account_id, (bal.get(tx.debit_account_id) ?? 0) + amount);
+    if (creditIn) bal.set(tx.credit_account_id, (bal.get(tx.credit_account_id) ?? 0) - amount);
+    const before = running;
+    running = balanceNow();
+    // The balance did not move by the full debit − credit → an overdrawn
+    // bank account was involved (its movement is a loan, not cash).
+    const od = Math.abs(running - (before + debit - credit)) > 0.005;
+    if (od) odRows += 1;
+
+    const liquidName = (id: string) => headById.get(id)?.name ?? '—';
     const account =
       debitIn && creditIn
-        ? `${nameOf.get(tx.credit_account_id)} ➜ ${nameOf.get(tx.debit_account_id)}`
-        : nameOf.get(debitIn ? tx.debit_account_id : tx.credit_account_id) ?? '—';
+        ? `${liquidName(tx.credit_account_id)} ➜ ${liquidName(tx.debit_account_id)}`
+        : liquidName(debitIn ? tx.debit_account_id : tx.credit_account_id);
     const counterpart = counterpartNames.get(debitIn ? tx.credit_account_id : tx.debit_account_id) ?? '';
 
     return {
@@ -278,23 +289,20 @@ export default async function CashBookPage({
       debit,
       credit,
       balance: running,
+      od,
     };
   });
   const closing = running;
 
-  // Where the Cash & Bank page stands at the end of the period. It differs
-  // from the book's closing only when an overdrawn bank moved in the period
-  // (that movement is a debit/credit here but never part of "cash + banks").
-  const closingLiquid = selected ? closing : liquidOf(endBal);
-  const overdraftMoved = Math.abs(closingLiquid - closing) >= 0.5 ? closingLiquid - closing : 0;
+  // Opening + debit − credit differs from the closing only by what moved
+  // through overdrawn accounts; the closing card says so.
+  const odMove = opening + totalDebit - totalCredit - closing;
 
   const openingHint = selected
     ? undefined
     : `${t.cash} ${money(openingCash)} · ${t.banks} ${money(openingBanks)}` +
       (openingOverdraft > 0.5 ? ` · ${t.overdraft} ${money(openingOverdraft)} (${t.excluded})` : '');
-  const closingHint = overdraftMoved
-    ? `${t.cashBankNow} ${money(closingLiquid)} (${t.overdraftMoved} ${money(overdraftMoved)})`
-    : undefined;
+  const closingHint = Math.abs(odMove) >= 0.5 ? t.closingHint(money(Math.abs(odMove))) : undefined;
 
   // Search filters the rendered rows only — balances stay the true running
   // balance of the full book, and the stat cards still describe the period.
@@ -319,7 +327,7 @@ export default async function CashBookPage({
 
   const bodyRows = shown.map((l) => [
     l.date,
-    l.account,
+    l.od ? `${l.account} (${t.odTag})` : l.account,
     [l.manualRef, l.voucher].filter(Boolean).join(' / '),
     l.particulars,
     l.debit ? money(l.debit, false) : '',
@@ -374,9 +382,9 @@ export default async function CashBookPage({
         }
       />
 
-      {/* One filter row: period pill · account · apply / reset. The pill writes
-          from/to/range into the URL itself; the form carries them as hidden
-          fields so changing the account keeps the chosen period. */}
+      {/* One filter row: search · period pill · account · apply / reset. The
+          pill writes from/to/range into the URL itself; the form carries them
+          as hidden fields so changing the account keeps the chosen period. */}
       <Card className="no-print mb-5 !p-3">
         <form method="get" className="flex flex-wrap items-center gap-2">
           <VoucherSearch initial={searchParams.q ?? ''} placeholder={t.searchPlaceholder} />
@@ -454,6 +462,11 @@ export default async function CashBookPage({
                 <td className={`${tdClass} whitespace-nowrap`}>{l.date}</td>
                 <td className={tdClass}>
                   <span className="font-medium text-ink">{l.account}</span>
+                  {l.od && (
+                    <span className="ml-1.5 inline-block rounded-full bg-amber-50 px-1.5 py-px align-middle text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                      {t.odTag}
+                    </span>
+                  )}
                   {(l.manualRef || l.voucher) && (
                     <span className="block text-xs text-ink-muted">
                       {l.manualRef && <span className="font-semibold text-ink">{l.manualRef}</span>}
@@ -496,6 +509,7 @@ export default async function CashBookPage({
           </tbody>
         </TableWrap>
       )}
+      {odRows > 0 && <p className="mt-3 text-xs text-ink-muted">{t.odNote}</p>}
       <div className="no-print">
         <Pagination paged={paged} />
       </div>

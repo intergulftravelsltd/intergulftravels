@@ -18,8 +18,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-10-24',
     items: [
       {
-        en: 'Cash Book rebuilt: the opening balance is now the same figure as the Cash & Bank page (cash in hand + bank balances, overdrawn banks excluded) as it stood at the start of the period, and removed accounts no longer distort it. Columns are Date · Account · Particulars · Debit (money in) · Credit (money out) · Balance, with the manual voucher number under the account.',
-        bn: 'ক্যাশ বই নতুন করে সাজানো: প্রারম্ভিক ব্যালেন্স এখন ক্যাশ ও ব্যাংক পেজের অঙ্কই (হ্যান্ড ক্যাশ + ব্যাংক ব্যালেন্স, ওভারড্রাফট বাদ) — সময়কালের শুরুতে যা ছিল; মুছে ফেলা অ্যাকাউন্ট আর হিসাব গুলিয়ে দেয় না। কলাম: তারিখ · অ্যাকাউন্ট · বিবরণ · ডেবিট (জমা) · ক্রেডিট (খরচ) · ব্যালেন্স, অ্যাকাউন্টের নিচে ম্যানুয়াল ভাউচার নং।',
+        en: 'Cash Book rebuilt: opening, running and closing balance all follow the Cash & Bank page rule (cash in hand + bank balances, an overdrawn bank counted as a loan, not cash) — so today’s closing equals that page’s Liquid Total and last month’s closing is this month’s opening; removed accounts no longer distort it. Columns are Date · Account · Particulars · Debit (money in) · Credit (money out) · Balance, with the manual voucher number under the account.',
+        bn: 'ক্যাশ বই নতুন করে সাজানো: প্রারম্ভিক, চলমান ও সমাপনী ব্যালেন্স সবই ক্যাশ ও ব্যাংক পেজের নিয়মে (হ্যান্ড ক্যাশ + ব্যাংক ব্যালেন্স, ওভারড্রাফটে থাকা ব্যাংক ঋণ হিসেবে, নগদ নয়) — তাই আজকের সমাপনী ওই পেজের Liquid Total-এর সমান, আর গত মাসের সমাপনী = এই মাসের প্রারম্ভিক; মুছে ফেলা অ্যাকাউন্ট আর হিসাব গুলিয়ে দেয় না। কলাম: তারিখ · অ্যাকাউন্ট · বিবরণ · ডেবিট (জমা) · ক্রেডিট (খরচ) · ব্যালেন্স, অ্যাকাউন্টের নিচে ম্যানুয়াল ভাউচার নং।',
       },
       {
         en: 'Cash Book toolbar: one Export menu instead of five small buttons, a single filter row (search · period · account · Apply / Reset) — the search box filters as you type by particulars, voucher no, manual no or amount — an account filter for a single-account book, and the default period is the last 30 days (a new preset, also in the other date filters).',
