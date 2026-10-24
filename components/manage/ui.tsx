@@ -137,7 +137,11 @@ export function StatCard({
         {value}
       </p>
       <p className={cn('relative mt-0.5 font-semibold text-ink', sm ? 'text-xs' : 'text-[13px]')}>{label}</p>
-      {hint && <p className="relative mt-0.5 truncate text-xs text-ink-muted">{hint}</p>}
+      {hint && (
+        <p className="relative mt-0.5 line-clamp-2 text-xs text-ink-muted" title={hint}>
+          {hint}
+        </p>
+      )}
     </div>
   );
 }

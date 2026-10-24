@@ -155,7 +155,8 @@ export default async function CashBookPage({
   // removed account keeps its old rows but is out of both views).
   let hq = db.from('account_heads').select('*').in('subtype', ['cash', 'bank']).eq('active', true);
   if (scope.branch) hq = hq.eq('branch', scope.branch);
-  const { data: headData } = await hq.order('subtype', { ascending: true }).order('name', { ascending: true });
+  // Cash first, then the banks by name.
+  const { data: headData } = await hq.order('subtype', { ascending: false }).order('name', { ascending: true });
   const allLiquid = (headData ?? []) as AccountHead[];
 
   if (allLiquid.length === 0) {
