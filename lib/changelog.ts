@@ -22,8 +22,8 @@ export const CHANGELOG: ChangelogEntry[] = [
         bn: 'ক্যাশ বই নতুন করে সাজানো: প্রারম্ভিক ব্যালেন্স এখন ক্যাশ ও ব্যাংক পেজের অঙ্কই (হ্যান্ড ক্যাশ + ব্যাংক ব্যালেন্স, ওভারড্রাফট বাদ) — সময়কালের শুরুতে যা ছিল; মুছে ফেলা অ্যাকাউন্ট আর হিসাব গুলিয়ে দেয় না। কলাম: তারিখ · অ্যাকাউন্ট · বিবরণ · ডেবিট (জমা) · ক্রেডিট (খরচ) · ব্যালেন্স, অ্যাকাউন্টের নিচে ম্যানুয়াল ভাউচার নং।',
       },
       {
-        en: 'Cash Book toolbar: one Export menu instead of five small buttons, a single filter row (period · account · Apply / Reset), an account filter for a single-account book, and the default period is the last 30 days (a new preset, also in the other date filters).',
-        bn: 'ক্যাশ বই টুলবার: পাঁচটি ছোট বাটনের বদলে একটি এক্সপোর্ট মেনু, এক লাইনের ফিল্টার (সময়কাল · অ্যাকাউন্ট · দেখুন / রিসেট), একটি অ্যাকাউন্টের বই দেখার ফিল্টার, আর ডিফল্ট সময়কাল শেষ ৩০ দিন (নতুন প্রিসেট, অন্য তারিখ ফিল্টারেও আছে)।',
+        en: 'Cash Book toolbar: one Export menu instead of five small buttons, a single filter row (search · period · account · Apply / Reset) — the search box filters as you type by particulars, voucher no, manual no or amount — an account filter for a single-account book, and the default period is the last 30 days (a new preset, also in the other date filters).',
+        bn: 'ক্যাশ বই টুলবার: পাঁচটি ছোট বাটনের বদলে একটি এক্সপোর্ট মেনু, এক লাইনের ফিল্টার (সার্চ · সময়কাল · অ্যাকাউন্ট · দেখুন / রিসেট) — সার্চ বক্সে লিখতে লিখতেই বিবরণ, ভাউচার নং, ম্যানুয়াল নং বা টাকার অঙ্ক দিয়ে ফিল্টার হয় — একটি অ্যাকাউন্টের বই দেখার ফিল্টার, আর ডিফল্ট সময়কাল শেষ ৩০ দিন (নতুন প্রিসেট, অন্য তারিখ ফিল্টারেও আছে)।',
       },
     ],
   },

@@ -2,6 +2,7 @@ import { Wallet, ArrowDownToLine, ArrowUpFromLine, Landmark } from 'lucide-react
 import { PageHeader, StatCard, Money, Card, EmptyState, TableWrap, thClass, tdClass } from '@/components/manage/ui';
 import { ExportMenu } from '@/components/manage/ExportMenu';
 import { DateRangeFilter } from '@/components/manage/DateRangeFilter';
+import { VoucherSearch } from '@/components/manage/accounts/VoucherSearch';
 import { mgmtDb } from '@/lib/management/server';
 import { getStaffScope } from '@/lib/management/scope';
 import { presetRange, type RangeKey } from '@/lib/date-range';
@@ -39,6 +40,10 @@ const L = {
     accountFilter: 'Account',
     apply: 'Apply',
     reset: 'Reset',
+    searchPlaceholder: 'Search particulars, voucher no, manual no, amount…',
+    results: (n: number, m: number) => `Showing ${n} of ${m} entries`,
+    noMatchTitle: 'No entries match your search',
+    noMatchHint: 'Try a voucher number, a name from the particulars or an amount.',
     thDate: 'Date',
     thAccount: 'Account',
     thVoucher: 'Voucher / Manual No',
@@ -72,6 +77,10 @@ const L = {
     accountFilter: 'অ্যাকাউন্ট',
     apply: 'দেখুন',
     reset: 'রিসেট',
+    searchPlaceholder: 'বিবরণ, ভাউচার নং, ম্যানুয়াল নং, টাকার অঙ্ক… খুঁজুন',
+    results: (n: number, m: number) => `${m}টির মধ্যে ${n}টি এন্ট্রি দেখানো হচ্ছে`,
+    noMatchTitle: 'খোঁজার সাথে কোনো এন্ট্রি মেলেনি',
+    noMatchHint: 'ভাউচার নম্বর, বিবরণের কোনো নাম বা টাকার অঙ্ক দিয়ে খুঁজে দেখুন।',
     thDate: 'তারিখ',
     thAccount: 'অ্যাকাউন্ট',
     thVoucher: 'ভাউচার / ম্যানুয়াল নং',
@@ -121,7 +130,7 @@ const ctrl =
 export default async function CashBookPage({
   searchParams,
 }: {
-  searchParams: { from?: string; to?: string; range?: string; account?: string; page?: string; per?: string };
+  searchParams: { from?: string; to?: string; range?: string; account?: string; q?: string; page?: string; per?: string };
 }) {
   const locale = getLocale();
   const t = L[locale];
@@ -287,23 +296,46 @@ export default async function CashBookPage({
     ? `${t.cashBankNow} ${money(closingLiquid)} (${t.overdraftMoved} ${money(overdraftMoved)})`
     : undefined;
 
+  // Search filters the rendered rows only — balances stay the true running
+  // balance of the full book, and the stat cards still describe the period.
+  const q = (searchParams.q ?? '').trim().toLowerCase();
+  const qDigits = q.replace(/[^\d]/g, '');
+  const matches = (l: (typeof lines)[number]) => {
+    const hay = `${l.date} ${l.account} ${l.particulars} ${l.against} ${l.voucher} ${l.manualRef}`.toLowerCase();
+    if (hay.includes(q)) return true;
+    if (qDigits.length >= 2) {
+      if ([l.debit, l.credit].some((a) => a && String(Math.round(a)).includes(qDigits))) return true;
+      if (`${l.voucher} ${l.manualRef}`.replace(/[^\d]/g, '').includes(qDigits)) return true;
+    }
+    return false;
+  };
+  const shown = q ? lines.filter(matches) : lines;
+  const shownDebit = shown.reduce((s, l) => s + l.debit, 0);
+  const shownCredit = shown.reduce((s, l) => s + l.credit, 0);
+
   const period = resolvePeriod({ from, to }, inRange.map((tx) => tx.date));
   const periodLine = formatPeriodLine(period, locale);
-  const paged = paginate(lines, parsePaging(searchParams, 50));
+  const paged = paginate(shown, parsePaging(searchParams, 50));
 
-  const exportRows = [
-    ['', '', '', t.openingRow, '', '', money(opening, false)],
-    ...lines.map((l) => [
-      l.date,
-      l.account,
-      [l.manualRef, l.voucher].filter(Boolean).join(' / '),
-      l.particulars,
-      l.debit ? money(l.debit, false) : '',
-      l.credit ? money(l.credit, false) : '',
-      money(l.balance, false),
-    ]),
-    ['', '', '', t.closingRow, money(totalDebit, false), money(totalCredit, false), money(closing, false)],
-  ];
+  const bodyRows = shown.map((l) => [
+    l.date,
+    l.account,
+    [l.manualRef, l.voucher].filter(Boolean).join(' / '),
+    l.particulars,
+    l.debit ? money(l.debit, false) : '',
+    l.credit ? money(l.credit, false) : '',
+    money(l.balance, false),
+  ]);
+  const exportRows = q
+    ? bodyRows
+    : [
+        ['', '', '', t.openingRow, '', '', money(opening, false)],
+        ...bodyRows,
+        ['', '', '', t.closingRow, money(totalDebit, false), money(totalCredit, false), money(closing, false)],
+      ];
+  const exportSubtitle = q
+    ? `"${searchParams.q?.trim()}" · ${t.results(shown.length, lines.length)} · ${t.thDebit} ${money(shownDebit)} · ${t.thCredit} ${money(shownCredit)}`
+    : `${t.opening}: ${money(opening)} · ${t.closing}: ${money(closing)}`;
 
   return (
     <div id="doc-report">
@@ -330,7 +362,7 @@ export default async function CashBookPage({
                   label: t.exportLabel,
                   filename: `${t.exportName}-${from || 'start'}-${to || 'now'}`,
                   title: selected ? `${t.title} — ${selected.name}` : t.title,
-                  subtitle: `${t.opening}: ${money(opening)} · ${t.closing}: ${money(closing)}`,
+                  subtitle: exportSubtitle,
                   period,
                   headers: [t.thDate, t.thAccount, t.thVoucher, t.thParticulars, t.thDebit, t.thCredit, t.thBalance],
                   rows: exportRows,
@@ -347,6 +379,7 @@ export default async function CashBookPage({
           fields so changing the account keeps the chosen period. */}
       <Card className="no-print mb-5 !p-3">
         <form method="get" className="flex flex-wrap items-center gap-2">
+          <VoucherSearch initial={searchParams.q ?? ''} placeholder={t.searchPlaceholder} />
           <DateRangeFilter from={from} to={to} range={activeRange} />
           {from && <input type="hidden" name="from" value={from} />}
           {to && <input type="hidden" name="to" value={to} />}
@@ -381,8 +414,18 @@ export default async function CashBookPage({
         <StatCard label={t.closing} value={<Money value={closing} />} icon={Wallet} accent="gold" hint={closingHint} />
       </div>
 
+      {q && shown.length > 0 && (
+        <p className="no-print mb-3 text-sm text-ink-muted">
+          {t.results(shown.length, lines.length)} · {t.thDebit}{' '}
+          <span className="font-semibold text-emerald-700">{money(shownDebit)}</span> · {t.thCredit}{' '}
+          <span className="font-semibold text-red-600">{money(shownCredit)}</span>
+        </p>
+      )}
+
       {lines.length === 0 ? (
         <EmptyState title={t.emptyTitle} hint={t.emptyHint} />
+      ) : shown.length === 0 ? (
+        <EmptyState title={t.noMatchTitle} hint={t.noMatchHint} />
       ) : (
         <TableWrap>
           <thead>
@@ -396,7 +439,7 @@ export default async function CashBookPage({
             </tr>
           </thead>
           <tbody>
-            {paged.isFirst && (
+            {!q && paged.isFirst && (
               <tr className="bg-muted/50 font-semibold">
                 <td className={tdClass} colSpan={5}>
                   {t.openingRow}
@@ -434,7 +477,7 @@ export default async function CashBookPage({
                 </td>
               </tr>
             ))}
-            {paged.isLast && (
+            {!q && paged.isLast && (
               <tr className="border-t-2 border-brand-600/40 bg-brand-50/40 font-bold">
                 <td className={tdClass} colSpan={3}>
                   {t.closingRow}
