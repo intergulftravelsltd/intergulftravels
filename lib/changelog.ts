@@ -14,6 +14,20 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.8.3',
+    date: '2026-10-24',
+    items: [
+      {
+        en: 'Cash Book rebuilt: the opening balance is now the same figure as the Cash & Bank page (cash in hand + bank balances, overdrawn banks excluded) as it stood at the start of the period, and removed accounts no longer distort it. Columns are Date · Account · Particulars · Debit (money in) · Credit (money out) · Balance, with the manual voucher number under the account.',
+        bn: 'ক্যাশ বই নতুন করে সাজানো: প্রারম্ভিক ব্যালেন্স এখন ক্যাশ ও ব্যাংক পেজের অঙ্কই (হ্যান্ড ক্যাশ + ব্যাংক ব্যালেন্স, ওভারড্রাফট বাদ) — সময়কালের শুরুতে যা ছিল; মুছে ফেলা অ্যাকাউন্ট আর হিসাব গুলিয়ে দেয় না। কলাম: তারিখ · অ্যাকাউন্ট · বিবরণ · ডেবিট (জমা) · ক্রেডিট (খরচ) · ব্যালেন্স, অ্যাকাউন্টের নিচে ম্যানুয়াল ভাউচার নং।',
+      },
+      {
+        en: 'Cash Book toolbar: one Export menu instead of five small buttons, a single filter row (period · account · Apply / Reset), an account filter for a single-account book, and the default period is the last 30 days (a new preset, also in the other date filters).',
+        bn: 'ক্যাশ বই টুলবার: পাঁচটি ছোট বাটনের বদলে একটি এক্সপোর্ট মেনু, এক লাইনের ফিল্টার (সময়কাল · অ্যাকাউন্ট · দেখুন / রিসেট), একটি অ্যাকাউন্টের বই দেখার ফিল্টার, আর ডিফল্ট সময়কাল শেষ ৩০ দিন (নতুন প্রিসেট, অন্য তারিখ ফিল্টারেও আছে)।',
+      },
+    ],
+  },
+  {
     version: '1.8.2',
     date: '2026-10-24',
     items: [

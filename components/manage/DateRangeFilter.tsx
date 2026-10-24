@@ -16,10 +16,11 @@ import { cn } from '@/lib/utils';
  *  the menu. "Lifetime" clears the dates (show everything).
  * ------------------------------------------------------------------ */
 
-const ORDER: RangeKey[] = ['this-month', 'last-month', 'this-year', 'last-year', 'lifetime', 'custom'];
+const ORDER: RangeKey[] = ['last-30-days', 'this-month', 'last-month', 'this-year', 'last-year', 'lifetime', 'custom'];
 
 const LABELS: Record<'en' | 'bn', Record<RangeKey | 'from' | 'to' | 'apply', string>> = {
   en: {
+    'last-30-days': 'Last 30 days',
     'this-month': 'This month',
     'last-month': 'Last month',
     'this-year': 'This year',
@@ -31,6 +32,7 @@ const LABELS: Record<'en' | 'bn', Record<RangeKey | 'from' | 'to' | 'apply', str
     apply: 'Apply',
   },
   bn: {
+    'last-30-days': 'শেষ ৩০ দিন',
     'this-month': 'এই মাস',
     'last-month': 'গত মাস',
     'this-year': 'এই বছর',
