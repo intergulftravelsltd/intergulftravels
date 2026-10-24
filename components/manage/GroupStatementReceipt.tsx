@@ -10,7 +10,6 @@ import {
   ReceiptRow,
   ReceiptSectionTitle,
   ReceiptSignatures,
-  ReceiptSummary,
   RT,
 } from '@/components/manage/ReceiptChrome';
 
@@ -174,30 +173,19 @@ export function GroupStatementReceipt({ data, locale }: { data: GroupStatementDa
       />
       <ReceiptPeriod text={data.period} />
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      {/* No separate summary box: the running balance below already shows the
+          total package, each discount / payment and the balance due. */}
+      <div className="mt-4">
         <ReceiptPanel heading={t.headOf}>
-          <p className="text-[1.05rem] font-bold leading-tight text-gray-900">{data.headName}</p>
-          <div className="mt-1.5">
-            <ReceiptRow label={t.forProgram} value={data.program} />
-            <ReceiptRow label={t.membersLabel} value={t.members(n)} />
-            {data.headPhone && <ReceiptRow label={t.mobile} value={data.headPhone} />}
+          <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-2">
+            <p className="text-[1.05rem] font-bold leading-tight text-gray-900">{data.headName}</p>
+            <div className="min-w-[14rem] flex-1 sm:max-w-[22rem]">
+              <ReceiptRow label={t.forProgram} value={data.program} />
+              <ReceiptRow label={t.membersLabel} value={t.members(n)} />
+              {data.headPhone && <ReceiptRow label={t.mobile} value={data.headPhone} />}
+            </div>
           </div>
         </ReceiptPanel>
-        <ReceiptSummary
-          heading={t.summary}
-          lines={[
-            ...(data.perHead ? [{ label: t.packagePrice, value: `৳ ${data.perHead}` }] : []),
-            { label: data.perHead ? t.times(n, data.perHead) : t.totalPackage, value: `৳ ${data.totalCharged}` },
-            ...(hasDiscount && data.totalDiscount
-              ? [
-                  { label: t.discountLabel, value: `− ৳ ${data.totalDiscount}` },
-                  { label: t.payable, value: `৳ ${data.payable ?? data.totalCharged}` },
-                ]
-              : []),
-            { label: t.totalPaid, value: `৳ ${data.totalPaid}` },
-            { label: t.totalDue, value: dueZero ? t.nil : `৳ ${data.totalDue}`, total: true, tone: dueZero ? 'ok' : 'warn' },
-          ]}
-        />
       </div>
 
       {/* Members whose package charge was never posted are called out here

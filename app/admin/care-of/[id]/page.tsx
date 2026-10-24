@@ -6,6 +6,7 @@ import { FundReceiveForm } from '@/components/manage/affiliates/FundReceiveForm'
 import { mgmtDb } from '@/lib/management/server';
 import { getStaffScope } from '@/lib/management/scope';
 import { loadBankAccounts } from '@/lib/management/hajj';
+import { loadDiscountByHead, moneyReceived } from '@/lib/management/discounts';
 import {
   isGroupFund,
   naturalBalance,
@@ -96,6 +97,8 @@ export default async function CareOfDetailPage({
     const { data } = await db.from('account_heads').select('*').in('id', headIds);
     ((data ?? []) as AccountHead[]).forEach((h) => heads.set(h.id, h));
   }
+  // Discounts credited to these heads are subtracted so paid = money received.
+  const discounts = await loadDiscountByHead(db, headIds);
   const pkgs = new Map<string, string>();
   if (pkgIds.length) {
     const { data } = await db.from('mgmt_packages').select('id, name').in('id', pkgIds);
@@ -112,7 +115,7 @@ export default async function CareOfDetailPage({
       packageName: p.package_id ? pkgs.get(p.package_id) ?? null : null,
       // Under a Group Fund the package charge sits on the leader's head.
       charged: groupFund ? (fundChargeByRef.get(p.id) ?? 0) + ownCharged : ownCharged,
-      paid: head ? Number(head.credit_total) : 0,
+      paid: head ? moneyReceived(head, discounts.get(head.id)) : 0,
       due: head ? naturalBalance(head) : 0,
     };
   };

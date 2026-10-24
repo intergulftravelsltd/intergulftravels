@@ -14,6 +14,20 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.8.2',
+    date: '2026-10-24',
+    items: [
+      {
+        en: '"Paid" now means money actually received, everywhere: a discount credited to a customer is no longer counted as a payment in the Hajj / Umrah lists (including the group total on a leader’s row), profiles, package-wise lists, care-of pages, the public share page, SMS figures and all exports. Due is unchanged.',
+        bn: '“পরিশোধ” এখন সব জায়গায় শুধু সত্যিকারের জমা টাকা: গ্রাহকের ছাড় আর পেমেন্ট হিসেবে গণা হয় না — হজ / উমরাহ তালিকা (লিডারের সারির গ্রুপ মোটসহ), প্রোফাইল, প্যাকেজওয়ারি তালিকা, কেয়ার-অব পেজ, পাবলিক শেয়ার পেজ, SMS-এর অঙ্ক ও সব এক্সপোর্টে। বকেয়া আগের মতোই।',
+      },
+      {
+        en: 'Group statement: the summary box beside the group leader is gone — the running balance below already shows the total package, each discount / payment and the balance due. The leader panel now runs the full width.',
+        bn: 'গ্রুপ বিবরণী: গ্রুপ লিডারের পাশের সারসংক্ষেপ বক্সটি বাদ — নিচের চলমান ব্যালেন্সেই মোট প্যাকেজ, প্রতিটি ছাড় / পেমেন্ট আর বকেয়া আছে। লিডার প্যানেল এখন পুরো চওড়া।',
+      },
+    ],
+  },
+  {
     version: '1.8.1',
     date: '2026-10-22',
     items: [

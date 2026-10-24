@@ -23,6 +23,7 @@ import { AssignPackage } from '@/components/manage/hajj/AssignPackage';
 import { StatusControl } from '@/components/manage/hajj/StatusControl';
 import { mgmtDb } from '@/lib/management/server';
 import { loadBankAccounts, loadHajjPackages } from '@/lib/management/hajj';
+import { loadDiscountByHead, moneyReceived } from '@/lib/management/discounts';
 import { loadAffiliate } from '@/lib/management/affiliates';
 import { naturalBalance, isGroupFund } from '@/lib/management/types';
 import { getDict as getCareDict } from '@/lib/dictionaries/areas/careof';
@@ -123,7 +124,9 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
   const assignedPkg = pilgrim.package_id ? pkgById.get(pilgrim.package_id) : undefined;
 
   const charged = head ? Number(head.debit_total) : 0;
-  const paid = head ? Number(head.credit_total) : 0;
+  // Paid = money received only; discounts credited to the head are excluded.
+  const discount = head ? (await loadDiscountByHead(mgmtDb(), [head.id])).get(head.id) ?? 0 : 0;
+  const paid = moneyReceived(head, discount);
   const due = head ? Math.max(0, naturalBalance(head)) : 0;
 
   // In a family group the top summary mirrors the combined group figures, so

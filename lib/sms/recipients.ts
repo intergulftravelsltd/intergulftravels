@@ -2,6 +2,7 @@ import { mgmtDb } from '@/lib/management/server';
 import { getStaffScope } from '@/lib/management/scope';
 import { loadPassengers } from '@/lib/management/umrah';
 import { loadHeadMap, dueForHead, loadHajjPackages } from '@/lib/management/hajj';
+import { loadDiscountByHead, moneyReceived } from '@/lib/management/discounts';
 import { loadActiveAffiliates } from '@/lib/management/affiliates';
 import { money } from '@/lib/management/format';
 import type { HajjPilgrim } from '@/lib/management/types';
@@ -82,10 +83,11 @@ async function loadHajjEntries(): Promise<SmsDirectoryEntry[]> {
       .select('id, name, tracking_no, passport_no, phone, year, status, package_id, account_head_id, affiliate_id')
       .neq('status', 'cancelled');
     if (scope.branch) q = q.eq('branch', scope.branch);
-    const [{ data }, heads, packages] = await Promise.all([
+    const [{ data }, heads, packages, discounts] = await Promise.all([
       q.order('created_at', { ascending: false }),
       loadHeadMap(),
       loadHajjPackages(),
+      loadDiscountByHead(mgmtDb()),
     ]);
     const pkgName = new Map(packages.map((p) => [p.id, p.name]));
     const rows = (data ?? []) as Pick<
@@ -94,7 +96,7 @@ async function loadHajjEntries(): Promise<SmsDirectoryEntry[]> {
     >[];
     return rows.map((p) => {
       const head = p.account_head_id ? heads.get(p.account_head_id) : undefined;
-      const paid = head ? Math.max(0, Number(head.credit_total)) : 0;
+      const paid = head ? moneyReceived(head, discounts.get(head.id)) : 0;
       const due = Math.max(0, dueForHead(p.account_head_id, heads));
       const pkg = p.package_id ? pkgName.get(p.package_id) ?? '' : '';
       return {

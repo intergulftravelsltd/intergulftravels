@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { mgmtDb } from '@/lib/management/server';
 import { getStaffScope } from '@/lib/management/scope';
 import { loadHeadMap, dueForHead, loadHajjPackages } from '@/lib/management/hajj';
+import { loadDiscountByHead, moneyReceived } from '@/lib/management/discounts';
 import { loadActiveAffiliates } from '@/lib/management/affiliates';
 import { docStatusDone, DOC_STATUS_TOTAL } from '@/lib/management/doc-status';
 import { branchShort } from '@/lib/management/branches';
@@ -77,11 +78,12 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
   const t = getDict(locale);
   const ct = getCareDict(locale);
   const st = getShellDict(locale).rowActions;
-  const [allPilgrims, packages, heads, affiliates] = await Promise.all([
+  const [allPilgrims, packages, heads, affiliates, discounts] = await Promise.all([
     loadPilgrims(),
     loadHajjPackages(),
     loadHeadMap(),
     loadActiveAffiliates('hajj'),
+    loadDiscountByHead(mgmtDb()),
   ]);
 
   const pkgById = new Map<string, MgmtPackage>(packages.map((p) => [p.id, p]));
@@ -110,7 +112,7 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
     groupIdsOf(headPilgrimId).reduce((s, id) => {
       const accId = pilgrimById.get(id)?.account_head_id;
       const acc = accId ? heads.get(accId) : undefined;
-      return s + (acc ? Number(acc.credit_total) : 0);
+      return s + (acc ? moneyReceived(acc, discounts.get(acc.id)) : 0);
     }, 0);
 
   // Year tabs: every year present plus the current + next year.
@@ -163,9 +165,9 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
     const head = p.account_head_id ? heads.get(p.account_head_id) : undefined;
     const due = dueForHead(p.account_head_id, heads);
     const charged = head ? Number(head.debit_total) : 0;
-    const received = head ? Number(head.credit_total) : 0;
-    // Paid against this customer = credits to their (asset) head.
-    const paid = received;
+    // Paid against this customer = credits to their head minus discounts
+    // granted (a discount is not money received).
+    const paid = head ? moneyReceived(head, discounts.get(head.id)) : 0;
     return {
       p,
       pkgName: p.package_id ? pkgById.get(p.package_id)?.name ?? '—' : '—',

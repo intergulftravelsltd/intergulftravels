@@ -18,6 +18,7 @@ import { parsePackageMeta } from '@/lib/management/package-meta';
 import { mgmtDb } from '@/lib/management/server';
 import { getStaffScope } from '@/lib/management/scope';
 import { loadHeadMap, dueForHead, loadHajjPackages } from '@/lib/management/hajj';
+import { loadDiscountByHead, moneyReceived } from '@/lib/management/discounts';
 import { money } from '@/lib/management/format';
 import { branchShort } from '@/lib/management/branches';
 import type { HajjPilgrim, MgmtPackage } from '@/lib/management/types';
@@ -51,10 +52,11 @@ export default async function HajjPackagesPage({
 }) {
   const locale = getLocale();
   const t = getDict(locale);
-  const [packages, pilgrims, heads] = await Promise.all([
+  const [packages, pilgrims, heads, discounts] = await Promise.all([
     loadHajjPackages(),
     loadPilgrims(),
     loadHeadMap(),
+    loadDiscountByHead(mgmtDb()),
   ]);
 
   // assigned-count per package
@@ -72,7 +74,7 @@ export default async function HajjPackagesPage({
         .filter((p) => p.package_id === selectedPkg.id)
         .map((p) => {
           const head = p.account_head_id ? heads.get(p.account_head_id) : undefined;
-          const paid = head ? Number(head.credit_total) : 0;
+          const paid = head ? moneyReceived(head, discounts.get(head.id)) : 0;
           const due = Math.max(0, dueForHead(p.account_head_id, heads));
           return { p, paid, due };
         })

@@ -3,6 +3,7 @@ import { Check, X } from 'lucide-react';
 import { mgmtDb } from '@/lib/management/server';
 import { verifyShareToken } from '@/lib/management/share-token';
 import { naturalBalance, type AccountHead } from '@/lib/management/types';
+import { loadDiscountByHead, moneyReceived } from '@/lib/management/discounts';
 import { money } from '@/lib/management/format';
 import { docStatusKeysFor, docStatusLabel, normalizeDocStatus } from '@/lib/management/doc-status';
 import { branchCompany } from '@/lib/site';
@@ -122,7 +123,9 @@ export default async function SharedPilgrimFormPage({ params }: { params: { tabl
   const docsDone = normalizeDocStatus(p.doc_status);
 
   const charged = head ? Number(head.debit_total) : 0;
-  const paid = head ? Number(head.credit_total) : 0;
+  // Paid = money received only (discounts credited to the head are excluded).
+  const discount = head ? (await loadDiscountByHead(db, [head.id])).get(head.id) ?? 0 : 0;
+  const paid = moneyReceived(head, discount);
   const due = head ? Math.max(0, naturalBalance(head)) : 0;
 
   const str = (v: unknown) => (v == null || v === '' ? '' : String(v));

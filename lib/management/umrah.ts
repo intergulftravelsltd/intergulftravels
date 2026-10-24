@@ -1,6 +1,7 @@
 import { mgmtDb } from '@/lib/management/server';
 import { getStaffScope } from '@/lib/management/scope';
 import { naturalBalance, type AccountHead, type MgmtPackage, type UmrahPassenger } from '@/lib/management/types';
+import { loadDiscountByHead, moneyReceived } from '@/lib/management/discounts';
 
 export type PassengerRow = UmrahPassenger & {
   package_name: string | null;
@@ -73,8 +74,9 @@ export async function loadPassengers(): Promise<PassengerRow[]> {
     const headIds = passengers.map((p) => p.account_head_id).filter(Boolean) as string[];
     const pkgIds = Array.from(new Set(passengers.map((p) => p.package_id).filter(Boolean))) as string[];
 
-    // Heads (→ due) and package names are independent lookups — one round-trip.
-    const [hRes, pRes] = await Promise.all([
+    // Heads (→ due), discounts (→ paid) and package names are independent
+    // lookups — one round-trip.
+    const [hRes, pRes, discounts] = await Promise.all([
       headIds.length
         ? db
             .from('account_heads')
@@ -84,6 +86,7 @@ export async function loadPassengers(): Promise<PassengerRow[]> {
       pkgIds.length
         ? db.from('mgmt_packages').select('id, name').in('id', pkgIds)
         : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+      loadDiscountByHead(db, headIds),
     ]);
 
     const heads = new Map<string, AccountHead>();
@@ -94,10 +97,10 @@ export async function loadPassengers(): Promise<PassengerRow[]> {
 
     return passengers.map((p) => {
       const head = p.account_head_id ? heads.get(p.account_head_id) : undefined;
-      // Paid + due both come from the customer ledger (total credits / natural
-      // balance) so manually-posted vouchers count too — matching the statement
-      // receipt and the Hajj list.
-      const paid = head ? Math.max(0, Number(head.credit_total)) : 0;
+      // Paid + due both come from the customer ledger (credits minus discounts /
+      // natural balance) so manually-posted vouchers count too — matching the
+      // statement receipt and the Hajj list. Discounts are not money received.
+      const paid = head ? moneyReceived(head, discounts.get(head.id)) : 0;
       const balance = head ? naturalBalance(head) : 0;
       return {
         ...p,
