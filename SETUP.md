@@ -10,7 +10,7 @@ A modern Hajj & Umrah agency website with a full content-management dashboard.
 
 - **Node.js 18.18+** (Node 20 LTS recommended) and **npm**
 - A free **Supabase** account → <https://supabase.com>
-- (For deployment) a **Vercel** account → <https://vercel.com>
+- (For deployment) a **Cloudflare** account → <https://dash.cloudflare.com> (Workers)
 
 ---
 
@@ -63,7 +63,7 @@ it is never pushed to GitHub). Open it and paste the values below.
    11. `supabase/migrations/0014_discount_allowed.sql` — **Discount Allowed**: seeds the built-in expense head customer discounts are booked to (Dr Discount Allowed / Cr Customer) and re-points every existing discount voucher (DV-…) off the package-income heads, correcting the balances. New discounts create the head on demand, so only the historical move needs this migration.
    12. `supabase/seed.sql` — blog posts, site settings, menus, gallery (optional but recommended)
 
-   **Hosting regions:** the Supabase project lives in Northeast Asia (Tokyo); `vercel.json` pins the app's functions to `hnd1` (Tokyo) so every database round-trip stays in-region. Keep both in the same region if either ever moves.
+   **Hosting regions:** the Supabase project lives in Northeast Asia (Tokyo); on Cloudflare Workers, `placement: smart` in `wrangler.jsonc` runs the Worker close to it so every database round-trip stays short.
 
    **SMS (khudebarta.com masking gateway):** each agency opens **Admin → SMS → SMS Settings** and enters its khudebarta API key, secret key and approved sender id (masking name) — stored server-side in `site_settings` under `sms_gateway:<branch>`. The head office's settings are the fallback for a branch without its own, and the `KHUDEBARTA_*` variables in `.env.local` are the fallback after that. **Send SMS** then messages one passenger, everyone, chosen / all care-of group leaders or typed numbers, with `{name}`, `{due}`, `{paid}`, `{package}` filled per recipient.
 
@@ -124,15 +124,30 @@ Sign in at **`/admin`**:
 
 ---
 
-## 8. Deploy to Vercel
+## 8. Deploy to Cloudflare Workers
 
-1. Push this repo to GitHub (see below).
-2. In Vercel → *New Project* → import the repo.
-3. Add the same variables from `.env.local` under **Settings → Environment Variables**
-   (use your production `NEXT_PUBLIC_SITE_URL`).
-4. Build command `next build`, output is automatic. Deploy.
-5. In Supabase → Authentication → **URL Configuration**, add your production URL to
-   *Site URL* and *Redirect URLs* (`https://your-domain/auth/callback`).
+The app runs on Cloudflare Workers through the OpenNext adapter (`@opennextjs/cloudflare`);
+`wrangler.jsonc` and `open-next.config.ts` hold the configuration.
+
+1. `npx wrangler login` once (browser OAuth). The account's email must be verified.
+2. Resources (already created for the production account): a KV namespace bound as
+   `NEXT_INC_CACHE_KV` (ISR page cache) and the two Durable Object classes declared under
+   `migrations` (revalidation queue + tag cache). Image optimisation and the admin's image
+   uploads use the `IMAGES` binding (Cloudflare Images).
+3. Public values live in `wrangler.jsonc` → `vars` (`NEXT_PUBLIC_SITE_URL`,
+   `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`); they must also be in
+   `.env.local` at build time. Secrets are set once with
+   `npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY` (and `ADMIN_EMAILS` if you use it).
+4. Build + deploy: `npm run deploy` (= `opennextjs-cloudflare build && opennextjs-cloudflare deploy`).
+   To test the Workers runtime locally: `npm run preview`.
+5. Domain: the zone `intergulftravelsltd.com` is on Cloudflare; `routes` in `wrangler.jsonc`
+   attach the Worker to the apex and `www` as custom domains.
+6. In Supabase → Authentication → **URL Configuration**, keep the production URL in
+   *Site URL* and *Redirect URLs* (`https://intergulftravelsltd.com/auth/callback`).
+
+Notes: `sharp` is a dev-only dependency (used by `scripts/convert-to-webp.mjs`); the server
+never imports native modules. The Workers Free plan allows 10 ms CPU per request and a 3 MB
+compressed bundle — the Workers Paid plan ($5/month) lifts both.
 
 ---
 

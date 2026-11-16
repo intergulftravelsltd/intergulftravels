@@ -54,11 +54,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'We could not process that image.' }, { status: 422 });
   }
 
-  const objectPath = `company/${requested}-${Date.now()}.webp`;
+  const ext = webp.contentType === 'image/png' ? 'png' : webp.contentType === 'image/jpeg' ? 'jpg' : 'webp';
+  const objectPath = `company/${requested}-${Date.now()}.${ext}`;
   try {
     const supabase = createAdminClient();
     const { error } = await supabase.storage.from(BUCKET).upload(objectPath, webp.buffer, {
-      contentType: 'image/webp',
+      contentType: webp.contentType,
       cacheControl: '31536000',
       upsert: false,
     });

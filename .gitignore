@@ -42,3 +42,10 @@ _build.log
 !.vscode/extensions.json
 
 .vercel
+.env*
+
+# cloudflare / opennext
+.open-next
+.dev.vars
+.dev.vars.*
+.wrangler

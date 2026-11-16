@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import {
   toOptimizedWebp,
-  toWebpFilename,
+  toImageFilename,
   ACCEPTED_UPLOAD_TYPES,
   MAX_UPLOAD_BYTES,
 } from '@/lib/image';
@@ -77,13 +77,13 @@ export async function POST(request: Request) {
 
   // Folder + timestamp prefix keep names unique and tidy in the bucket.
   const folder = sanitizeFolder(form.get('folder'));
-  const filename = toWebpFilename(file.name);
+  const filename = toImageFilename(file.name, webp.contentType);
   const objectPath = `${folder}/${Date.now()}-${filename}`;
 
   try {
     const supabase = createAdminClient();
     const { error } = await supabase.storage.from(BUCKET).upload(objectPath, webp.buffer, {
-      contentType: 'image/webp',
+      contentType: webp.contentType,
       cacheControl: '31536000',
       upsert: false,
     });

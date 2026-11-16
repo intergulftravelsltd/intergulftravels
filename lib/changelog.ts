@@ -14,6 +14,20 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.9.0',
+    date: '2026-11-16',
+    items: [
+      {
+        en: 'Hosting moved from Vercel to Cloudflare Workers (OpenNext adapter): the public site is served from Cloudflare’s edge with the page cache in Workers KV, the admin runs in a Worker placed next to the database, and image uploads are converted through Cloudflare Images instead of a native library. Data stays in Supabase, untouched.',
+        bn: 'হোস্টিং Vercel থেকে Cloudflare Workers-এ (OpenNext অ্যাডাপ্টার): পাবলিক সাইট Cloudflare-এর এজ থেকে আসে (পেজ ক্যাশ Workers KV-তে), অ্যাডমিন ডাটাবেসের কাছাকাছি Worker-এ চলে, আর ছবি আপলোড নেটিভ লাইব্রেরির বদলে Cloudflare Images দিয়ে রূপান্তর হয়। ডাটা আগের মতোই Supabase-এ, অপরিবর্তিত।',
+      },
+      {
+        en: 'Next.js updated to 14.2.35 (security patch). The blog’s generated social-preview image route was removed; article covers are still set as the social preview.',
+        bn: 'Next.js 14.2.35-এ আপডেট (সিকিউরিটি প্যাচ)। ব্লগের অটো-জেনারেটেড সোশ্যাল প্রিভিউ ইমেজ রুট বাদ; আর্টিকেলের কভার ছবিই সোশ্যাল প্রিভিউ হিসেবে থাকছে।',
+      },
+    ],
+  },
+  {
     version: '1.8.3',
     date: '2026-10-24',
     items: [
