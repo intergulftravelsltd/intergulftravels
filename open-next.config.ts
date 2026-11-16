@@ -15,5 +15,7 @@ import doShardedTagCache from '@opennextjs/cloudflare/overrides/tag-cache/do-sha
 export default defineCloudflareConfig({
   incrementalCache: kvIncrementalCache,
   queue: doQueue,
-  tagCache: doShardedTagCache({ baseShardSize: 12 }),
+  // Small site: 2 shards and a 5-second regional cache keep Durable Object
+  // requests per page view low (an admin edit shows within ~5 s).
+  tagCache: doShardedTagCache({ baseShardSize: 2, regionalCache: true, regionalCacheTtlSec: 5 }),
 });

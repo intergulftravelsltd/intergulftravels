@@ -9,6 +9,9 @@
     "binding": "ASSETS"
   },
   "observability": { "enabled": true },
+  // Keep the *.workers.dev URL alive next to the custom domains (handy for checks).
+  "workers_dev": true,
+  "preview_urls": false,
   // Production hostnames (zone intergulftravelsltd.com on this account).
   "routes": [
     { "pattern": "intergulftravelsltd.com", "custom_domain": true },
