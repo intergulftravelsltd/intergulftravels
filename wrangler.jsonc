@@ -1,6 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "intergulftravels",
+  // Cloudflare account "Itsinjamul@gmail.com's Account" (Workers Paid).
+  "account_id": "961c0fbc26e6f6f58a857aa66d45a781",
   "main": ".open-next/worker.js",
   "compatibility_date": "2025-11-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
@@ -12,24 +14,16 @@
   // Keep the *.workers.dev URL alive next to the custom domains (handy for checks).
   "workers_dev": true,
   "preview_urls": false,
-  // Production hostnames (zone intergulftravelsltd.com on this account).
-  "routes": [
-    { "pattern": "intergulftravelsltd.com", "custom_domain": true },
-    { "pattern": "www.intergulftravelsltd.com", "custom_domain": true }
-  ],
   // Supabase lives in Tokyo: smart placement runs the worker near it, so the
   // admin pages' many sequential queries stay fast from Bangladesh.
   "placement": { "mode": "smart" },
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "intergulftravels" }],
-  // ISR / SSG page cache. KV needs no billing; switch to R2 (NEXT_INC_CACHE_R2_BUCKET) once R2 is enabled.
-  "kv_namespaces": [{ "binding": "NEXT_INC_CACHE_KV", "id": "24fed93774354bc3877fa75d24f831bb" }],
-  "durable_objects": {
-    "bindings": [
-      { "name": "NEXT_CACHE_DO_QUEUE", "class_name": "DOQueueHandler" },
-      { "name": "NEXT_TAG_CACHE_DO_SHARDED", "class_name": "DOShardedTagCache" }
-    ]
-  },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DOQueueHandler", "DOShardedTagCache"] }],
+  // ISR / SSG page cache (Workers KV).
+  "kv_namespaces": [{ "binding": "NEXT_INC_CACHE_KV", "id": "20b4adee5c5c4c0897b4438eaf14ff20" }],
+  // revalidateTag() bookkeeping: one tiny table, one indexed read per cached page.
+  "d1_databases": [
+    { "binding": "NEXT_TAG_CACHE_D1", "database_name": "intergulftravels-tags", "database_id": "f4663366-3350-4a9a-ba2b-f3e606426f7c" }
+  ],
   // next/image optimisation + the admin's image uploads (WebP / signature PNG).
   "images": { "binding": "IMAGES" },
   "vars": {

@@ -14,6 +14,20 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.9.1',
+    date: '2026-11-21',
+    items: [
+      {
+        en: 'Hosting moved to the Workers Paid Cloudflare account: on the free plan a page was allowed only 10 ms of processing and about 1 request in 12 failed with "Exceeded CPU time"; the paid plan removes that limit.',
+        bn: 'হোস্টিং Workers Paid Cloudflare অ্যাকাউন্টে সরানো হয়েছে: ফ্রি প্ল্যানে প্রতি পেজে মাত্র ১০ মিলিসেকেন্ড প্রসেসিং অনুমোদিত ছিল, ফলে প্রায় ১২টির মধ্যে ১টি রিকোয়েস্ট "Exceeded CPU time" দিয়ে ব্যর্থ হতো; পেইড প্ল্যানে সেই সীমা নেই।',
+      },
+      {
+        en: 'Lighter page cache: the Durable Object tag cache (dozens of background requests per page view, which exhausted the daily free quota) is replaced by one small database table; website edits still show right away.',
+        bn: 'হালকা পেজ ক্যাশ: Durable Object ট্যাগ ক্যাশ (প্রতি পেজ ভিউতে ডজনখানেক ব্যাকগ্রাউন্ড রিকোয়েস্ট, যা দৈনিক ফ্রি কোটা শেষ করে দিত) বাদ দিয়ে একটি ছোট ডাটাবেস টেবিল বসানো হয়েছে; ওয়েবসাইটের পরিবর্তন আগের মতোই সাথে সাথে দেখায়।',
+      },
+    ],
+  },
+  {
     version: '1.9.0',
     date: '2026-11-16',
     items: [

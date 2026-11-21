@@ -1,21 +1,26 @@
 import { defineCloudflareConfig } from '@opennextjs/cloudflare';
 import kvIncrementalCache from '@opennextjs/cloudflare/overrides/incremental-cache/kv-incremental-cache';
-import doQueue from '@opennextjs/cloudflare/overrides/queue/do-queue';
-import doShardedTagCache from '@opennextjs/cloudflare/overrides/tag-cache/do-sharded-tag-cache';
+import memoryQueue from '@opennextjs/cloudflare/overrides/queue/memory-queue';
+import d1NextTagCache from '@opennextjs/cloudflare/overrides/tag-cache/d1-next-tag-cache';
+import { softTagFilter, withFilter } from '@opennextjs/cloudflare/overrides/tag-cache/tag-cache-filter';
 
 /* ------------------------------------------------------------------ *
- *  OpenNext → Cloudflare Workers.
- *  - ISR / SSG pages are stored in Workers KV (NEXT_INC_CACHE_KV) — no billing
- *    needed; move to R2 (r2IncrementalCache) once R2 is enabled on the account.
- *  - Time-based revalidation goes through a Durable Object queue.
+ *  OpenNext → Cloudflare Workers. No Durable Objects.
+ *  - ISR / SSG pages are stored in Workers KV (NEXT_INC_CACHE_KV).
+ *  - Time-based revalidation uses the in-worker queue (a stale page is
+ *    regenerated through the worker's own service binding).
  *  - revalidateTag() (admin edits to posts, menus, gallery, videos …) is
- *    tracked in a sharded Durable Object tag cache, so an edit shows on the
- *    public site right away instead of after the 5-minute window.
+ *    recorded in a small D1 table. Next's internal path tags (`_N_T_/…`,
+ *    only needed for revalidatePath, which this app never calls) are
+ *    filtered out, so a cached page costs one indexed D1 read.
+ *
+ *  The first setup used the sharded Durable Object tag cache: every page
+ *  view made dozens of Durable Object requests and a three-user admin
+ *  reached the 100,000/day free limit. Do not bring it back for a site
+ *  this size.
  * ------------------------------------------------------------------ */
 export default defineCloudflareConfig({
   incrementalCache: kvIncrementalCache,
-  queue: doQueue,
-  // Small site: 2 shards and a 5-second regional cache keep Durable Object
-  // requests per page view low (an admin edit shows within ~5 s).
-  tagCache: doShardedTagCache({ baseShardSize: 2, regionalCache: true, regionalCacheTtlSec: 5 }),
+  queue: memoryQueue,
+  tagCache: withFilter({ tagCache: d1NextTagCache, filterFn: softTagFilter }),
 });

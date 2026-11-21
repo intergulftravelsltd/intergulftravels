@@ -129,11 +129,12 @@ Sign in at **`/admin`**:
 The app runs on Cloudflare Workers through the OpenNext adapter (`@opennextjs/cloudflare`);
 `wrangler.jsonc` and `open-next.config.ts` hold the configuration.
 
-1. `npx wrangler login` once (browser OAuth). The account's email must be verified.
-2. Resources (already created for the production account): a KV namespace bound as
-   `NEXT_INC_CACHE_KV` (ISR page cache) and the two Durable Object classes declared under
-   `migrations` (revalidation queue + tag cache). Image optimisation and the admin's image
-   uploads use the `IMAGES` binding (Cloudflare Images).
+1. `npx wrangler login` once (browser OAuth) as the owner of the Cloudflare account named in
+   `wrangler.jsonc` → `account_id` (Workers Paid plan — see the note below).
+2. Resources (already created in that account): a KV namespace bound as `NEXT_INC_CACHE_KV`
+   (ISR page cache) and a D1 database bound as `NEXT_TAG_CACHE_D1` (`revalidateTag` bookkeeping;
+   the deploy step creates its table). Image optimisation and the admin's image uploads use the
+   `IMAGES` binding (Cloudflare Images). No Durable Objects.
 3. Public values live in `wrangler.jsonc` → `vars` (`NEXT_PUBLIC_SITE_URL`,
    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`); they must also be in
    `.env.local` at build time. Secrets are set once with
@@ -146,8 +147,11 @@ The app runs on Cloudflare Workers through the OpenNext adapter (`@opennextjs/cl
    *Site URL* and *Redirect URLs* (`https://intergulftravelsltd.com/auth/callback`).
 
 Notes: `sharp` is a dev-only dependency (used by `scripts/convert-to-webp.mjs`); the server
-never imports native modules. The Workers Free plan allows 10 ms CPU per request and a 3 MB
-compressed bundle — the Workers Paid plan ($5/month) lifts both.
+never imports native modules. **The Workers Free plan is not enough**: it allows 10 ms CPU per
+request while a server-rendered page here needs 30–250 ms (requests fail with "Exceeded CPU
+Time Limits" / Error 1102), so the Worker lives in an account with Workers Paid. The cache setup
+deliberately avoids the Durable Object tag cache — it made dozens of Durable Object requests per
+page view and hit the 100,000/day free limit with three users.
 
 ---
 
