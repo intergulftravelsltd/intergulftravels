@@ -14,6 +14,11 @@
   // Keep the *.workers.dev URL alive next to the custom domains (handy for checks).
   "workers_dev": true,
   "preview_urls": false,
+  // Production hostnames (zone intergulftravelsltd.com in this account).
+  "routes": [
+    { "pattern": "intergulftravelsltd.com", "custom_domain": true },
+    { "pattern": "www.intergulftravelsltd.com", "custom_domain": true }
+  ],
   // Supabase lives in Tokyo: smart placement runs the worker near it, so the
   // admin pages' many sequential queries stay fast from Bangladesh.
   "placement": { "mode": "smart" },
