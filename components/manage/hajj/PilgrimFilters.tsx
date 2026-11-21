@@ -6,6 +6,7 @@ import { Search, X, ArrowUpDown } from 'lucide-react';
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { getDict } from '@/lib/dictionaries/areas/adminhajj';
 import { getDict as getCareDict } from '@/lib/dictionaries/areas/careof';
+import { REG_TYPES, regTypeLabel } from '@/lib/management/reg-type';
 
 type PackageOpt = { id: string; name: string };
 type CareOfOpt = { id: string; name: string; code: string | null };
@@ -13,12 +14,26 @@ type CareOfOpt = { id: string; name: string; code: string | null };
 const ctrl =
   'h-10 rounded-xl border border-border bg-card px-3 text-sm text-ink outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20';
 
-export const HAJJ_SORTS = ['newest', 'name', 'tracking', 'due', 'paid'] as const;
+export const HAJJ_SORTS = ['newest', 'name', 'tracking', 'tracking-desc', 'due', 'paid'] as const;
 export type HajjSort = (typeof HAJJ_SORTS)[number];
 
 const SORT_LABELS: Record<'en' | 'bn', Record<HajjSort, string>> = {
-  en: { newest: 'Newest first', name: 'Name A–Z', tracking: 'Tracking no.', due: 'Due (high → low)', paid: 'Paid (high → low)' },
-  bn: { newest: 'নতুন আগে', name: 'নাম (A–Z)', tracking: 'ট্র্যাকিং নং', due: 'বকেয়া (বেশি → কম)', paid: 'পরিশোধ (বেশি → কম)' },
+  en: {
+    newest: 'Newest first',
+    name: 'Name A–Z',
+    tracking: 'Tracking no. ↑',
+    'tracking-desc': 'Tracking no. ↓',
+    due: 'Due (high → low)',
+    paid: 'Paid (high → low)',
+  },
+  bn: {
+    newest: 'নতুন আগে',
+    name: 'নাম (A–Z)',
+    tracking: 'ট্র্যাকিং নং ↑',
+    'tracking-desc': 'ট্র্যাকিং নং ↓',
+    due: 'বকেয়া (বেশি → কম)',
+    paid: 'পরিশোধ (বেশি → কম)',
+  },
 };
 
 /**
@@ -91,10 +106,13 @@ export function PilgrimFilters({
           }}
         />
       </div>
-      <select className={`${ctrl} w-32`} value={sel('reg_type')} onChange={(e) => update('reg_type', e.target.value)}>
+      <select className={`${ctrl} w-36`} value={sel('reg_type')} onChange={(e) => update('reg_type', e.target.value)}>
         <option value="">{t.allTypes}</option>
-        <option value="pre-registration">{t.optPreRegistration}</option>
-        <option value="registered">{t.optRegistered}</option>
+        {REG_TYPES.map((v) => (
+          <option key={v} value={v}>
+            {regTypeLabel(v, locale)}
+          </option>
+        ))}
       </select>
       <select className={`${ctrl} w-36`} value={sel('package')} onChange={(e) => update('package', e.target.value)}>
         <option value="">{t.allPackages}</option>

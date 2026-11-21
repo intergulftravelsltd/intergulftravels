@@ -14,6 +14,24 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.9.2',
+    date: '2026-11-21',
+    items: [
+      {
+        en: 'Hajj pilgrims: changing the registration type on the edit page now saves (it was silently ignored, so a pilgrim switched to Registered kept showing as pre-registered), and the type has four states — Pre-Registered, Registered, Cancelled, Archived — in the form, the list filter, badges and exports (migration 0015).',
+        bn: 'হজযাত্রী: এডিট পেজে নিবন্ধনের ধরন বদলালে এখন সেভ হয় (আগে নীরবে বাদ পড়ত, তাই Registered করলেও প্রাক-নিবন্ধিত দেখাত), আর ধরন এখন চারটি — প্রাক-নিবন্ধিত, নিবন্ধিত, বাতিল, আর্কাইভড — ফর্ম, তালিকার ফিল্টার, ব্যাজ ও এক্সপোর্টে (মাইগ্রেশন 0015)।',
+      },
+      {
+        en: 'Account Heads: a section filter at the top right — Customer / Passenger Ledger, Assets, Liabilities, Income, Expenses, Equity or All — shows only the chosen section instead of every section one under another.',
+        bn: 'হিসাব খাত: উপরে ডানে বিভাগ ফিল্টার — গ্রাহক / যাত্রী লেজার, সম্পদ, দায়, আয়, ব্যয়, ইক্যুইটি বা সব — সব বিভাগ পরপর না দেখিয়ে শুধু বাছাই করা বিভাগ দেখায়।',
+      },
+      {
+        en: 'Sort arrows on column headers: Tracking in the Hajj pilgrim list and Voucher in the voucher register — one click sorts ascending, the next descending.',
+        bn: 'কলাম হেডারে সর্ট অ্যারো: হজযাত্রী তালিকার ট্র্যাকিং এবং ভাউচার রেজিস্টারের ভাউচার — এক ক্লিকে ছোট থেকে বড়, পরের ক্লিকে বড় থেকে ছোট।',
+      },
+    ],
+  },
+  {
     version: '1.9.1',
     date: '2026-11-21',
     items: [

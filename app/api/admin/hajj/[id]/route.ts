@@ -11,6 +11,7 @@ import {
 import { requireStaff } from '@/lib/management/guard';
 import { resolveReferenceableAffiliate, resolveChargeTarget } from '@/lib/management/affiliates';
 import { DOC_STATUS_KEYS } from '@/lib/management/doc-status';
+import { REG_TYPES } from '@/lib/management/reg-type';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,7 @@ const schema = z.object({
   affiliate_id: z.string().uuid().optional().nullable(),
   doc_status: z.array(z.enum(DOC_STATUS_KEYS)).optional(),
   // edit (a curated, safe subset)
+  reg_type: z.enum(REG_TYPES).optional(),
   name: z.string().trim().min(1).optional(),
   name_bn: z.string().trim().optional().nullable(),
   father_name: z.string().trim().optional().nullable(),
@@ -238,6 +240,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     for (const f of fields) {
       if (f in (payload as object)) update[f] = f === 'name' ? d.name : clean((d as Record<string, unknown>)[f]);
     }
+    // Registration type (Pre-Registered / Registered / Cancelled / Archived):
+    // the edit form always sends it, and it used to be dropped here — which
+    // is why a pilgrim switched to "Registered" kept showing as pre-registered.
+    if ('reg_type' in (payload as object) && d.reg_type) update.reg_type = d.reg_type;
     const hasCareOf = 'affiliate_id' in (payload as object);
     const hasDocs = 'doc_status' in (payload as object);
 

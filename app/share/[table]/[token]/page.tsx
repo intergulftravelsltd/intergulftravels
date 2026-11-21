@@ -3,6 +3,7 @@ import { Check, X } from 'lucide-react';
 import { mgmtDb } from '@/lib/management/server';
 import { verifyShareToken } from '@/lib/management/share-token';
 import { naturalBalance, type AccountHead } from '@/lib/management/types';
+import { regTypeLabel } from '@/lib/management/reg-type';
 import { loadDiscountByHead, moneyReceived } from '@/lib/management/discounts';
 import { money } from '@/lib/management/format';
 import { docStatusKeysFor, docStatusLabel, normalizeDocStatus } from '@/lib/management/doc-status';
@@ -133,7 +134,7 @@ export default async function SharedPilgrimFormPage({ params }: { params: { tabl
     ? [
         [t.tracking, str(p.tracking_no)],
         [t.year, str(p.year)],
-        [t.regType, p.reg_type === 'registered' ? t.registered : t.preReg],
+        [t.regType, regTypeLabel(p.reg_type as string | null, locale)],
         [t.preRegNo, str(p.pre_reg_no)],
         [t.govtSerial, str(p.govt_serial)],
         [t.nameBn, str(p.name_bn)],

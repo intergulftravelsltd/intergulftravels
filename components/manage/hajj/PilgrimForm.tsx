@@ -11,6 +11,7 @@ import { BRANCHES } from '@/lib/management/branches';
 import type { HajjPilgrim, MgmtPackage } from '@/lib/management/types';
 import type { AffiliateOption } from '@/lib/management/affiliates';
 import { normalizeDocStatus, type DocStatusKey } from '@/lib/management/doc-status';
+import { REG_TYPES, regTypeLabel, type RegType } from '@/lib/management/reg-type';
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminhajj';
@@ -46,9 +47,7 @@ export function PilgrimForm({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(initial?.photo_url ?? null);
-  const [regType, setRegType] = useState<'pre-registration' | 'registered'>(
-    initial?.reg_type ?? 'pre-registration',
-  );
+  const [regType, setRegType] = useState<RegType>(initial?.reg_type ?? 'pre-registration');
   const [affiliateId, setAffiliateId] = useState<string | null>(initial?.affiliate_id ?? null);
   const [docStatus, setDocStatus] = useState<DocStatusKey[]>(normalizeDocStatus(initial?.doc_status));
   const [branch, setBranch] = useState<string>(initial?.branch ?? 'inter-gulf-travels');
@@ -197,10 +196,13 @@ export function PilgrimForm({
               name="reg_type"
               className={inputClass}
               value={regType}
-              onChange={(e) => setRegType(e.target.value as 'pre-registration' | 'registered')}
+              onChange={(e) => setRegType(e.target.value as RegType)}
             >
-              <option value="pre-registration">{t.optPreRegistration}</option>
-              <option value="registered">{t.optRegistered}</option>
+              {REG_TYPES.map((v) => (
+                <option key={v} value={v}>
+                  {regTypeLabel(v, locale)}
+                </option>
+              ))}
             </select>
           </Field>
           {lockedBranch ? (

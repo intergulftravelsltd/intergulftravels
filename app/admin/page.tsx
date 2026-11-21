@@ -33,6 +33,7 @@ import { presetRange, type RangeKey } from '@/lib/date-range';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath, type Locale } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminshell';
+import { regTypeLabel, regTypeTone } from '@/lib/management/reg-type';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Dashboard' };
@@ -615,9 +616,7 @@ export default async function ManagementDashboard({
                       {branchLabel(p.branch)}
                     </p>
                   </div>
-                  <Badge tone={p.reg_type === 'registered' ? 'emerald' : 'gold'}>
-                    {p.reg_type === 'registered' ? t.dash.registered : t.dash.preReg}
-                  </Badge>
+                  <Badge tone={regTypeTone(p.reg_type)}>{regTypeLabel(p.reg_type, locale, true)}</Badge>
                 </li>
               ))}
             </ul>

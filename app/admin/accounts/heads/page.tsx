@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { PageHeader, Card, Money, Badge, EmptyState, TableWrap, thClass, tdClass } from '@/components/manage/ui';
 import { HeadForm } from '@/components/manage/accounts/HeadForm';
 import { HeadRowActions } from '@/components/manage/accounts/HeadRowActions';
+import { HeadSectionFilter, type HeadSectionOption } from '@/components/manage/accounts/HeadSectionFilter';
 import { loadActiveHeads } from '@/lib/management/accounts-data';
 import { naturalBalance, type AccountHead, type AccountType } from '@/lib/management/types';
 import { branchShort } from '@/lib/management/branches';
@@ -23,7 +24,11 @@ const TYPE_LABEL_KEY: Record<AccountType, keyof ReturnType<typeof getDict>['head
   equity: 'equity',
 };
 
-export default async function HeadsPage({ searchParams }: { searchParams: { page?: string; per?: string } }) {
+export default async function HeadsPage({
+  searchParams,
+}: {
+  searchParams: { page?: string; per?: string; section?: string };
+}) {
   const locale = getLocale();
   const t = getDict(locale);
   const heads = await loadActiveHeads();
@@ -48,25 +53,44 @@ export default async function HeadsPage({ searchParams }: { searchParams: { page
     if (rows.length) grouped.push({ key: type, label: t.heads[TYPE_LABEL_KEY[type]], rows });
   }
 
+  // Section filter (top right): Customer / Passenger Ledger, the five account
+  // types, or All — the page shows only the chosen section.
+  const countOf = (key: string) =>
+    key === 'customer' ? customerRows.length : heads.filter((h) => h.type === key && h.subtype !== 'customer').length;
+  const sectionOptions: HeadSectionOption[] = [
+    { value: 'customer', label: t.heads.customerLedger, count: countOf('customer') },
+    ...TYPE_ORDER.map((type) => ({ value: type as string, label: t.heads[TYPE_LABEL_KEY[type]], count: countOf(type) })),
+    { value: 'all', label: locale === 'bn' ? 'সব' : 'All', count: heads.length },
+  ];
+  const section = sectionOptions.some((o) => o.value === searchParams.section) ? (searchParams.section as string) : 'all';
+  const visible = section === 'all' ? grouped : grouped.filter((g) => g.key === section);
+
   return (
     <>
       <PageHeader
         title={t.heads.title}
         subtitle={t.heads.subtitle}
+        actions={
+          <HeadSectionFilter
+            options={sectionOptions}
+            value={section}
+            label={locale === 'bn' ? 'বিভাগ অনুযায়ী দেখুন' : 'Show section'}
+          />
+        }
       />
 
       <div className="mb-6">
         <HeadForm />
       </div>
 
-      {heads.length === 0 ? (
+      {heads.length === 0 || visible.length === 0 ? (
         <EmptyState
           title={t.heads.noHeadsTitle}
           hint={t.heads.noHeadsHint}
         />
       ) : (
         <div className="space-y-8">
-          {grouped.map((g) => (
+          {visible.map((g) => (
             <section key={g.key}>
               <h2 className="mb-3 font-display text-lg font-semibold text-ink">{g.label}</h2>
               <TableWrap>

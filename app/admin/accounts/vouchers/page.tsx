@@ -4,6 +4,7 @@ import { ExportBar } from '@/components/manage/ExportBar';
 import { DateRangeFilter } from '@/components/manage/DateRangeFilter';
 import { VoucherRowActions } from '@/components/manage/accounts/VoucherRowActions';
 import { VoucherSearch } from '@/components/manage/accounts/VoucherSearch';
+import { SortHeader } from '@/components/manage/SortHeader';
 import { loadActiveHeads, loadTransactions, headMap, headName } from '@/lib/management/accounts-data';
 import { getStaffScope } from '@/lib/management/scope';
 import { BRANCHES, branchShort } from '@/lib/management/branches';
@@ -44,6 +45,7 @@ type SP = {
   type?: string;
   range?: string;
   q?: string;
+  sort?: string;
   page?: string;
   per?: string;
 };
@@ -103,7 +105,30 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
 
   const total = txns.reduce((s, t) => s + Number(t.amount), 0);
 
-  const exportRows = txns.map((t) => [
+  // Voucher column header: sort by the voucher's running number (one global
+  // counter behind every prefix — V-, JV-, RV-, DV-), ascending then descending.
+  // Without it the list keeps its default order: newest date first.
+  const voucherSort = searchParams.sort === 'voucher-asc' || searchParams.sort === 'voucher-desc' ? searchParams.sort : '';
+  const voucherDir = voucherSort === 'voucher-asc' ? 'asc' : voucherSort === 'voucher-desc' ? 'desc' : null;
+  const voucherNumber = (v: string | null) => {
+    const m = /(\d+)\s*$/.exec(v ?? '');
+    return m ? Number(m[1]) : -1;
+  };
+  const ordered = voucherDir
+    ? [...txns].sort((a, b) =>
+        voucherDir === 'asc'
+          ? voucherNumber(a.voucher_no) - voucherNumber(b.voucher_no)
+          : voucherNumber(b.voucher_no) - voucherNumber(a.voucher_no),
+      )
+    : txns;
+  const voucherHref = (() => {
+    const sp = new URLSearchParams();
+    for (const [k, v] of Object.entries(searchParams)) if (v && k !== 'page' && k !== 'sort') sp.set(k, String(v));
+    sp.set('sort', voucherDir === 'asc' ? 'voucher-desc' : 'voucher-asc');
+    return localizedPath(locale, `/admin/accounts/vouchers?${sp.toString()}`);
+  })();
+
+  const exportRows = ordered.map((t) => [
     t.voucher_no ?? '',
     t.manual_ref ?? '',
     t.date,
@@ -115,7 +140,7 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
     t.narration ?? '',
   ]);
   const period = resolvePeriod({ from: filters.from, to: filters.to }, txns.map((t) => t.date));
-  const paged = paginate(txns, parsePaging(searchParams));
+  const paged = paginate(ordered, parsePaging(searchParams));
 
   return (
     <>
@@ -157,6 +182,7 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
           {searchParams.from && <input type="hidden" name="from" value={searchParams.from} />}
           {searchParams.to && <input type="hidden" name="to" value={searchParams.to} />}
           {searchParams.range && <input type="hidden" name="range" value={searchParams.range} />}
+          {voucherSort && <input type="hidden" name="sort" value={voucherSort} />}
           <VoucherSearch initial={q} placeholder={tt.vouchers.searchPlaceholder} />
           <select name="type" defaultValue={searchParams.type ?? 'all'} className={ctrl} aria-label={tt.vouchers.typeFilter}>
             <option value="all">{tt.vouchers.allTypes}</option>
@@ -206,7 +232,14 @@ export default async function VouchersPage({ searchParams }: { searchParams: SP 
           <TableWrap>
             <thead>
               <tr>
-                <th className={thClass}>{tt.vouchers.thVoucher}</th>
+                <th className={thClass}>
+                  <SortHeader
+                    label={tt.vouchers.thVoucher}
+                    href={voucherHref}
+                    direction={voucherDir}
+                    title={locale === 'bn' ? 'ভাউচার নং অনুযায়ী সাজান' : 'Sort by voucher no.'}
+                  />
+                </th>
                 <th className={thClass}>{tt.vouchers.thManualRef}</th>
                 <th className={thClass}>{tt.vouchers.thDate}</th>
                 <th className={thClass}>{tt.vouchers.thType}</th>

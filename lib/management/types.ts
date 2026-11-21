@@ -1,4 +1,5 @@
 /** Shared types + balance maths for the accounting / management module. */
+import type { RegType } from '@/lib/management/reg-type';
 
 export type AccountType = 'asset' | 'liability' | 'income' | 'expense' | 'equity';
 export type AccountSubtype =
@@ -101,7 +102,7 @@ export type HajjPilgrim = {
   address: string | null;
   district: string | null;
   year: number;
-  reg_type: 'pre-registration' | 'registered';
+  reg_type: RegType;
   pre_reg_no: string | null;
   govt_serial: string | null;
   package_id: string | null;

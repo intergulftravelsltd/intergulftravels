@@ -25,6 +25,7 @@ import type { HajjPilgrim, MgmtPackage } from '@/lib/management/types';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminhajj';
+import { regTypeLabel, regTypeTone } from '@/lib/management/reg-type';
 
 export const dynamic = 'force-dynamic';
 export function generateMetadata() {
@@ -84,7 +85,7 @@ export default async function HajjPackagesPage({
     r.p.tracking_no ?? '',
     r.p.name,
     r.p.phone ?? '',
-    r.p.reg_type === 'registered' ? t.exTypeRegistered : t.exTypePreRegistration,
+    regTypeLabel(r.p.reg_type, locale),
     money(r.paid, false),
     money(r.due, false),
     branchShort(r.p.branch),
@@ -256,11 +257,7 @@ export default async function HajjPackagesPage({
                     </td>
                     <td className={tdClass}>{p.phone ?? '—'}</td>
                     <td className={tdClass}>
-                      {p.reg_type === 'registered' ? (
-                        <Badge tone="emerald">{t.badgeRegistered}</Badge>
-                      ) : (
-                        <Badge tone="slate">{t.badgePreReg}</Badge>
-                      )}
+                      <Badge tone={regTypeTone(p.reg_type)}>{regTypeLabel(p.reg_type, locale, true)}</Badge>
                     </td>
                     <td className={`${tdClass} text-right`}>
                       <Money value={paid} />

@@ -26,6 +26,7 @@ import { loadBankAccounts, loadHajjPackages } from '@/lib/management/hajj';
 import { loadDiscountByHead, moneyReceived } from '@/lib/management/discounts';
 import { loadAffiliate } from '@/lib/management/affiliates';
 import { naturalBalance, isGroupFund } from '@/lib/management/types';
+import { regTypeLabel, regTypeTone } from '@/lib/management/reg-type';
 import { getDict as getCareDict } from '@/lib/dictionaries/areas/careof';
 import { money } from '@/lib/management/format';
 import { branchLabel } from '@/lib/management/branches';
@@ -187,7 +188,7 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
       <PageHeader
         title={pilgrim.name}
         subtitle={`${pilgrim.tracking_no ?? t.noTrackingNo} · ${
-          pilgrim.reg_type === 'registered' ? t.badgeRegistered : t.badgePreRegistration
+          regTypeLabel(pilgrim.reg_type, locale)
         } · ${pilgrim.year}`}
         actions={
           <div className="flex items-center gap-2">
@@ -238,11 +239,7 @@ export default async function PilgrimProfilePage({ params }: { params: { id: str
               <div className="min-w-0">
                 <p className="font-display text-lg font-semibold text-ink">{pilgrim.name}</p>
                 <div className="mt-1 flex flex-wrap gap-1.5">
-                  {pilgrim.reg_type === 'registered' ? (
-                    <Badge tone="emerald">{t.badgeRegistered}</Badge>
-                  ) : (
-                    <Badge tone="slate">{t.badgePreRegistration}</Badge>
-                  )}
+                  <Badge tone={regTypeTone(pilgrim.reg_type)}>{regTypeLabel(pilgrim.reg_type, locale)}</Badge>
                   {pilgrim.status === 'active' && <Badge tone="blue">{t.badgeActive}</Badge>}
                   {pilgrim.status === 'completed' && <Badge tone="emerald">{t.badgeCompleted}</Badge>}
                   {pilgrim.status === 'cancelled' && <Badge tone="red">{t.badgeCancelled}</Badge>}

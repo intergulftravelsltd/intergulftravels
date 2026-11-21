@@ -5,6 +5,7 @@ import { requireStaff } from '@/lib/management/guard';
 import { enforceBranch } from '@/lib/management/scope';
 import { resolveReferenceableAffiliate, resolveChargeTarget } from '@/lib/management/affiliates';
 import { DOC_STATUS_KEYS } from '@/lib/management/doc-status';
+import { REG_TYPES } from '@/lib/management/reg-type';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,7 +23,7 @@ const schema = z.object({
   address: z.string().trim().optional().nullable(),
   district: z.string().trim().optional().nullable(),
   year: z.coerce.number().int().min(2000).max(2100),
-  reg_type: z.enum(['pre-registration', 'registered']).default('pre-registration'),
+  reg_type: z.enum(REG_TYPES).default('pre-registration'),
   pre_reg_no: z.string().trim().optional().nullable(),
   govt_serial: z.string().trim().optional().nullable(),
   branch: z.string().trim().min(1).default('general'),

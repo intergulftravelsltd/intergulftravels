@@ -28,6 +28,8 @@ import { branchShort } from '@/lib/management/branches';
 import { money } from '@/lib/management/format';
 import { isGroupFund, type HajjPilgrim, type MgmtPackage } from '@/lib/management/types';
 import { orderByGroup } from '@/lib/management/group-order';
+import { regTypeLabel, regTypeTone } from '@/lib/management/reg-type';
+import { SortHeader } from '@/components/manage/SortHeader';
 import { getLocale } from '@/lib/i18n-server';
 import { localizedPath } from '@/lib/i18n';
 import { getDict } from '@/lib/dictionaries/areas/adminhajj';
@@ -185,7 +187,9 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
       case 'name':
         return a.p.name.localeCompare(b.p.name);
       case 'tracking':
-        return (a.p.tracking_no ?? '').localeCompare(b.p.tracking_no ?? '');
+        return (a.p.tracking_no ?? '').localeCompare(b.p.tracking_no ?? '', undefined, { numeric: true });
+      case 'tracking-desc':
+        return (b.p.tracking_no ?? '').localeCompare(a.p.tracking_no ?? '', undefined, { numeric: true });
       case 'due':
         return Math.max(0, b.due) - Math.max(0, a.due);
       case 'paid':
@@ -195,6 +199,16 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
     }
   });
   const paged = paginate(sorted, parsePaging(searchParams));
+
+  // Tracking column header: a click sorts ascending, the next one descending.
+  const trackingDir = sort === 'tracking' ? 'asc' : sort === 'tracking-desc' ? 'desc' : null;
+  const trackingHref = (() => {
+    const sp = new URLSearchParams();
+    for (const [k, v] of Object.entries(searchParams)) if (v && k !== 'page' && k !== 'sort') sp.set(k, String(v));
+    if (!sp.get('year')) sp.set('year', String(selectedYear));
+    sp.set('sort', trackingDir === 'asc' ? 'tracking-desc' : 'tracking');
+    return localizedPath(locale, `/admin/hajj?${sp.toString()}`);
+  })();
 
   // Printed / exported list, same money model as the on-screen table: the
   // group leader's row carries the GROUP's paid and net due ("Group total"),
@@ -238,7 +252,7 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
       r.p.phone ?? '',
       genderLabel(r.p.gender),
       r.p.year,
-      r.p.reg_type === 'registered' ? t.exTypeRegistered : t.exTypePreRegistration,
+      regTypeLabel(r.p.reg_type, locale),
       r.pkgName,
       paidCell,
       dueCell,
@@ -354,7 +368,14 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
         <TableWrap>
           <thead>
             <tr>
-              <th className={thClass}>{t.thTracking}</th>
+              <th className={thClass}>
+                <SortHeader
+                  label={t.thTracking}
+                  href={trackingHref}
+                  direction={trackingDir}
+                  title={locale === 'bn' ? 'ট্র্যাকিং নং অনুযায়ী সাজান' : 'Sort by tracking no.'}
+                />
+              </th>
               <th className={thClass}>{t.thName}</th>
               <th className={thClass}>{t.thPhone}</th>
               <th className={thClass}>{t.thType}</th>
@@ -423,11 +444,7 @@ export default async function HajjPilgrimsPage({ searchParams }: { searchParams:
                 </td>
                 <td className={tdClass}>{p.phone ?? '—'}</td>
                 <td className={tdClass}>
-                  {p.reg_type === 'registered' ? (
-                    <Badge tone="emerald">{t.badgeRegistered}</Badge>
-                  ) : (
-                    <Badge tone="slate">{t.badgePreReg}</Badge>
-                  )}
+                  <Badge tone={regTypeTone(p.reg_type)}>{regTypeLabel(p.reg_type, locale, true)}</Badge>
                 </td>
                 <td className={tdClass}>{pkgName}</td>
                 <td className={`${tdClass} text-right`}>
